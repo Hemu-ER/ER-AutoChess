@@ -27,7 +27,7 @@ let stage={A:{},B:{}},shared={A:{swim:0},B:{swim:0}};
 const $=s=>document.querySelector(s),board=$('#board');
 function seeded(seed){let x=seed|0;return()=>{x|=0;x=x+0x6D2B79F5|0;let t=Math.imul(x^x>>>15,1|x);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function makeUnit(n,mastery,pos=starts[n]){let r=roster[n],m=1+(mastery-1)*.01;let u={id:n,name:n,team:r.team,role:r.role,aff:[...r.aff],range:r.range,main:r.main,star:2,x:pos[0],y:pos[1],initialX:pos[0],initialY:pos[1]};u.base={hp:r.hp*star2.hp*m,atk:r.atk*star2.atk*m,def:r.def*star2.def*m,as:r.as*star2.as*m,amp:r.amp*star2.amp*m};resetCombatState(u);return u}
-function resetCombatState(u){u.maxHp=u.base.hp;u.hp=u.maxHp;u.atk=u.base.atk;u.def=u.base.def;u.as=u.base.as;u.amp=u.base.amp;u.basicCount=0;u.nextAttack=Infinity;u.nextMove=+($('#moveInterval')?.value||QA.moveInterval);u.damage={basic:0,skill:0,passive:0,synergy:0};u.dead=false;u.ccUntil=0;u.channel=null;u.hot=false;u.boost=false;u.resolveUses=0;u.burstUntil=0;u.wind={};u.nextWindTick=1;u.yuminCcDone=false;u.nextQuake=10;u.shock=false;u.nextShot=8;u.shotTarget=null}
+function resetCombatState(u){u.maxHp=u.base.hp;u.hp=u.maxHp;u.atk=u.base.atk;u.def=u.base.def;u.as=u.base.as;u.amp=u.base.amp;u.basicCount=0;u.nextAttack=Infinity;u.nextMove=+($('#moveInterval')?.value||QA.moveInterval);u.damage={basic:0,skill:0,passive:0,synergy:0};u.dead=false;u.ccUntil=0;u.channel=null;u.hot=false;u.boost=false;u.shurin={phase:'normal',normalAttacks:0,resolveUses:0,burstUntil:0};u.wind={};u.nextWindTick=1;u.yuminCcDone=false;u.nextQuake=10;u.shock=false;u.nextShot=8;u.shotTarget=null}
 function roleBuff(u){let depth=u.team==='A'?u.initialX:5-u.initialX;if(u.role==='전사'&&depth>=1){u[u.main==='atk'?'atk':'amp']*=1.15;u.as*=1.10;u.def+=10;u.maxHp*=1.10;u.hp=u.maxHp}if(u.role==='탱커'&&depth===2){u.def+=20;u.maxHp*=1.20;u.hp=u.maxHp;u.as*=1.10}if(u.role==='원거리 평타'&&depth<=1){u.atk*=1.20;u.as*=1.20}if(u.role==='원거리 스킬'&&depth<=1){u.amp*=1.25;u.as*=1.10}}
 function lockSynergies(){for(let team of ['A','B']){let own=units.filter(u=>u.team===team);stage[team]={수영복:own.filter(u=>u.aff.includes('수영복')).length,바니걸:own.filter(u=>u.aff.includes('바니걸')).length};shared[team]={swim:0}}}
 function prepareBattle(){let ma=+$('#masteryA').value,mb=+$('#masteryB').value;let positions=Object.fromEntries(units.map(u=>[u.name,[u.x,u.y]]));units=Object.keys(roster).map(n=>makeUnit(n,roster[n].team==='A'?ma:mb,positions[n]||starts[n]));units.forEach(u=>{u.initialX=u.x;u.initialY=u.y;roleBuff(u)});lockSynergies();for(let u of units)u.nextAttack=1/currentAs(u,null); // first basic occurs after one attack interval
@@ -55,12 +55,46 @@ function basicAttack(u,t){u.basicCount++;let dealt=damage(u,t,currentAtk(u),'bas
  if(u.name==='유민'&&!t.dead){let before=u.wind[t.id]||0;if(before>=2)damage(u,t,currentAmp(u)*coef.유민.windExtra,'passive',false,{guardable:false});u.wind[t.id]=Math.min(2,before+1)}
  // Justina: boosted basic does not alter counter beyond this genuine basic; every 2 basics fires column bombardment.
  if(u.name==='유스티나'){if(u.boost&&!t.dead){damage(u,t,currentAmp(u)*coef.유스티나.boost,'passive',false,{guardable:false});u.boost=false}if(u.basicCount>=2){u.basicCount=0;for(let e of enemies(u).filter(e=>e.y===t.y))damage(u,e,currentAmp(u)*coef.유스티나.bomb,'skill',false,{guardable:true});u.boost=true;log(`유스티나 <b>섬멸 포격</b> — ${['왼쪽','중앙','오른쪽'][t.y]} 열`)}}
- // Shurin: 3 normal basics, then next basic gets Resolve. After 3 Resolve uses, adjacent AoE + 3s all basics Resolve.
- if(u.name==='슈린'){let burst=u.burstUntil>time;if(burst&&!t.dead){let d=damage(u,t,currentAtk(u)*coef.슈린.resolve,'passive',false,{guardable:false});heal(u,d*.5)}else if(u.basicCount>=4&&!t.dead){u.basicCount=0;u.resolveUses++;let d=damage(u,t,currentAtk(u)*coef.슈린.resolve,'passive',false,{guardable:false});heal(u,d*.5);if(u.resolveUses>=3){u.resolveUses=0;for(let e of enemies(u).filter(e=>adjacent(u,e)))damage(u,e,currentAtk(u)*coef.슈린.aoe,'skill',false,{guardable:true});u.burstUntil=time+3;log(`슈린 <b>만검귀종</b>`)}}}
+ if(u.name==='슈린')shurinBasic(u,t);
  // Marcus shock consume
  if(u.name==='마커스'&&t.shock&&!t.dead){t.shock=false;damage(u,t,currentAtk(u)*coef.마커스.shock,'passive',false,{guardable:false});applyCC(t,.5);log(`마커스 <b>전사의 투지</b> — 충격 소비`)}
 }
-function move(u){let dir=u.team==='A'?1:-1,nx=u.x+dir;if(nx<0||nx>=6)return;if(!units.some(v=>!v.dead&&v.x===nx&&v.y===u.y)){u.x=nx;log(`${u.name} 전진`)}}
+function shurinBasic(u,t){
+ let s=u.shurin;
+ if(s.phase==='burst'&&time>=s.burstUntil){
+  s.phase='normal';s.normalAttacks=0;s.burstUntil=0;
+ }
+ if(s.phase==='normal'){
+  s.normalAttacks++;
+  if(s.normalAttacks===3)s.phase='ready';
+  return;
+ }
+ // Ready/burst attacks never count toward the next three normal basics.
+ // A lethal basic still consumes Resolve; only actual extra damage heals.
+ let dealt=damage(u,t,currentAtk(u)*coef.슈린.resolve,'passive',false,{guardable:false});
+ heal(u,dealt*.5);
+ if(s.phase==='burst')return;
+ s.normalAttacks=0;s.resolveUses++;
+ if(s.resolveUses<3){s.phase='normal';return}
+ s.resolveUses=0;s.phase='burst';s.burstUntil=time+3;
+ for(let e of enemies(u).filter(e=>adjacent(u,e)))damage(u,e,currentAtk(u)*coef.슈린.aoe,'skill',false,{guardable:true});
+ log(`슈린 <b>만검귀종</b>`);
+}
+function move(u){
+ let t=nearestEnemy(u);
+ if(!t||target(u))return;
+ let dir=u.team==='A'?1:-1,nx=u.x+dir;
+ let vacant=(x,y)=>x>=0&&x<BOARD_W&&y>=0&&y<BOARD_H&&!units.some(v=>!v.dead&&v.x===x&&v.y===y);
+ // Prefer forward progress, but never march past the enemy being pursued.
+ if((t.x-u.x)*dir>0&&vacant(nx,u.y)){
+  u.x=nx;log(`${u.name} 전진`);return;
+ }
+ // Forward is blocked or cannot approach: change only the lane by one cell.
+ let ny=u.y+Math.sign(t.y-u.y);
+ if(ny!==u.y&&vacant(u.x,ny)){
+  u.y=ny;log(`${u.name} 라인 이동`);
+ }
+}
 function periodicAndSkills(){for(let u of units){if(u.dead)continue;
  // Yumin: 1s delayed global CC and per-second Wind DoT.
  if(u.name==='유민'){if(!u.yuminCcDone&&time>=1){u.yuminCcDone=true;for(let e of enemies(u))applyCC(e,.5);log(`유민 <b>풍류운산</b> — 0.5초 행동 불능`)}if(time+1e-9>=u.nextWindTick){while(time+1e-9>=u.nextWindTick)u.nextWindTick+=1;for(let e of enemies(u)){if((u.wind[e.id]||0)>0)damage(u,e,currentAmp(u)*coef.유민.windDot,'passive',false,{guardable:false})}}}
