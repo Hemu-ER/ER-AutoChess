@@ -58,8 +58,8 @@ assert.equal(logs.filter(s=>s.includes('결심응진')).length,3,'Resolve must b
 assert.equal(logs.filter(s=>s.includes('만검귀종')).length,1);
 assert.equal(shurin.shurin.totalResolveUses,3);
 assert.equal(shurin.shurin.totalAoeUses,1);
-assert.match(document.querySelector('#meterA').innerHTML,/결심응진 3회/);
-assert.match(document.querySelector('#meterA').innerHTML,/만검귀종 1회/);
+assert.ok(document.querySelector('#meterA').innerHTML.includes('결심응진</th><td>3회</td><td>3회'));
+assert.ok(document.querySelector('#meterA').innerHTML.includes('만검귀종</th><td>1회</td><td>1회'));
 // The burst's extra attacks must not prepare the next normal cycle.
 while(shurin.basicCount<14&&time<20&&!battleOver)tick(.05);
 assert.equal(shurin.shurin.normalAttacks,0);assert.equal(shurin.shurin.resolveUses,0);

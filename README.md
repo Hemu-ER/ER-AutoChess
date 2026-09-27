@@ -24,3 +24,29 @@
 
 ## 실행
 `index.html`을 브라우저에서 열면 됨.
+
+## 피해 출처 상세 통계
+
+딜미터에서 캐릭터의 **상세** 버튼을 누르면 출처별 발동/적중/Raw/실제 피해가 표시된다. 전투 중에도 갱신되며 펼친 상태를 유지한다.
+
+- `unit.damage`의 basic/skill/passive/synergy 합계는 기존대로 유지한다.
+- `unit.damageSources[sourceName]`은 `{kind, activations, hits, raw, dealt}`를 보관한다.
+- `activations`는 효과 실행 횟수다. 광역기는 대상별 피해 처리 전에 1회 기록한다. 버프/CC처럼 피해 없는 효과도 `activateSource()`만 호출할 수 있다.
+- `hits`는 실제 HP 피해가 양수인 대상별 이벤트 수다. 한 광역기로 2명을 맞추면 발동 1회, 적중 2회다.
+- `raw`는 계수 계산 직후의 피해 입력값으로, 니키 가드와 방어력 경감 전 값이다. `dealt`는 경감 후 남은 HP로 제한한 유효 피해다. 이미 죽은 대상에는 raw/hits/dealt를 추가하지 않는다.
+- 수영복 공유 카운터 발동은 기존 총 피해 귀속과 동일하게 마지막 기본 공격을 한 캐릭터에게 기록한다.
+- 슈린의 강화 중 결심응진도 같은 출처에 합산하지만 다음 만검귀종 준비 횟수에는 포함하지 않는다.
+- 새 피해는 `damage(..., {sourceName: '출처명', ...})`로 계측한다. 새 발동은 `activateSource(unit, '출처명', kind)`로 기록한다. `sourceCatalog`는 아직 발동하지 않은 출처도 0으로 표시하기 위한 메타데이터다.
+
+## 테스트
+
+Node.js로 저장소 루트에서 실행:
+
+```sh
+node --check game.js
+node tests/combat.cjs
+node tests/shurin.cjs
+node tests/damage-stats.cjs
+```
+
+`tests/fixtures/pre-stats.game.js`는 계측 전 커밋 `37ddc12`의 전투 엔진 스냅샷이다. 회귀 테스트는 이 기준과 101개 seed의 피해 이벤트, 매 틱 HP/상태, 난수 진행과 승패를 비교한다. 이 파일은 제품에서 로드하지 않는다.
