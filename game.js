@@ -27,7 +27,7 @@ let stage={A:{},B:{}},shared={A:{swim:0},B:{swim:0}};
 const $=s=>document.querySelector(s),board=$('#board');
 function seeded(seed){let x=seed|0;return()=>{x|=0;x=x+0x6D2B79F5|0;let t=Math.imul(x^x>>>15,1|x);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function makeUnit(n,mastery,pos=starts[n]){let r=roster[n],m=1+(mastery-1)*.01;let u={id:n,name:n,team:r.team,role:r.role,aff:[...r.aff],range:r.range,main:r.main,star:2,x:pos[0],y:pos[1],initialX:pos[0],initialY:pos[1]};u.base={hp:r.hp*star2.hp*m,atk:r.atk*star2.atk*m,def:r.def*star2.def*m,as:r.as*star2.as*m,amp:r.amp*star2.amp*m};resetCombatState(u);return u}
-function resetCombatState(u){u.maxHp=u.base.hp;u.hp=u.maxHp;u.atk=u.base.atk;u.def=u.base.def;u.as=u.base.as;u.amp=u.base.amp;u.basicCount=0;u.nextAttack=Infinity;u.nextMove=+($('#moveInterval')?.value||QA.moveInterval);u.damage={basic:0,skill:0,passive:0,synergy:0};u.dead=false;u.ccUntil=0;u.channel=null;u.hot=false;u.boost=false;u.shurin={phase:'normal',normalAttacks:0,resolveUses:0,burstUntil:0};u.wind={};u.nextWindTick=1;u.yuminCcDone=false;u.nextQuake=10;u.shock=false;u.nextShot=8;u.shotTarget=null}
+function resetCombatState(u){u.maxHp=u.base.hp;u.hp=u.maxHp;u.atk=u.base.atk;u.def=u.base.def;u.as=u.base.as;u.amp=u.base.amp;u.basicCount=0;u.nextAttack=Infinity;u.nextMove=+($('#moveInterval')?.value||QA.moveInterval);u.damage={basic:0,skill:0,passive:0,synergy:0};u.dead=false;u.ccUntil=0;u.channel=null;u.hot=false;u.boost=false;u.shurin={phase:'normal',normalAttacks:0,resolveUses:0,burstUntil:0,totalResolveUses:0,totalAoeUses:0};u.wind={};u.nextWindTick=1;u.yuminCcDone=false;u.nextQuake=10;u.shock=false;u.nextShot=8;u.shotTarget=null}
 function roleBuff(u){let depth=u.team==='A'?u.initialX:5-u.initialX;if(u.role==='전사'&&depth>=1){u[u.main==='atk'?'atk':'amp']*=1.15;u.as*=1.10;u.def+=10;u.maxHp*=1.10;u.hp=u.maxHp}if(u.role==='탱커'&&depth===2){u.def+=20;u.maxHp*=1.20;u.hp=u.maxHp;u.as*=1.10}if(u.role==='원거리 평타'&&depth<=1){u.atk*=1.20;u.as*=1.20}if(u.role==='원거리 스킬'&&depth<=1){u.amp*=1.25;u.as*=1.10}}
 function lockSynergies(){for(let team of ['A','B']){let own=units.filter(u=>u.team===team);stage[team]={수영복:own.filter(u=>u.aff.includes('수영복')).length,바니걸:own.filter(u=>u.aff.includes('바니걸')).length};shared[team]={swim:0}}}
 function prepareBattle(){let ma=+$('#masteryA').value,mb=+$('#masteryB').value;let positions=Object.fromEntries(units.map(u=>[u.name,[u.x,u.y]]));units=Object.keys(roster).map(n=>makeUnit(n,roster[n].team==='A'?ma:mb,positions[n]||starts[n]));units.forEach(u=>{u.initialX=u.x;u.initialY=u.y;roleBuff(u)});lockSynergies();for(let u of units)u.nextAttack=1/currentAs(u,null); // first basic occurs after one attack interval
@@ -73,12 +73,14 @@ function shurinBasic(u,t){
  // A lethal basic still consumes Resolve; only actual extra damage heals.
  let dealt=damage(u,t,currentAtk(u)*coef.슈린.resolve,'passive',false,{guardable:false});
  heal(u,dealt*.5);
+ s.totalResolveUses++;
+ log(`슈린 <b>결심응진</b> — ${s.totalResolveUses}회 · 추가 피해 ${dealt.toFixed(1)}${s.phase==='burst'?' (만검귀종 강화)':''}`);
  if(s.phase==='burst')return;
  s.normalAttacks=0;s.resolveUses++;
  if(s.resolveUses<3){s.phase='normal';return}
- s.resolveUses=0;s.phase='burst';s.burstUntil=time+3;
+ s.resolveUses=0;s.phase='burst';s.burstUntil=time+3;s.totalAoeUses++;
  for(let e of enemies(u).filter(e=>adjacent(u,e)))damage(u,e,currentAtk(u)*coef.슈린.aoe,'skill',false,{guardable:true});
- log(`슈린 <b>만검귀종</b>`);
+ log(`슈린 <b>만검귀종</b> — ${s.totalAoeUses}회`);
 }
 function move(u){
  let t=nearestEnemy(u);
@@ -109,7 +111,7 @@ function timeoutResult(){let a=units.filter(u=>u.team==='A').reduce((s,u)=>s+Mat
 function start(){if(battleOver)reset();if(!running){rng=$('#fixedSeed').checked?seeded(+$('#seed').value):Math.random;prepareBattle();running=true;paused=false;$('#status').textContent='전투 중';log('전투 시작');render();meters();last=performance.now();requestAnimationFrame(loop)}}
 function loop(now){if(!running)return;let elapsed=Math.min(.15,(now-last)/1000)*speed;last=now;if(!paused){for(let acc=0;acc<elapsed;acc+=DT)tick(Math.min(DT,elapsed-acc))}requestAnimationFrame(loop)}
 function log(s){if(silent)return;let d=document.createElement('div');d.innerHTML=`[${time.toFixed(1)}] ${s}`;$('#log').prepend(d)}
-function meters(){if(silent)return;for(let team of ['A','B']){let root=$('#meter'+team),arr=units.filter(u=>u.team===team),max=Math.max(1,...arr.map(u=>Object.values(u.damage).reduce((a,b)=>a+b,0)));root.innerHTML=arr.map(u=>{let total=Object.values(u.damage).reduce((a,b)=>a+b,0);return `<div class=meter-row><b>${u.name}</b><div class=meter-track title="평타 ${u.damage.basic.toFixed(0)} / 스킬 ${u.damage.skill.toFixed(0)} / 패시브 ${u.damage.passive.toFixed(0)} / 시너지 ${u.damage.synergy.toFixed(0)}"><div class=meter-fill style="width:${total/max*100}%"></div></div><span>${total.toFixed(0)}</span></div>`}).join('')}}
+function meters(){if(silent)return;for(let team of ['A','B']){let root=$('#meter'+team),arr=units.filter(u=>u.team===team),max=Math.max(1,...arr.map(u=>Object.values(u.damage).reduce((a,b)=>a+b,0)));root.innerHTML=arr.map(u=>{let total=Object.values(u.damage).reduce((a,b)=>a+b,0);return `<div class=meter-row><b>${u.name}${u.name==='슈린'?`<small style="display:block">결심응진 ${u.shurin.totalResolveUses}회<br>만검귀종 ${u.shurin.totalAoeUses}회</small>`:''}</b><div class=meter-track title="평타 ${u.damage.basic.toFixed(0)} / 스킬 ${u.damage.skill.toFixed(0)} / 패시브 ${u.damage.passive.toFixed(0)} / 시너지 ${u.damage.synergy.toFixed(0)}"><div class=meter-fill style="width:${total/max*100}%"></div></div><span>${total.toFixed(0)}</span></div>`}).join('')}}
 function simulateOnce(seed){silent=true;reset();rng=seeded(seed);prepareBattle();running=true;while(!battleOver&&time<60)tick(DT);let w=units.some(u=>u.team==='A'&&!u.dead)?'A':units.some(u=>u.team==='B'&&!u.dead)?'B':'D';silent=false;return w}
 function batch(){let base=+$('#seed').value,a=0,b=0,d=0;for(let i=0;i<100;i++){let w=simulateOnce(base+i);if(w==='A')a++;else if(w==='B')b++;else d++}$('#batchResult').innerHTML=`A팀 <b>${a}%</b> · B팀 <b>${b}%</b> · 무승부 ${d}%`;reset()}
 $('#start').onclick=start;$('#pause').onclick=()=>{paused=!paused;$('#pause').textContent=paused?'▶ 재개':'Ⅱ 일시정지'};$('#step').onclick=()=>{if(!running)start();paused=true;for(let i=0;i<2;i++)tick(.05)};$('#reset').onclick=reset;$('#speed').onchange=e=>speed=+e.target.value;$('#batch').onclick=batch;['masteryA','masteryB'].forEach(id=>$('#'+id).onchange=reset);
