@@ -59,7 +59,7 @@ const roster=[
       "amp": 42,
       "range": 1,
       "def": 36,
-      "as": 0.922
+      "as": 0.92
     },
     "implemented": true,
     "main": "atk",
@@ -192,7 +192,7 @@ const roster=[
       "amp": 34,
       "range": 1,
       "def": 31,
-      "as": 0.928
+      "as": 0.98
     },
     "implemented": true,
     "main": "atk",
@@ -236,7 +236,7 @@ const roster=[
       "amp": 32,
       "range": 1,
       "def": 30,
-      "as": 0.92
+      "as": 0.9
     },
     "implemented": true,
     "main": "atk",
@@ -347,7 +347,7 @@ const roster=[
       "amp": 128,
       "range": 1,
       "def": 27,
-      "as": 0.921
+      "as": 0.91
     },
     "implemented": true,
     "main": "amp",
@@ -523,7 +523,7 @@ const roster=[
       "amp": 20,
       "range": 3,
       "def": 16,
-      "as": 0.924
+      "as": 0.94
     },
     "implemented": true,
     "main": "atk",
@@ -589,7 +589,7 @@ const roster=[
       "amp": 20,
       "range": 3,
       "def": 17,
-      "as": 0.924
+      "as": 0.94
     },
     "implemented": true,
     "main": "atk",
