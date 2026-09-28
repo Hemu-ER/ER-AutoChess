@@ -17,7 +17,7 @@ const roster=[
       "def": 39,
       "as": 0.88
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/hyunwoo.png"
@@ -39,7 +39,7 @@ const roster=[
       "def": 21,
       "as": 0.8
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/adela.png"
@@ -61,7 +61,7 @@ const roster=[
       "def": 36,
       "as": 0.92
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/dailin.png"
@@ -83,7 +83,7 @@ const roster=[
       "def": 42,
       "as": 0.84
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/yuki.png"
@@ -150,7 +150,7 @@ const roster=[
       "def": 19,
       "as": 0.86
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/jenny.png"
@@ -238,7 +238,7 @@ const roster=[
       "def": 30,
       "as": 0.9
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/ian.png"
@@ -282,7 +282,7 @@ const roster=[
       "def": 38,
       "as": 0.88
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/debi-marlene.png"
@@ -305,7 +305,7 @@ const roster=[
       "def": 48,
       "as": 0.76
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/garnet.png"
@@ -327,7 +327,7 @@ const roster=[
       "def": 34,
       "as": 0.88
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/kenneth.png"
@@ -349,7 +349,7 @@ const roster=[
       "def": 27,
       "as": 0.91
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/irem.png"
@@ -371,7 +371,7 @@ const roster=[
       "def": 28,
       "as": 0.88
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/laura.png"
@@ -393,7 +393,7 @@ const roster=[
       "def": 18,
       "as": 0.76
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/bianca.png"
@@ -415,7 +415,7 @@ const roster=[
       "def": 23,
       "as": 0.72
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/cathy.png"
@@ -437,7 +437,7 @@ const roster=[
       "def": 34,
       "as": 0.87
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/abigail.png"
@@ -459,7 +459,7 @@ const roster=[
       "def": 27,
       "as": 0.78
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/leny.png"
@@ -481,7 +481,7 @@ const roster=[
       "def": 17,
       "as": 1.04
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/hart.png"
@@ -503,7 +503,7 @@ const roster=[
       "def": 18,
       "as": 1.02
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/isol.png"
@@ -525,7 +525,7 @@ const roster=[
       "def": 16,
       "as": 0.94
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/chloe.png"
@@ -547,7 +547,7 @@ const roster=[
       "def": 39,
       "as": 0.82
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/sua.png"
@@ -569,7 +569,7 @@ const roster=[
       "def": 28,
       "as": 0.76
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/johann.png"
@@ -591,7 +591,7 @@ const roster=[
       "def": 17,
       "as": 0.94
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/nadine.png"
@@ -613,7 +613,7 @@ const roster=[
       "def": 22,
       "as": 0.72
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/bernice.png"
@@ -635,7 +635,7 @@ const roster=[
       "def": 16,
       "as": 0.78
     },
-    "implemented": false,
+    "implemented": true,
     "main": "atk",
     "asset": {
       "sd": "assets/characters/rozzi.png"
@@ -657,7 +657,7 @@ const roster=[
       "def": 18,
       "as": 0.82
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/aya.png"
@@ -679,7 +679,7 @@ const roster=[
       "def": 58,
       "as": 0.72
     },
-    "implemented": false,
+    "implemented": true,
     "main": "hp",
     "asset": {
       "sd": "assets/characters/mirka.png"
@@ -701,7 +701,7 @@ const roster=[
       "def": 29,
       "as": 0.75
     },
-    "implemented": false,
+    "implemented": true,
     "main": "amp",
     "asset": {
       "sd": "assets/characters/charlotte.png"
