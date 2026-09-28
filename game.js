@@ -52,7 +52,13 @@ function rosterCard(team,r){
    <span class="impl">${statusLabel(r)}</span>
  </button>`;
 }
-function synergySummary(team){const rs=teams[team].map(e=>byId[e.characterId]),count=n=>rs.filter(r=>r.affiliations.includes(n)).length;const parts=[];for(const n of ["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드"]){const c=count(n),need=(n==="군악대"||n==="새해")?1:2;if(c>=need)parts.push(`${n} ${c}`)}if(count("애증"))parts.push("애증 1");if(count("치유의 노래"))parts.push("치유의 노래 1");const roles=[...new Set(rs.map(r=>r.role))];return `<div class="synergy-strip">${parts.length?parts.map(x=>`<span>${x}</span>`).join(""):"<em>활성 소속 시너지 없음</em>"}<i></i>${roles.map(x=>`<span class="role-chip">${x}</span>`).join("")}</div>`}
+function synergySummary(team){
+ const rs=teams[team].map(e=>byId[e.characterId]),count=n=>rs.filter(r=>r.affiliations.includes(n)).length;
+ const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
+ const parts=names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return `<span class="${tier?"synergy-on":"synergy-off"}">${label}</span>`}).filter(Boolean);
+ const roles=live?.roles||rs.map((r,i)=>({name:r.name,role:r.role,active:null}));
+ return `<div class="synergy-strip">${parts.length?parts.join(""):"<em>소속 없음</em>"}<i></i>${roles.map(x=>`<span class="role-chip ${x.active===false?"synergy-off":""}">${esc(x.role)}${x.active===true?" ON":x.active===false?" OFF":""}</span>`).join("")}</div>`
+}
 function renderTeams(){
  for(const team of ["A","B"]){
   const panel=$("#team"+team),f=filters[team],disabled=running?"disabled":"";
