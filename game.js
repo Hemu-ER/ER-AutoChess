@@ -52,11 +52,12 @@ function rosterCard(team,r){
    <span class="impl">${statusLabel(r)}</span>
  </button>`;
 }
+function synergySummary(team){const rs=teams[team].map(e=>byId[e.characterId]),count=n=>rs.filter(r=>r.affiliations.includes(n)).length;const parts=[];for(const n of ["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드"]){const c=count(n),need=(n==="군악대"||n==="새해")?1:2;if(c>=need)parts.push(`${n} ${c}`)}if(count("애증"))parts.push("애증 1");if(count("치유의 노래"))parts.push("치유의 노래 1");const roles=[...new Set(rs.map(r=>r.role))];return `<div class="synergy-strip">${parts.length?parts.map(x=>`<span>${x}</span>`).join(""):"<em>활성 소속 시너지 없음</em>"}<i></i>${roles.map(x=>`<span class="role-chip">${x}</span>`).join("")}</div>`}
 function renderTeams(){
  for(const team of ["A","B"]){
   const panel=$("#team"+team),f=filters[team],disabled=running?"disabled":"";
   panel.innerHTML=`<div class="team-head"><div><span>TEAM ${team}</span><h2>${team==="A"?"ALLY":"ENEMY"} SQUAD</h2></div><strong>${teams[team].length}/3</strong></div>
-   <div class="selected-squad">${teams[team].length?teams[team].map((e,i)=>teamSlot(team,e,i,disabled)).join(""):`<div class="empty-squad">실험체를 선택해 팀을 편성해.</div>`}</div>
+   <div class="selected-squad">${teams[team].length?teams[team].map((e,i)=>teamSlot(team,e,i,disabled)).join(""):`<div class="empty-squad">실험체를 선택해 팀을 편성해.</div>`}</div>${synergySummary(team)}
    <div class="roster-tools">
     <input class="search" data-filter="q" value="${esc(f.q)}" placeholder="이름 / 역할 / 소속 검색">
     <select data-filter="cost">${selectOptions([1,2,3],f.cost,"코스트 전체")}</select>
