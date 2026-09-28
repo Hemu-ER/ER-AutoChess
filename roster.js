@@ -15,10 +15,10 @@ const roster=[
       "amp": 38,
       "range": 1,
       "def": 39,
-      "as": 0.88
+      "as": 0.92
     },
     "implemented": true,
-    "main": "amp",
+    "main": "atk",
     "asset": {
       "sd": "assets/characters/hyunwoo.png"
     }
@@ -59,10 +59,10 @@ const roster=[
       "amp": 42,
       "range": 1,
       "def": 36,
-      "as": 0.92
+      "as": 0.922
     },
     "implemented": true,
-    "main": "amp",
+    "main": "atk",
     "asset": {
       "sd": "assets/characters/dailin.png"
     }
@@ -84,7 +84,7 @@ const roster=[
       "as": 0.84
     },
     "implemented": true,
-    "main": "amp",
+    "main": "atk",
     "asset": {
       "sd": "assets/characters/yuki.png"
     }
@@ -192,7 +192,7 @@ const roster=[
       "amp": 34,
       "range": 1,
       "def": 31,
-      "as": 0.98
+      "as": 0.928
     },
     "implemented": true,
     "main": "atk",
@@ -236,7 +236,7 @@ const roster=[
       "amp": 32,
       "range": 1,
       "def": 30,
-      "as": 0.9
+      "as": 0.92
     },
     "implemented": true,
     "main": "atk",
@@ -347,7 +347,7 @@ const roster=[
       "amp": 128,
       "range": 1,
       "def": 27,
-      "as": 0.91
+      "as": 0.921
     },
     "implemented": true,
     "main": "amp",
@@ -523,7 +523,7 @@ const roster=[
       "amp": 20,
       "range": 3,
       "def": 16,
-      "as": 0.94
+      "as": 0.924
     },
     "implemented": true,
     "main": "atk",
@@ -589,7 +589,7 @@ const roster=[
       "amp": 20,
       "range": 3,
       "def": 17,
-      "as": 0.94
+      "as": 0.924
     },
     "implemented": true,
     "main": "atk",
