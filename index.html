@@ -3,49 +3,92 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ER Auto Chess — Combat Sandbox v0.2</title>
+<title>ER Auto Chess — Combat Lab</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="app">
-  <header>
-    <div><span class="eyebrow">COMBAT SANDBOX v0.2</span><h1>ER AUTO CHESS</h1></div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">AGLAIA // COMBAT LAB</span>
+      <h1>ER AUTO CHESS</h1>
+      <span class="build">COMBAT SANDBOX · v0.2</span>
+    </div>
+
+    <div class="battle-state">
+      <span id="status">배치 단계</span>
+      <strong id="clock">0.0s</strong>
+    </div>
+
     <div class="controls">
-      <button id="start" class="primary">▶ 전투 시작</button>
-      <button id="pause">Ⅱ 일시정지</button>
-      <button id="step">+0.1초</button>
-      <button id="reset">↻ 초기화</button>
-      <select id="speed"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
+      <button id="start" class="primary"><span class="key">▶</span> 전투 시작</button>
+      <button id="pause">Ⅱ</button>
+      <button id="step">+0.1</button>
+      <button id="reset">↻</button>
+      <select id="speed" aria-label="전투 속도">
+        <option value="1">×1</option>
+        <option value="2">×2</option>
+        <option value="4">×4</option>
+      </select>
     </div>
   </header>
 
-  <main>
-    <section class="arena-card">
-      <div class="arena-top"><div><b id="status">배치 단계</b><span id="clock">0.0s</span></div><div class="legend"><i class="a"></i>A팀 <i class="b"></i>B팀</div></div>
-      <div id="board" class="board"></div>
-      <p class="hint">배치 단계에서 기물을 드래그해 같은 팀 3×3 영역 안에서 옮길 수 있어. 전투 중에는 실제 3×6 보드에서 이동·사거리·타게팅을 처리해.</p>
+  <main class="battle-layout">
+    <section class="arena-shell">
+      <div class="arena-head">
+        <div class="team-tag team-a"><i></i><b>TEAM A</b><span>BLUE SIDE</span></div>
+        <div class="arena-title"><span>TACTICAL GRID</span><b>3 × 6</b></div>
+        <div class="team-tag team-b"><span>RED SIDE</span><b>TEAM B</b><i></i></div>
+      </div>
+
+      <div class="board-frame">
+        <div class="board-mark board-mark-a">A</div>
+        <div class="board-mark board-mark-b">B</div>
+        <div id="board" class="board"></div>
+      </div>
+
+      <div class="arena-foot">
+        <span>DEPLOYMENT / COMBAT GRID</span>
+        <p class="hint">배치 단계에서는 같은 팀 3×3 영역 안에서 이동 · 전투 시 두 진영이 하나의 3×6 보드로 동작</p>
+      </div>
     </section>
 
-    <aside>
-      <section class="panel"><h2>QA 설정</h2>
-        <label>숙련도 A <input id="masteryA" type="number" min="1" max="20" value="8"></label>
-        <label>숙련도 B <input id="masteryB" type="number" min="1" max="20" value="8"></label>
-        <label>이동 간격(초) <input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"></label>
-        <label class="check"><input id="fixedSeed" type="checkbox" checked> RNG seed 고정</label>
-        <label>Seed <input id="seed" type="number" value="24004"></label>
-        <button id="batch">100회 자동전투</button>
-        <div id="batchResult" class="result">아직 실행 안 함</div>
+    <aside class="side-rail">
+      <section class="panel qa-panel">
+        <div class="panel-head"><h2>QA CONTROL</h2><span>DEV</span></div>
+        <div class="setting-grid">
+          <label><span>숙련도 A</span><input id="masteryA" type="number" min="1" max="20" value="8"></label>
+          <label><span>숙련도 B</span><input id="masteryB" type="number" min="1" max="20" value="8"></label>
+          <label class="wide"><span>이동 간격</span><div class="input-unit"><input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"><em>SEC</em></div></label>
+          <label class="check wide"><input id="fixedSeed" type="checkbox" checked><span>고정 RNG SEED</span></label>
+          <label class="wide"><span>SEED</span><input id="seed" type="number" value="24004"></label>
+        </div>
+        <button id="batch" class="batch-btn">100회 자동전투 <span>RUN ↗</span></button>
+        <div id="batchResult" class="result">NO DATA</div>
       </section>
-      <section class="panel"><h2>전투 로그</h2><div id="log" class="log"></div></section>
+
+      <section class="panel log-panel">
+        <div class="panel-head"><h2>COMBAT LOG</h2><span>LIVE</span></div>
+        <div id="log" class="log"></div>
+      </section>
     </aside>
   </main>
 
   <section class="meters">
-    <div><h2>A팀 딜미터</h2><div id="meterA"></div></div>
-    <div><h2>B팀 딜미터</h2><div id="meterB"></div></div>
+    <div class="meter-panel team-a-panel">
+      <div class="panel-head"><h2>TEAM A // DAMAGE</h2><span>DETAIL</span></div>
+      <div id="meterA"></div>
+    </div>
+    <div class="meter-panel team-b-panel">
+      <div class="panel-head"><h2>TEAM B // DAMAGE</h2><span>DETAIL</span></div>
+      <div id="meterB"></div>
+    </div>
   </section>
 
-  <footer>v0.2 코드 대조 완료: 슈린 · 마커스 · 유민 vs 니키 · 리오 · 유스티나 / 3수영복 · 3바니. 이동 간격·리오 거리 곡선·마커스 지각변동 CC 시간은 QA 임시값.</footer>
+  <footer>
+    <span>ER AUTO CHESS / INTERNAL COMBAT BUILD</span>
+    <span>슈린 · 마커스 · 유민 VS 니키 · 리오 · 유스티나</span>
+  </footer>
 </div>
 <script src="game.js"></script>
 </body>
