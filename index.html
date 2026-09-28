@@ -3,53 +3,70 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ER Auto Chess — Combat Sandbox v0.2</title>
+<title>ER Auto Chess — Combat Sandbox v0.3</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 <div class="app">
-  <header>
-    <div><span class="eyebrow">COMBAT SANDBOX v0.2</span><h1>ER AUTO CHESS</h1></div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">AGLAIA // COMBAT LAB</span>
+      <h1>ER AUTO CHESS</h1>
+      <span class="version">SANDBOX v0.3</span>
+    </div>
     <div class="controls">
       <button id="start" class="primary">▶ 전투 시작</button>
       <button id="pause">Ⅱ 일시정지</button>
       <button id="step">+0.1초</button>
       <button id="reset">↻ 초기화</button>
-      <select id="speed"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
+      <select id="speed" aria-label="전투 속도"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
     </div>
   </header>
 
   <section class="team-builder" aria-label="자유 팀 편성">
-    <div id="teamA" class="panel"></div><div id="teamB" class="panel"></div>
+    <div id="teamA" class="team-panel team-a"></div>
+    <div id="teamB" class="team-panel team-b"></div>
   </section>
-  <p class="hint">팀마다 최대 3명 · 같은 팀 중복 금지 · 구현된 6명 선택 가능 / 26명 미구현. 깊이·라인 선택 또는 보드 드래그로 배치하세요.</p>
+
   <main>
     <section class="arena-card">
-      <div class="arena-top"><div><b id="status">배치 단계</b><span id="clock">0.0s</span></div><div class="legend"><i class="a"></i>A팀 <i class="b"></i>B팀</div></div>
-      <div id="board" class="board"></div>
-      <p class="hint">배치 단계에서 기물을 드래그해 같은 팀 3×3 영역 안에서 옮길 수 있어. 전투 중에는 실제 3×6 보드에서 이동·사거리·타게팅을 처리해.</p>
+      <div class="arena-top">
+        <div class="battle-state"><b id="status">배치 단계</b><span id="clock">0.0s</span></div>
+        <div class="legend"><i class="a"></i>A TEAM <i class="b"></i>B TEAM</div>
+      </div>
+      <div class="board-shell">
+        <div class="field-mark field-a">A</div><div class="field-mark field-b">B</div>
+        <div id="board" class="board"></div>
+      </div>
+      <p class="hint">팀별 3×3 배치 · 전투 시 3×6 결합 · 행 = same y / 열 = same x</p>
     </section>
 
-    <aside>
-      <section class="panel"><h2>QA 설정</h2>
-        <label>숙련도 A <input id="masteryA" type="number" min="1" max="20" value="8"></label>
-        <label>숙련도 B <input id="masteryB" type="number" min="1" max="20" value="8"></label>
-        <label>이동 간격(초) <input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"></label>
-        <label class="check"><input id="fixedSeed" type="checkbox" checked> RNG seed 고정</label>
-        <label>Seed <input id="seed" type="number" value="24004"></label>
-        <button id="batch">100회 자동전투</button>
-        <div id="batchResult" class="result">아직 실행 안 함</div>
-      </section>
-      <section class="panel"><h2>전투 로그</h2><div id="log" class="log"></div></section>
+    <aside class="dev-rail">
+      <details class="panel" open>
+        <summary>DEV / QA CONTROL</summary>
+        <div class="panel-body">
+          <label>숙련도 A <input id="masteryA" type="number" min="1" max="20" value="8"></label>
+          <label>숙련도 B <input id="masteryB" type="number" min="1" max="20" value="8"></label>
+          <label>이동 간격 <input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"></label>
+          <label class="check"><input id="fixedSeed" type="checkbox" checked> RNG seed 고정</label>
+          <label>Seed <input id="seed" type="number" value="24004"></label>
+          <button id="batch">100회 자동전투</button>
+          <div id="batchResult" class="result">아직 실행 안 함</div>
+        </div>
+      </details>
+      <details class="panel" open>
+        <summary>COMBAT LOG</summary>
+        <div id="log" class="log"></div>
+      </details>
     </aside>
   </main>
 
   <section class="meters">
-    <div><h2>A팀 딜미터</h2><div id="meterA"></div></div>
-    <div><h2>B팀 딜미터</h2><div id="meterB"></div></div>
+    <div><h2>A TEAM // DAMAGE</h2><div id="meterA"></div></div>
+    <div><h2>B TEAM // DAMAGE</h2><div id="meterB"></div></div>
   </section>
 
-  <footer>자유전투 QA · 행 = same y / 열 = same x. 이동 간격·리오 거리 곡선·마커스 CC 시간은 QA 임시값.</footer>
+  <footer>32 EXPERIMENT SUBJECTS · SD ASSET SLOTS READY · PENDING SKILLS USE BASIC COMBAT ONLY</footer>
 </div>
 <script src="roster.js"></script>
 <script src="combat-engine.js"></script>
