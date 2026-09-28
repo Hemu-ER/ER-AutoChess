@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const root=path.join(__dirname,'..');
-const current=fs.readFileSync(path.join(root,'game.js'),'utf8');
+const current=require('./runtime-source.cjs')();
 const baseline=fs.readFileSync(path.join(__dirname,'fixtures/pre-stats.game.js'),'utf8');
 function runtime(source){
  const nodes=new Map();
@@ -25,7 +25,7 @@ init();let a=unit('슈린','A',2,1),b=unit('유민','B',3,1);b.name='표적';b.d
 activateSource(a,'시험 피해','skill');damage(a,b,100,'skill',false,{sourceName:'시험 피해'});
 assert.equal(a.damageSources['시험 피해'].raw,100);assert.equal(a.damageSources['시험 피해'].dealt,30);assert.equal(a.damageSources['시험 피해'].hits,1);
 damage(a,b,100,'skill',false,{sourceName:'시험 피해'});assert.equal(a.damageSources['시험 피해'].hits,1);assert.equal(a.damageSources['시험 피해'].raw,100);
-activateSource(a,'시험 버프','passive');assert.deepEqual({...a.damageSources['시험 버프']},{kind:'passive',activations:1,hits:0,raw:0,dealt:0});
+activateSource(a,'시험 버프','passive');assert.deepEqual({...a.damageSources['시험 버프']},{kind:'passive',activations:1,hits:0,raw:0,dealt:0,targets:Object.create(null)});
 init();a=unit('슈린','A',2,1);b=unit('니키','B',3,1);a.def=100;b.def=100;b.amp=100;rng=()=>0;
 damage(a,b,100,'basic',false,{sourceName:'기본 공격'});
 assert.equal(a.damageSources['기본 공격'].raw,100);assert.equal(a.damageSources['기본 공격'].dealt,10);

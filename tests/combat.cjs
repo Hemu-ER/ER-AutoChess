@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const source = fs.readFileSync(require('node:path').join(__dirname, '../game.js'), 'utf8');
+const source = require('./runtime-source.cjs')();
 const elements = new Map();
 const context = vm.createContext({assert, console, document: {querySelector(selector) {
   if (!elements.has(selector)) elements.set(selector, {value: selector === '#moveInterval' ? '0.5' : '8', checked: true, textContent: '', innerHTML: ''});

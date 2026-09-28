@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const source = fs.readFileSync(path.join(__dirname, '../game.js'), 'utf8');
+const source = require('./runtime-source.cjs')();
 const nodes = new Map();
 const document = {
   querySelector(selector) {
