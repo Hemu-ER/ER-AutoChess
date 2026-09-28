@@ -672,11 +672,11 @@ const roster=[
       "메이드"
     ],
     "baseStats": {
-      "hp": 1370,
+      "hp": 1150,
       "atk": 52,
       "amp": 36,
       "range": 1,
-      "def": 58,
+      "def": 50,
       "as": 0.72
     },
     "implemented": true,
