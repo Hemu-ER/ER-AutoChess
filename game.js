@@ -115,7 +115,7 @@ function drop(e,c){
  Object.assign(entry,{x,y});reset();
 }
 function unitMarkup(u){
- const r=byId[u.characterId],hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
+ const r=byId[u.characterId]||{name:u.name,role:u.role,implemented:true,asset:{}},hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
  const visual=r.asset?.sd
   ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.remove();this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
   : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;

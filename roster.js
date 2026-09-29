@@ -33,7 +33,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 760,
-      "atk": 50,
+      "atk": 28,
       "amp": 126,
       "range": 3,
       "def": 21,
@@ -122,7 +122,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 770,
-      "atk": 51,
+      "atk": 27,
       "amp": 112,
       "range": 3,
       "def": 21,
@@ -144,7 +144,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 745,
-      "atk": 50,
+      "atk": 28,
       "amp": 118,
       "range": 3,
       "def": 19,
@@ -166,7 +166,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 1010,
-      "atk": 62,
+      "atk": 34,
       "amp": 104,
       "range": 1,
       "def": 38,
@@ -254,7 +254,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 755,
-      "atk": 48,
+      "atk": 27,
       "amp": 122,
       "range": 3,
       "def": 20,
@@ -299,7 +299,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 1210,
-      "atk": 50,
+      "atk": 30,
       "amp": 72,
       "range": 1,
       "def": 48,
@@ -343,7 +343,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 850,
-      "atk": 56,
+      "atk": 32,
       "amp": 128,
       "range": 1,
       "def": 27,
@@ -365,7 +365,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 865,
-      "atk": 55,
+      "atk": 31,
       "amp": 124,
       "range": 1,
       "def": 28,
@@ -387,7 +387,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 735,
-      "atk": 46,
+      "atk": 26,
       "amp": 132,
       "range": 3,
       "def": 18,
@@ -409,7 +409,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 805,
-      "atk": 54,
+      "atk": 32,
       "amp": 136,
       "range": 1,
       "def": 23,
@@ -431,7 +431,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 990,
-      "atk": 60,
+      "atk": 34,
       "amp": 92,
       "range": 1,
       "def": 34,
@@ -453,7 +453,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 845,
-      "atk": 46,
+      "atk": 26,
       "amp": 88,
       "range": 2,
       "def": 27,
@@ -541,7 +541,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 1080,
-      "atk": 58,
+      "atk": 34,
       "amp": 102,
       "range": 1,
       "def": 39,
@@ -563,7 +563,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 830,
-      "atk": 44,
+      "atk": 25,
       "amp": 90,
       "range": 2,
       "def": 28,
@@ -651,7 +651,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 720,
-      "atk": 48,
+      "atk": 28,
       "amp": 128,
       "range": 3,
       "def": 18,
@@ -695,7 +695,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 860,
-      "atk": 43,
+      "atk": 25,
       "amp": 94,
       "range": 2,
       "def": 29,
