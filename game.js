@@ -142,12 +142,12 @@ function render(){
 function damageDetails(u){
  const row=(label,s)=>`<tr><th>${esc(label)}</th><td>${s.activations}회</td><td>${s.hits}회</td><td>${s.raw.toLocaleString("ko-KR",{maximumFractionDigits:1})}</td><td>${s.dealt.toLocaleString("ko-KR",{maximumFractionDigits:1})}</td></tr>`;
  const rows=Object.entries(u.damageSources).map(([name,s])=>row(name,s)+Object.entries(s.targets||{}).map(([id,t])=>row("↳ "+id,t)).join("")).join("");
- return `<div class="source-scroll"><table class="source-table"><caption>${esc(u.name)} — 총 피해 ${Object.values(u.damage).reduce((a,b)=>a+b,0).toFixed(1)}</caption><thead><tr><th>피해 출처 / 피격 대상</th><th>발동</th><th>적중</th><th>Raw</th><th>실제</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+ return `<div class="source-scroll"><table class="source-table"><caption>${esc(u.name)} — 준 피해 ${Object.values(u.damage).reduce((a,b)=>a+b,0).toFixed(1)} · 받은 피해 ${(u.damageTaken||0).toFixed(1)}</caption><thead><tr><th>피해 출처 / 피격 대상</th><th>발동</th><th>적중</th><th>Raw</th><th>실제</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function meters(){
  for(const team of ["A","B"]){
   const root=$("#meter"+team),arr=units.filter(u=>u.team===team),max=Math.max(1,...arr.map(u=>Object.values(u.damage).reduce((a,b)=>a+b,0)));
-  root.innerHTML=arr.map(u=>{const total=Object.values(u.damage).reduce((a,b)=>a+b,0),open=expandedMeters.has(u.id),id=esc(u.id);return `<div class="meter-row"><button class="meter-toggle" data-unit="${id}">${esc(u.name)} <span>${open?"접기":"상세"}</span></button><div class="meter-track"><div class="meter-fill" style="width:${total/max*100}%"></div></div><span>${total.toFixed(0)}</span></div><div ${open?"":"hidden"}>${damageDetails(u)}</div>`}).join("");
+  root.innerHTML=arr.map(u=>{const total=Object.values(u.damage).reduce((a,b)=>a+b,0),open=expandedMeters.has(u.id),id=esc(u.id);return `<div class="meter-row"><button class="meter-toggle" data-unit="${id}">${esc(u.name)} <span>${open?"접기":"상세"}</span></button><div class="meter-track"><div class="meter-fill" style="width:${total/max*100}%"></div></div><span class="meter-numbers"><b>${total.toFixed(0)}</b><small>받음 ${(u.damageTaken||0).toFixed(0)}</small></span></div><div ${open?"":"hidden"}>${damageDetails(u)}</div>`}).join("");
   root.onclick=e=>{const b=e.target.closest("button[data-unit]");if(!b)return;const id=b.dataset.unit;expandedMeters.has(id)?expandedMeters.delete(id):expandedMeters.add(id);meters()};
  }
 }

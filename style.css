@@ -19,3 +19,9 @@ footer{text-align:center;padding:14px;color:#425867;font-size:8px;letter-spacing
 @media(max-width:760px){.app{padding:8px}.topbar{align-items:flex-start;flex-direction:column;gap:10px}.team-builder,.meters{grid-template-columns:1fr}.roster-tools{grid-template-columns:1fr 1fr}.roster-grid{grid-template-columns:repeat(2,1fr)}.team-slot{grid-template-columns:1fr 1fr}.board{grid-template-rows:repeat(3,105px)}.dev-rail{grid-template-columns:1fr}.controls{flex-wrap:wrap}}
 .synergy-strip{display:flex;gap:5px;align-items:center;min-height:27px;padding:5px 0;border-bottom:1px solid #20303d;overflow:auto;white-space:nowrap}.synergy-strip span{font-size:8px;padding:3px 5px;border:1px solid #365162;color:#a9c4d2;background:#13202a}.synergy-strip .role-chip{border-color:#4a4030;color:#d7c08a;background:#1d1a13}.synergy-strip em{font-size:8px;color:#5f7481;font-style:normal}.synergy-strip i{flex:1}
 .synergy-strip .synergy-on{border-color:#72bfa0;color:#bcebd8}.synergy-strip .synergy-off{opacity:.48;text-decoration:none}.synergy-strip .role-chip.synergy-off{opacity:.42}
+
+/* B team units face toward Team A. Roster/mini portraits stay unflipped. */
+.unit.B .sd-image{transform:scaleX(-1)}
+.meter-numbers{display:flex;flex-direction:column;align-items:flex-end;line-height:1.05}
+.meter-numbers b{font-weight:500}
+.meter-numbers small{font-size:7px;color:var(--muted);margin-top:2px;white-space:nowrap}
