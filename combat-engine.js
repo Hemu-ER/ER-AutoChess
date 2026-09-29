@@ -30,7 +30,7 @@ const coefficients={
  sua:{odyssey:[1.15,1.6,2.8],lifesteal:[.15,.25,.40],mind:[.25,.45,.85],heal:[.008,.015,.03]},
  johann:{sanctuaryDef:[20,30,50],sanctuaryHeal:[.05,.07,.10],aura:[.10,.15,.25]},
  nadine:{wild:[.025,.0375,.05],wolf:[1,1.5,3]},
- bernice:{pellet:[.70,.70,.70],leg:[1,1.5,2.5]},
+ bernice:{pellet:[.90,.90,.90],scatter:[.50,.50,.50],leg:[1,1.5,2.5]},
  rozzi:{semtex:[.12,.16,.24],double:[.75,.80,.90]},
  aya:{fear:[1.25,2,3.5],fixed:[.40,.60,1.20]},
  mirka:{shield:[.10,.18,.32],crash:[.06,.10,.18]},
@@ -91,7 +91,7 @@ function CombatEngine(input){
  function nearestEnemy(u){return enemies(u).sort((a,b)=>dist(u,a)-dist(u,b)||a.hp-b.hp||a.def-b.def||(b.y-a.y))[0]||null}
  const actual=(raw,def)=>raw*100/(100+Math.max(0,def));
  function timedOffenseMultiplier(u){let m=1;if(u.festivalUntil>time)m*=u.festivalTier>=3?1.30:1.15;if(u.bandUntil>time)m*=stage[u.team].군악대>=2?1.20:1.10;return m}
- const currentAtk=u=>u.atk*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.name==='이안'&&!u.skill.ianRevived?.8:1)*(u.name==='나딘'?1+Math.min(50,u.skill.wild)*(u.coefficients.wild||0):1)*(u.name==='케네스'&&u.skill.kennethBuffUntil>time?1+(u.coefficients.rage||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.coefficients.buff||0):1)*timedOffenseMultiplier(u),currentAmp=u=>u.amp*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.coefficients.buff||0):1)*timedOffenseMultiplier(u),adaptive=u=>u.main==='atk'?currentAtk(u):currentAmp(u);
+ const currentAtk=u=>u.atk*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.name==='이안'?(u.skill.ianRevived?1.2:.8):1)*(u.name==='나딘'?1+Math.min(50,u.skill.wild)*(u.coefficients.wild||0):1)*(u.name==='케네스'&&u.skill.kennethBuffUntil>time?1+(u.coefficients.rage||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.coefficients.buff||0):1)*timedOffenseMultiplier(u),currentAmp=u=>u.amp*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.coefficients.buff||0):1)*timedOffenseMultiplier(u),adaptive=u=>u.main==='atk'?currentAtk(u):currentAmp(u);
  function currentAs(u,t){let a=u.as;if(u.name==='니키'&&u.hot)a*=1+(u.coefficients.hot||0);if(u.name==='리오'&&t)a*=1+(u.coefficients.kaeyumiMax||0)*(QA.rioDistance[dist(u,t)]||0);if(u.name==='다이린'&&u.skill.drunkUntil>time)a*=2;if(u.name==='이안'&&u.skill.ianRevived)a*=1+(u.coefficients.reviveAs||0);if(u.name==='데비&마를렌'&&u.skill.mode==='marlene')a*=1+QA.debiModeAs;if(u.name==='라우라'&&u.skill.thief)a*=2;if(u.name==='아야'&&u.skill.ayaFixedLeft>0)a*=2;if(u.name==='나딘')a*=1+Math.min(50,u.skill.wild)*(u.coefficients.wild||0);if(u.name==='케네스'&&u.skill.kennethBuffUntil>time)a*=1+(u.coefficients.rage||0);if(u.skill.slowUntil>time)a*=1-QA.berniceSlow;if(u.bandUntil>time)a*=stage[u.team].군악대>=2?1.20:1.10;return Math.min(4,a)}
  function applyCC(u,dur){if(u.name==='요한')return;if(u.aff.includes('프리즌'))dur*=.5;u.ccUntil=Math.max(u.ccUntil,time+dur);if(u.channel){log(`${u.name} 정신 집중 <b>중단</b>`);if(u.name==='리오')u.nextShot=time+6;u.channel=null}}
  function triggerPeacemaker(u){if(u.name!=='하트'||u.skill.hartUsed||u.hp<=0||u.hp>u.maxHp*.05)return false;u.skill.hartUsed=true;activateSource(u,'Peacemaker','skill');for(const x of units.filter(x=>!x.dead&&x.role!=='소환수'))x.skill.immortalUntil=Math.max(x.skill.immortalUntil||0,time+3);u.skill.peaceHealAt=time+2.8;return true}
@@ -120,14 +120,14 @@ if(dst.name==='니키'&&!dst.hot&&dst.hp>0&&dst.hp<=dst.maxHp*.5){dst.hot=true;a
  function basicHit(u,t,mult=1,opt={}){if(!t||t.dead)return;activateSource(u,'기본 공격','basic');let dealt=damage(u,t,currentAtk(u)*mult,'basic',false,{guardable:true,sourceName:'기본 공격'});bunny(u,t);swimsuit(u);maidBasic(u);return dealt}
  function basicAttack(u,t){
   // Bernice/Rozzi are genuine double basic attacks: each hit counts.
-  let hits=(u.name==='버니스'||u.name==='로지')?2:1;
+  let hits=u.name==='로지'?2:1;
   for(let h=0;h<hits&&!t.dead;h++){
    u.basicCount++;
    let mult=u.name==='버니스'?(u.coefficients.pellet||.7):u.name==='로지'?(u.coefficients.double||.6):1;
    let dealt=basicHit(u,t,mult);
    if(u.name==='케네스')heal(u,dealt*(u.coefficients.lifesteal||.1));if(u.name==='이안'&&u.skill.ianRevived)heal(u,dealt*(u.coefficients.lifesteal||.2));if(u.skill.goldberg>0){u.skill.goldberg--;let l=units.find(x=>x.team===u.team&&x.name==='레니'&&!x.dead);if(l){activateSource(l,'당근! 바주카','passive');damage(l,t,currentAmp(l)*(l.coefficients.goldberg||.5),'passive',false,{guardable:false,sourceName:'당근! 바주카'});heal(u,currentAmp(l)*(l.coefficients.goldberg||.5));}}
    if(u.name==='샬럿'&&u.basicCount%2===0){activateSource(u,'치유의 빛','passive');for(const a of units.filter(x=>x.team===u.team&&!x.dead&&(x===u||adjacent(u,x)))){heal(a,currentAmp(u)*(u.coefficients.heal||1));a.skill.charlotteBuffUntil=time+QA.charlotteBuffDur}healingSong(u)}
-   if(u.name==='버니스'){activateSource(u,'산탄','passive');for(const e of enemies(u).filter(e=>e!==t&&e.x===t.x))damage(u,e,currentAtk(u)*.30,'passive',false,{guardable:false,sourceName:'산탄'});u.skill.berniceCount++}
+   if(u.name==='버니스'){activateSource(u,'산탄','passive');for(const e of enemies(u).filter(e=>e!==t&&e.x===t.x))damage(u,e,currentAtk(u)*(u.coefficients.scatter||.5),'passive',false,{guardable:false,sourceName:'산탄'});u.skill.berniceCount++}
    if(u.name==='로지')u.skill.rozziCount++;
    if(u.name==='멧현우'){if(u.skill.dogReady){u.skill.dogReady=false;activateSource(u,'도그파이트','skill');let d=damage(u,t,currentAtk(u)*(u.coefficients.dog||2),'skill',false,{sourceName:'도그파이트'});heal(u,u.maxHp*(u.coefficients.heal||.08));u.def+=u.coefficients.bluffDef||20;u.skill.bluffUntil=time+2}if(u.basicCount>=3){u.basicCount=0;u.skill.dogReady=true}}
    if(u.name==='꿈델라'&&!t.dead){activateSource(u,'프로모션','passive');damage(u,t,currentAmp(u)*(u.coefficients.promotion||.4),'passive',false,{guardable:false,sourceName:'프로모션'});u.skill.pawns[t.id]=Math.min(3,(u.skill.pawns[t.id]||0)+1)}

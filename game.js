@@ -115,7 +115,7 @@ function drop(e,c){
  Object.assign(entry,{x,y});reset();
 }
 function unitMarkup(u){
- const r=byId[u.characterId],hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(100,shield/u.maxHp*100);
+ const r=byId[u.characterId],hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
  const visual=r.asset?.sd
   ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.remove();this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
   : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;
@@ -124,7 +124,7 @@ function unitMarkup(u){
   <div class="target-marker"></div><div class="hit-vfx"></div><div class="skill-vfx"></div>
   <div class="unit-hud">
    <div class="unit-top"><span class="unit-name">${esc(u.name)}</span><span class="stars">${"★".repeat(u.star)}</span></div>
-   <div class="hpbar ${low?"low":""}" title="${shield>0?`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)} · 보호막 ${Math.ceil(shield)}`:`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}`}"><i style="width:${hp}%"></i>${shield>0?`<em class="shield-overlay" style="width:${shieldPct}%"></em>`:""}</div>
+   <div class="hpbar ${low?"low":""}" title="${shield>0?`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)} · 보호막 ${Math.ceil(shield)}`:`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}`}"><i style="width:${hp}%"></i>${shield>0?`<em class="shield-overlay" style="left:${hp}%;width:${shieldPct}%"></em>`:""}</div>
    <div class="unit-sub"><span>${shield>0?`${u.role} · 보호막 ${Math.ceil(shield)}`:u.role}</span><span>${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}</span></div>
    ${!r.implemented?`<span class="pending-tag">SKILL PENDING</span>`:""}
   </div>`;
