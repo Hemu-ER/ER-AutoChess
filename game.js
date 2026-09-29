@@ -6,6 +6,19 @@ let teams={A:[],B:[]},battle=null,units=[],running=false,paused=false,time=0;
 let speed=1,last=0,accumulator=0,frame=null;
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
 
+
+const identityInfo={
+ hyunwoo:{name:'현우',skin:'멧현우'},adela:{name:'아델라',skin:'꿈델라'},dailin:{name:'리 다이린',skin:'어흥 다이린'},yuki:{name:'유키',skin:'유키멍'},
+ rio:{name:'리오',skin:'퍼펙트 샷 바니 리오'},justina:{name:'유스티나',skin:'럭키 히어로 바니 유스티나'},jenny:{name:'제니',skin:'럭셔리 바니 제니'},nicky:{name:'니키',skin:'언럭키 바니 니키'},
+ shurin:{name:'슈린',skin:'벽파참랑 슈린'},marcus:{name:'마커스',skin:'해변의 전사 마커스'},ian:{name:'이안',skin:'도깨비불에 이끌린 이안'},yumin:{name:'유민',skin:'풍랑 위의 이정표 유민'},
+ 'debi-marlene':{name:'데비&마를렌',skin:'스파클링 트윈즈 데비&마를렌'},garnet:{name:'가넷',skin:'운명의 붉은 가약 가넷'},kenneth:{name:'케네스',skin:'운명의 푸른 가약 케네스'},irem:{name:'이렘',skin:'당신과 나의 네코마츠리 이렘'},
+ laura:{name:'라우라',skin:'프리즌 브레이크 라우라'},bianca:{name:'비앙카',skin:'프리즌 키퍼 비앙카'},cathy:{name:'캐시',skin:'프리즌 브레이크 캐시'},abigail:{name:'아비게일',skin:'프리즌 키퍼 아비게일'},
+ leny:{name:'레니',skin:'군악대 레니'},hart:{name:'하트',skin:'군악대 하트'},isol:{name:'아이솔',skin:'새해토끼 아이솔'},chloe:{name:'클로에',skin:'새해토끼 클로에'},sua:{name:'수아',skin:'새해의 이야기꾼 수아'},
+ johann:{name:'요한',skin:'악마사냥꾼 요한'},nadine:{name:'나딘',skin:'악마사냥꾼 나딘'},bernice:{name:'버니스',skin:'악마사냥꾼 버니스'},rozzi:{name:'로지',skin:'하우스키퍼 로지'},aya:{name:'아야',skin:'하우스키퍼 아야'},mirka:{name:'미르카',skin:'와일드 메이드 미르카'},charlotte:{name:'샬럿',skin:'샬럿'},nina:{name:'니나',skin:'살아 있는 마리오네트'}
+};
+const displayName=r=>identityInfo[r?.id]?.name||r?.name||'?';
+const skinName=r=>identityInfo[r?.id]?.skin||r?.name||'-';
+
 const skillInfo={
  hyunwoo:{active:['도그파이트','기본 공격 6회 후 다음 기본 공격 강화 + 체력 회복.'],passive:['허세','도그파이트 사용 후 2초간 방어력 증가 + 행동 불능 무시.']},
  adela:{active:['체크메이트','10초마다 0.5초 정신 집중 후 적 전체에 스킬 피해. 대상의 [폰] 중첩이 높을수록 강해짐. 집중 중 무적 + 행동 불능 면역.'],passive:['프로모션','기본 공격에 스킬 증폭 비례 추가 피해 + [폰] 1중첩(최대 3).']},
@@ -56,9 +69,10 @@ function showInspector(u,rOverride=null){
  const r=rOverride||byId[u?.characterId]||{id:u?.characterId||'nina',name:u?.name||'니나',cost:'소환',role:u?.role||'소환수',affiliations:[],baseStats:{}};
  const info=skillInfo[r.id]||skillInfo[u?.characterId]||{active:['-','효과 정보 없음'],passive:['-','효과 정보 없음']};
  const bs=u?{hp:u.maxHp,atk:u.atk,amp:u.amp,def:u.def,as:u.as,range:u.range}:r.baseStats||{};
+ const dname=displayName(r),sname=skinName(r);
  const star=u?.star||1,cost=r.id==='nina'?'소환수':`${r.cost} COST`;
  el.classList.remove('empty');
- el.innerHTML=`<div class="inspect-id"><span class="inspect-kicker">${esc(cost)} · ${esc(r.role||u?.role||'')}</span><b>${esc(r.name||u?.name||'?')} <em>${'★'.repeat(star)}</em></b><small>${esc((r.affiliations||[]).join(' / ')||'소속 없음')}</small></div>
+ el.innerHTML=`<div class="inspect-id"><span class="inspect-kicker">${esc(cost)} · ${esc(r.role||u?.role||'')}</span><b>${esc(dname)} <em>${'★'.repeat(star)}</em></b><small>스킨 · ${esc(sname)} · ${esc((r.affiliations||[]).join(' / ')||'소속 없음')}</small></div>
  <div class="inspect-skills"><article><span>ACTIVE</span><b>${esc(info.active[0])}</b><p>${esc(info.active[1])}</p></article><article><span>PASSIVE</span><b>${esc(info.passive[0])}</b><p>${esc(info.passive[1])}</p></article></div>
  <div class="inspect-stats"><span><i>HP</i><b>${fmtStat(bs.hp)}</b></span><span><i>ATK</i><b>${fmtStat(bs.atk,1)}</b></span><span><i>AMP</i><b>${fmtStat(bs.amp,1)}</b></span><span><i>DEF</i><b>${fmtStat(bs.def,1)}</b></span><span><i>AS</i><b>${fmtStat(bs.as,2)}</b></span><span><i>RNG</i><b>${fmtStat(bs.range)}</b></span></div>`;
 }
@@ -81,7 +95,7 @@ function reset(){
 function rosterFiltered(team){
  const f=filters[team];
  return roster.filter(r=>{
-  const text=(r.name+" "+r.role+" "+r.affiliations.join(" ")).toLowerCase();
+  const text=(displayName(r)+" "+skinName(r)+" "+r.role+" "+r.affiliations.join(" ")).toLowerCase();
   return (!f.q||text.includes(f.q.toLowerCase())) &&
    (f.cost==="all"||r.cost===+f.cost) &&
    (f.role==="all"||r.role===f.role) &&
@@ -95,10 +109,10 @@ function selectOptions(values,current,allLabel){
 function teamSlot(team,e,i,disabled){
  const r=byId[e.characterId]||{id:e.characterId,name:e.characterId||"?",cost:"?",role:"소환수",affiliations:[],implemented:true,asset:{}};
  const portrait=r.asset?.sd
-  ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.remove();this.parentElement.textContent='${esc(r.name.slice(0,1))}'">`
-  : esc(r.name.slice(0,1));
+  ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.remove();this.parentElement.textContent='${esc(displayName(r).slice(0,1))}'">`
+  : esc(displayName(r).slice(0,1));
  return `<div class="team-slot">
-  <div class="slot-id"><span class="mini-portrait">${portrait}</span><div><b>${esc(r.name)}</b><small>${r.cost}C · ${esc(r.role)}</small></div></div>
+  <div class="slot-id"><span class="mini-portrait">${portrait}</span><div><b>${esc(displayName(r))}</b><small>${r.cost}C · ${esc(r.role)}</small></div></div>
   <label>별<select data-star="${i}" ${disabled}>${[1,2,3].map(v=>`<option value="${v}" ${v===e.star?"selected":""}>${v}★</option>`).join("")}</select></label>
   <label>깊이<select data-x="${i}" ${disabled}>${["후열","중열","전열"].map((v,j)=>`<option value="${j}" ${j===e.x?"selected":""}>${v}</option>`).join("")}</select></label>
   <label>라인<select data-y="${i}" ${disabled}>${["왼쪽","중앙","오른쪽"].map((v,j)=>`<option value="${j}" ${j===e.y?"selected":""}>${v}</option>`).join("")}</select></label>
@@ -108,11 +122,11 @@ function teamSlot(team,e,i,disabled){
 function rosterCard(team,r){
  const used=teams[team].some(e=>e.characterId===r.id),full=teams[team].length>=3;
  const portrait=r.asset?.sd
-  ? `<img src="${esc(r.asset.sd)}" alt="${esc(r.name)}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<span>${esc(r.name.slice(0,1))}</span>'">`
-  : `<span>${esc(r.name.slice(0,1))}</span>`;
+  ? `<img src="${esc(r.asset.sd)}" alt="${esc(displayName(r))}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<span>${esc(displayName(r).slice(0,1))}</span>'">`
+  : `<span>${esc(displayName(r).slice(0,1))}</span>`;
  return `<button class="roster-card ${r.implemented?"ready":"pending"}" data-pick="${r.id}" ${running||used||full?"disabled":""}>
    <span class="portrait-placeholder" data-character="${r.id}">${portrait}</span>
-   <span class="roster-info"><b>${esc(r.name)}</b><small>${r.cost}C · ${esc(r.role)}</small><small>${esc(r.affiliations.join(" / "))}</small></span>
+   <span class="roster-info"><b>${esc(displayName(r))}</b><small>${r.cost}C · ${esc(r.role)}</small><small>${esc(r.affiliations.join(" / "))}</small></span>
    <span class="impl">${statusLabel(r)}</span>
  </button>`;
 }
@@ -182,7 +196,7 @@ function unitMarkup(u){
   <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}">${visual}</div>
   <div class="target-marker"></div><div class="hit-vfx"></div><div class="skill-vfx"></div>
   <div class="unit-hud">
-   <div class="unit-top"><span class="unit-name">${esc(u.name)}</span><span class="stars">${"★".repeat(u.star)}</span></div>
+   <div class="unit-top"><span class="unit-name">${esc(displayName(r))}</span><span class="stars">${"★".repeat(u.star)}</span></div>
    <div class="hpbar ${low?"low":""}" title="${shield>0?`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)} · 보호막 ${Math.ceil(shield)}`:`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}`}"><i style="width:${hp}%"></i>${shield>0?`<em class="shield-overlay" style="left:${hp}%;width:${shieldPct}%"></em>`:""}</div>
    <div class="unit-sub"><span>${shield>0?`${u.role} · 보호막 ${Math.ceil(shield)}`:u.role}</span><span>${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}</span></div>
    ${!r.implemented?`<span class="pending-tag">SKILL PENDING</span>`:""}
@@ -206,7 +220,7 @@ function damageDetails(u){
 function meters(){
  for(const team of ["A","B"]){
   const root=$("#meter"+team),arr=units.filter(u=>u.team===team),max=Math.max(1,...arr.map(u=>Object.values(u.damage).reduce((a,b)=>a+b,0)));
-  root.innerHTML=arr.map(u=>{const total=Object.values(u.damage).reduce((a,b)=>a+b,0),open=expandedMeters.has(u.id),id=esc(u.id);return `<div class="meter-row"><button class="meter-toggle" data-unit="${id}">${esc(u.name)} <span>${open?"접기":"상세"}</span></button><div class="meter-track"><div class="meter-fill" style="width:${total/max*100}%"></div></div><span class="meter-numbers"><b>${total.toFixed(0)}</b><small>받음 ${(u.damageTaken||0).toFixed(0)}${u.shieldAbsorbed>0?` · 흡수 ${u.shieldAbsorbed.toFixed(0)}`:''}</small></span></div><div ${open?"":"hidden"}>${damageDetails(u)}</div>`}).join("");
+  root.innerHTML=arr.map(u=>{const total=Object.values(u.damage).reduce((a,b)=>a+b,0),open=expandedMeters.has(u.id),id=esc(u.id);return `<div class="meter-row"><button class="meter-toggle" data-unit="${id}">${esc(displayName(byId[u.characterId]||{id:u.characterId,name:u.name}))} <span>${open?"접기":"상세"}</span></button><div class="meter-track"><div class="meter-fill" style="width:${total/max*100}%"></div></div><span class="meter-numbers"><b>${total.toFixed(0)}</b><small>받음 ${(u.damageTaken||0).toFixed(0)}${u.shieldAbsorbed>0?` · 흡수 ${u.shieldAbsorbed.toFixed(0)}`:''}</small></span></div><div ${open?"":"hidden"}>${damageDetails(u)}</div>`}).join("");
   root.onclick=e=>{const b=e.target.closest("button[data-unit]");if(!b)return;const id=b.dataset.unit;expandedMeters.has(id)?expandedMeters.delete(id):expandedMeters.add(id);meters()};
  }
 }
