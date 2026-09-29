@@ -36,8 +36,11 @@ function selectOptions(values,current,allLabel){
 }
 function teamSlot(team,e,i,disabled){
  const r=byId[e.characterId];
+ const portrait=r.asset?.sd
+  ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.remove();this.parentElement.textContent='${esc(r.name.slice(0,1))}'">`
+  : esc(r.name.slice(0,1));
  return `<div class="team-slot">
-  <div class="slot-id"><span class="mini-portrait">${r.name.slice(0,1)}</span><div><b>${esc(r.name)}</b><small>${r.cost}C · ${esc(r.role)}</small></div></div>
+  <div class="slot-id"><span class="mini-portrait">${portrait}</span><div><b>${esc(r.name)}</b><small>${r.cost}C · ${esc(r.role)}</small></div></div>
   <label>별<select data-star="${i}" ${disabled}>${[1,2,3].map(v=>`<option value="${v}" ${v===e.star?"selected":""}>${v}★</option>`).join("")}</select></label>
   <label>깊이<select data-x="${i}" ${disabled}>${["후열","중열","전열"].map((v,j)=>`<option value="${j}" ${j===e.x?"selected":""}>${v}</option>`).join("")}</select></label>
   <label>라인<select data-y="${i}" ${disabled}>${["왼쪽","중앙","오른쪽"].map((v,j)=>`<option value="${j}" ${j===e.y?"selected":""}>${v}</option>`).join("")}</select></label>
@@ -46,8 +49,11 @@ function teamSlot(team,e,i,disabled){
 }
 function rosterCard(team,r){
  const used=teams[team].some(e=>e.characterId===r.id),full=teams[team].length>=3;
+ const portrait=r.asset?.sd
+  ? `<img src="${esc(r.asset.sd)}" alt="${esc(r.name)}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<span>${esc(r.name.slice(0,1))}</span>'">`
+  : `<span>${esc(r.name.slice(0,1))}</span>`;
  return `<button class="roster-card ${r.implemented?"ready":"pending"}" data-pick="${r.id}" ${running||used||full?"disabled":""}>
-   <span class="portrait-placeholder" data-character="${r.id}"><span>${esc(r.name.slice(0,1))}</span></span>
+   <span class="portrait-placeholder" data-character="${r.id}">${portrait}</span>
    <span class="roster-info"><b>${esc(r.name)}</b><small>${r.cost}C · ${esc(r.role)}</small><small>${esc(r.affiliations.join(" / "))}</small></span>
    <span class="impl">${statusLabel(r)}</span>
  </button>`;
@@ -110,8 +116,11 @@ function drop(e,c){
 }
 function unitMarkup(u){
  const r=byId[u.characterId],hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30;
+ const visual=r.asset?.sd
+  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.remove();this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
+  : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;
  return `<div class="ground-ring"></div>
-  <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}"><div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div></div>
+  <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}">${visual}</div>
   <div class="target-marker"></div><div class="hit-vfx"></div><div class="skill-vfx"></div>
   <div class="unit-hud">
    <div class="unit-top"><span class="unit-name">${esc(u.name)}</span><span class="stars">${"★".repeat(u.star)}</span></div>
