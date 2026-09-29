@@ -35,7 +35,7 @@ function selectOptions(values,current,allLabel){
  return `<option value="all">${allLabel}</option>`+values.map(v=>`<option value="${esc(v)}" ${String(current)===String(v)?"selected":""}>${esc(v)}</option>`).join("");
 }
 function teamSlot(team,e,i,disabled){
- const r=byId[e.characterId];
+ const r=byId[e.characterId]||{id:e.characterId,name:e.characterId||"?",cost:"?",role:"소환수",affiliations:[],implemented:true,asset:{}};
  const portrait=r.asset?.sd
   ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.remove();this.parentElement.textContent='${esc(r.name.slice(0,1))}'">`
   : esc(r.name.slice(0,1));
@@ -59,7 +59,7 @@ function rosterCard(team,r){
  </button>`;
 }
 function synergySummary(team){
- const rs=teams[team].map(e=>byId[e.characterId]),count=n=>rs.filter(r=>r.affiliations.includes(n)).length;
+ const rs=teams[team].map(e=>byId[e.characterId]).filter(Boolean),count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
  const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
  const parts=names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return `<span class="${tier?"synergy-on":"synergy-off"}">${label}</span>`}).filter(Boolean);
  const roles=live?.roles||rs.map((r,i)=>({name:r.name,role:r.role,active:null}));
