@@ -1,7 +1,7 @@
 "use strict";
 const {roster,byId}=ERRoster;
-const {CombatEngine,DT}=ERCombat;
-const $=s=>document.querySelector(s),board=$("#board"),expandedMeters=new Set();
+const {CombatEngine,DT,coefficients:combatCoefficients={}}=ERCombat;
+const $=s=>document.querySelector(s),board=$("#board"),expandedMeters=new Set(),expandedSkillDetails=new Set();
 let teams={A:[],B:[]},battle=null,units=[],running=false,paused=false,time=0;
 let speed=1,last=0,accumulator=0,frame=null;
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
@@ -51,11 +51,61 @@ const skillInfo={
  rozzi:{active:['셈텍스탄 Mk-II','기본 공격 5회 후 적 최대 체력 비례 추가 피해.'],passive:['더블샷','기본 공격 행동 1회에 실제 기본 공격 2회 수행.']},
  aya:{active:['공포탄','적이 인접하면 전투당 1회 적 전체에 스킬 피해 + 행동 불능.'],passive:['고정 사격','기본 공격 3회 후 다음 5회 기본 공격의 공격 속도 +100% 및 스킬 증폭 비례 추가 피해.']},
  mirka:{active:['크래시 해머','[리펄스 게이지] 100 이상에서 모두 소모해 체력 비례 보호막. 현재 대상과 인접 적에게 체력 비례 피해 + 행동 불능.'],passive:['리펄스 게이지','매초 +1, 자신의 HP 1% 감소마다 +2, 기본 공격마다 +5.']},
- charlotte:{active:['기적 실현','15초마다 아군 전체에게 1.5초 무적.'],passive:['치유의 빛','기본 공격 3회 후 자신과 2칸 이내 실험체를 회복하고 공격력·스킬 증폭 강화.']},
+ charlotte:{active:['기적 실현','10초마다 아군 전체에게 1초 무적.'],passive:['치유의 빛','기본 공격 3회 후 자신과 2칸 이내 실험체를 회복하고 공격력·스킬 증폭 강화.']},
  nina:{active:['생명 공유','니나가 체력 5% 이하에서 발동 가능. 니나가 발동하면 니나가 불사 상태가 되고 받는 기본/스킬 피해 70%를 클로에에게 전이. 클로에 사망 시 니나도 사망.'],passive:['마리오네트','클로에가 소환하는 독립 기물. 직접 이동·기본 공격·피격 가능. 실험체가 아니므로 시너지 카운트와 실험체 전용 트리거에서 제외.']}
 };
 
+
+
+// 전투 엔진의 실제 계수표를 그대로 읽어 상세 툴팁에 표시한다.
+// 값이 바뀌면 combat-engine.js만 고쳐도 상세 수치가 같이 따라가도록 한 곳에서 관리한다.
+const coefficientLabels={
+ dog:['도그파이트 피해','ATK','ratio'],heal:['회복','최대 HP','ratio'],bluffDef:['허세 방어력','DEF','flat'],
+ check:['체크메이트 기본 피해','AMP','ratio'],pawn:['폰 1중첩 추가','AMP','ratio'],promotion:['프로모션 추가 피해','AMP','ratio'],
+ drunk:['만취 추가 피해','ATK','ratio'],ten:['취기 10중첩 추가 피해','ATK','ratio'],entry:['진입 피해','ATK','ratio'],
+ head:['머리치기 피해','ATK','ratio'],button:['단추 추가 피해','ATK','ratio'],shot:['정사필중 피해','ATK','ratio'],kaeyumiMax:['카에유미 최대 공속','AS','percent'],
+ bomb:['스킬 피해','주스탯','ratio'],boost:['부스트 대쉬 추가 피해','AMP','ratio'],persona:['페르소나 추가 피해','AMP','ratio'],revive:['부활 체력','최대 HP','ratio'],reviveAs:['부활 공격속도','AS','percent'],
+ hot:['다혈질 능력치 증가','ATK/AMP/AS','percent'],guardChance:['가드 확률','확률','percent'],counter:['카운터 피해','AMP','ratio'],
+ aoe:['만검귀종 광역 피해','ATK','ratio'],resolve:['결심응진 추가 피해','ATK','ratio'],quake:['지각변동 피해','ATK','ratio'],shock:['충격 추가 피해','ATK','ratio'],
+ lifesteal:['회복 비율','가한 피해','percent'],start:['전투 시작 효과','주스탯','ratio'],windDot:['바람 지속 피해','AMP','ratio'],windExtra:['바람 추가 피해','AMP','ratio'],
+ rush:['트윈즈 러시 피해','ATK','ratio'],currentHp:['모드 추가 피해','대상 현재 HP','percent'],chain:['처형식 피해','대상 최대 HP','percent'],basicReduce:['기본 공격 피해 감소','피해','percent'],execute:['처형 기준','대상 최대 HP','percent'],
+ shield:['보호막','주스탯/최대 HP','ratio'],rage:['업화 강화','능력치','percent'],punch:['냥냥 펀치 피해','AMP','ratio'],fishShield:['물고기 보호막','AMP','ratio'],
+ twilight:['황혼의 도둑 피해','AMP','ratio'],thief:['괴도 추가 피해','AMP','ratio'],dominion:['진조의 군림 피해','AMP','ratio'],maxHp:['최대 체력 비례 피해','대상 최대 HP','percent'],
+ op:['이머전시OP 피해','AMP','ratio'],teamHeal:['아군 회복','최대 HP','percent'],spin:['바이너리 스핀 피해','AMP','ratio'],shred:['방어력 감소','DEF','percent'],
+ trap:['스프링! 트랩 피해','AMP','ratio'],goldberg:['당근! 바주카 피해/회복','AMP','ratio'],peacemakerHeal:['Peacemaker 회복','최대 HP','percent'],feedback:['Feedback 추가 피해','ATK','ratio'],
+ ninaHp:['니나 체력','클로에 HP','percent'],ninaAtk:['니나 공격력','클로에 ATK','percent'],ninaDef:['니나 방어력','클로에 DEF','percent'],ninaAs:['니나 공격속도','클로에 AS','percent'],
+ odyssey:['오딧세이 피해','AMP','ratio'],mind:['마음의 양식 추가 피해','AMP','ratio'],sanctuaryDef:['구원의 성역 방어력','DEF','flat'],sanctuaryHp:['성역 틱 회복','대상 최대 HP','percent'],sanctuaryAmp:['성역 틱 추가 회복','요한 AMP','ratio'],aura:['빛의 가호 증가','ATK/AMP/AS','percent'],
+ wild:['야성 1중첩 공속','AS','percent'],wolf:['늑대 맹습 추가 피해','ATK','ratio'],pellet:['산탄 주 대상 피해','ATK','ratio'],scatter:['산탄 주변 피해','ATK','ratio'],leg:['레그샷 피해','ATK','ratio'],
+ semtex:['셈텍스탄 피해','대상 최대 HP','percent'],double:['더블샷 1타 피해','ATK','ratio'],fear:['공포탄 피해','AMP','ratio'],fixed:['고정 사격 추가 피해','AMP','ratio'],crash:['크래시 해머 피해','최대 HP','percent'],
+ buff:['치유의 빛 공격 버프','ATK/AMP','percent']
+};
+const coefficientLabelOverrides={
+ 'charlotte.heal':['치유의 빛 회복','AMP','ratio'],'kenneth.shield':['업화 보호막','ATK','ratio'],'irem.fishShield':['물고기 보호막','AMP','ratio'],'mirka.shield':['크래시 해머 보호막','최대 HP','percent'],
+ 'isol.start':['유격전 ATK/AS 증가','ATK/AS','percent'],'yumin.start':['풍류운산 피해','AMP','ratio'],'justina.bomb':['섬멸 포격 피해','AMP','ratio'],'isol.bomb':['Mok제 폭탄 피해','ATK','ratio'],
+ 'chloe.ninaAs':['니나 공격속도','클로에 AS','percent'],'sua.heal':['마음의 양식 회복','최대 HP','percent'],'hyunwoo.heal':['도그파이트 회복','최대 HP','percent']
+};
+const characterDetailExtras={
+ hyunwoo:['도그파이트: 기본 공격 6회 후 발동','허세 지속시간: 2초'],adela:['체크메이트: 10초 주기 · 0.5초 집중','폰 최대 3중첩'],dailin:['취기: 기본 공격당 +5 · 100에서 만취','만취 지속시간: 3초 · 공격속도 +100%'],yuki:['머리치기: 기본 공격 5회 후','단추: 전투 시작 2개 · 0.5초 집중 후 복구'],rio:['정사필중: 8초 주기 · 0.5초 집중','인접 적 피해: 주 대상의 50%'],justina:['섬멸 포격: 기본 공격 2회 후'],jenny:['페르소나: 기본 공격 2회 후 다음 타격','죽음의 연기 무적: 1.5초'],nicky:['다혈질: HP 50% 이하','가드 피해 경감: 80%'],shurin:['결심응진: 기본 공격 3회마다','만검귀종 후 강화 지속: 3초'],marcus:['지각변동: 10초 주기','충격 행동 불능: 0.5초'],ian:['해방: 사망 시 1회','해방 전 공격력: -20% · 해방 후 공격력: 120%'],yumin:['풍류운산: 전투 시작 즉시','행동 불능: 1초 후 0.5초'],
+ 'debi-marlene':['트윈즈 러시: 전투 시작 즉시 + 모드 5중첩 소모','모드 전환 후 강화 기본 공격: 5회'],garnet:['처형식: 전투 시작 1회','행동 불능: 1초 · 방어력 감소 10%'],kenneth:['억압된 분노: 기본 공격당 +1, 최대 5','업화 강화 지속: 5초'],irem:['물고기: 3초마다 획득','방울 대상 공격 시 냥냥 펀치'],laura:['황혼의 도둑: 10초 주기','행동 불능: 1초'],bianca:['진조의 군림: 8초 주기'],cathy:['외과 전문의: 기본 공격 2회마다 외상+OP','OP 피해: 고정 피해'],abigail:['바이너리 스핀: 기본 공격 3회 후'],leny:['골트베르: 3초마다 아군 전체 부여','효과 소비: 레니 2칸 이내 아군 기본 공격','2회 적용 후 다음 레니 기본 공격에 트랩 · CC 0.5초'],hart:['Peacemaker: HP 5% 이하 · 전투당 1회','불사: 3초'],isol:['Mok제 폭탄: 10초 주기'],chloe:['생명 공유 기준: HP 5% 이하','피해 전이: 기본/스킬 피해 70%'],sua:['오딧세이: 4초 주기'],johann:['구원의 성역: 2칸 이내 아군 HP 45% 이하 · 전투당 1회','지속: 4초 · 1초마다 회복','요한: 행동 불능 면역'],nadine:['야성: 매초 +2 · 최대 15','15중첩에서 늑대 맹습 · 다음 기본 공격 3회','야성은 공격속도만 증가'],bernice:['레그샷: 기본 공격 3회마다','공격속도 감소: 30% · 3초'],rozzi:['더블샷: 공격 행동당 실제 기본 공격 2회','셈텍스탄: 실제 기본 공격 10회마다'],aya:['공포탄: 인접 적 존재 시 전투당 1회 · CC 0.5초','고정 사격: 기본 공격 3회 후 다음 5회 · AS +100%'],mirka:['리펄스: 초당 +1 · HP 1% 손실당 +2 · 기본 공격당 +5','100 이상에서 크래시 해머 · CC 1초'],charlotte:['치유의 빛: 기본 공격 3회마다 · 자신 포함 2칸 이내','공격 버프 지속: 3초','기적 실현: 10초마다 아군 전체 1초 무적','치유의 노래: 치유의 빛 발동 시 아군 전체 AMP 70% 회복']
+};
+function fmtCoeff(v,type){if(type==='flat')return fmtStat(v,1);return `${fmtStat(v*100,1)}%`}
+function coefficientDetailHtml(id,star){
+ const table=combatCoefficients[id]||{},rows=[];
+ for(const [key,vals] of Object.entries(table)){
+  const meta=coefficientLabelOverrides[`${id}.${key}`]||coefficientLabels[key]||[key,'','ratio'];
+  const arr=Array.isArray(vals)?vals:[vals,vals,vals];
+  rows.push(`<div class="skill-coeff-row"><b>${esc(meta[0])}</b><span>${meta[1]?esc(meta[1])+' · ':''}${arr.map((v,i)=>`<em class="${i===star-1?'current-star':''}">★${i+1} ${fmtCoeff(v,meta[2])}</em>`).join(' / ')}</span></div>`);
+ }
+ const extras=characterDetailExtras[id]||[];
+ return `<div class="skill-detail-panel">${rows.join('')}${extras.map(x=>`<div class="skill-detail-extra">${esc(x)}</div>`).join('')}</div>`;
+}
+function ensureSkillDetailStyle(){if(document.querySelector('#skillDetailStyle'))return;const st=document.createElement('style');st.id='skillDetailStyle';st.textContent=`
+ .inspect-detail-toggle{margin:.45rem 0 0;padding:.28rem .65rem;border:1px solid rgba(255,255,255,.22);border-radius:6px;background:rgba(255,255,255,.06);color:inherit;cursor:pointer;font:inherit;font-size:.78rem}.inspect-detail-toggle:hover{background:rgba(255,255,255,.12)}
+ .skill-detail-panel{grid-column:1/-1;margin-top:.45rem;padding:.65rem .75rem;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(0,0,0,.18);font-size:.76rem}.skill-coeff-row{display:flex;justify-content:space-between;gap:1rem;padding:.22rem 0}.skill-coeff-row span{text-align:right;opacity:.88}.skill-coeff-row em{font-style:normal;white-space:nowrap}.skill-coeff-row .current-star{font-weight:800;text-decoration:underline}.skill-detail-extra{padding:.14rem 0;opacity:.78}
+ `;document.head.appendChild(st)}
+
 function ensureInspector(){
+ ensureSkillDetailStyle();
  if(document.querySelector('#unitInspector'))return;
  const host=document.querySelector('.arena-card')||document.querySelector('main')||document.body;
  const el=document.createElement('section');el.id='unitInspector';el.className='unit-inspector empty';
@@ -73,10 +123,12 @@ function showInspector(u,rOverride=null){
  const star=u?.star||1,cost=r.id==='nina'?'소환수':`${r.cost} COST`;
  el.classList.remove('empty');
  el.innerHTML=`<div class="inspect-id"><span class="inspect-kicker">${esc(cost)} · ${esc(r.role||u?.role||'')}</span><b>${esc(dname)} <em>${'★'.repeat(star)}</em></b><small>스킨 · ${esc(sname)} · ${esc((r.affiliations||[]).join(' / ')||'소속 없음')}</small></div>
- <div class="inspect-skills"><article><span>ACTIVE</span><b>${esc(info.active[0])}</b><p>${esc(info.active[1])}</p></article><article><span>PASSIVE</span><b>${esc(info.passive[0])}</b><p>${esc(info.passive[1])}</p></article></div>
+ <div class="inspect-skills"><article><span>ACTIVE</span><b>${esc(info.active[0])}</b><p>${esc(info.active[1])}</p></article><article><span>PASSIVE</span><b>${esc(info.passive[0])}</b><p>${esc(info.passive[1])}</p></article>${r.id!=='nina'?`<button type="button" class="inspect-detail-toggle" data-detail-id="${esc(r.id)}">${expandedSkillDetails.has(r.id)?'상세 닫기':'상세'}</button>${expandedSkillDetails.has(r.id)?coefficientDetailHtml(r.id,star):''}`:''}</div>
  <div class="inspect-stats"><span><i>HP</i><b>${fmtStat(bs.hp)}</b></span><span><i>ATK</i><b>${fmtStat(bs.atk,1)}</b></span><span><i>AMP</i><b>${fmtStat(bs.amp,1)}</b></span><span><i>DEF</i><b>${fmtStat(bs.def,1)}</b></span><span><i>AS</i><b>${fmtStat(bs.as,2)}</b></span><span><i>RNG</i><b>${fmtStat(bs.range)}</b></span></div>`;
 }
 
+
+document.addEventListener('click',e=>{const btn=e.target.closest?.('.inspect-detail-toggle');if(!btn)return;e.preventDefault();e.stopPropagation();const id=btn.dataset.detailId;if(expandedSkillDetails.has(id))expandedSkillDetails.delete(id);else expandedSkillDetails.add(id);const u=units.find(x=>x.characterId===id)||null;const r=byId[id];if(r)showInspector(u,r)});
 
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function config(seed=+$("#seed").value){return {teamA:teams.A,teamB:teams.B,masteryA:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value}}
