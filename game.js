@@ -261,11 +261,11 @@ function syncBoardPresentation(){
  board.classList.toggle('combat-board',!prep);
  document.body.classList.toggle('formation-phase',prep);
  const legend=document.querySelector('.arena-top .legend');if(legend)legend.style.display=prep?'none':'';
- const hint=document.querySelector('.arena-card .hint');if(hint)hint.textContent=prep?'내 진영 3×3 편성 · 드래그로 배치 / 교환 · 전투 시작 시 3×6으로 결합':'양 팀 3×3 결합 전장 · 전투/QA는 3×6';
+ const hint=document.querySelector('.arena-card .hint');if(hint)hint.textContent=prep?(roundState.round===1?'ROUND 1 파밍 준비 · 내 진영 3×3 편성 · 상점 구매 후 준비 완료':'내 진영 3×3 편성 · 드래그로 배치 / 교환 · 전투 시작 시 3×6으로 결합'):'양 팀 3×3 결합 전장 · 전투/QA는 3×6';
 }
 function renderRoundUI(){
  syncBoardPresentation();
- const p=$('#roundModePanel');if(!p)return;const opp=roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
+ const p=$('#roundModePanel');if(!p)return;const r1Prep=roundState.round===1&&roundState.phase==='prep',opp=r1Prep?'파밍 대기':roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
  const seconds=(roundState.phase==='prep'||roundState.phase==='result')?Math.max(0,Math.ceil(roundState.remaining)):null;
  const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:phaseLabel();
  p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong><small>${roundState.round===1?'파밍 라운드':'PvP'}</small></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>':''}</div>`;
@@ -334,8 +334,8 @@ function bindEconomyInspect(root){
 }
 function renderGameEconomy(){
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
- const farmingRound=appMode==='game'&&roundState.round===1&&roundState.phase!=='idle'&&roundState.phase!=='finished';
- if(appMode!=='game'||farmingRound){p.innerHTML=farmingRound?`<div class="game-msg">ROUND 1 · 첫 실험체로 야생동물을 처치해 기본 아이템을 획득해.</div>`:'';if(dock)dock.remove();return}
+ const farmingBattle=appMode==='game'&&roundState.round===1&&(roundState.phase==='combat'||roundState.phase==='result');
+ if(appMode!=='game'||farmingBattle){p.innerHTML=farmingBattle?`<div class="game-msg">ROUND 1 · 파밍 전투 · 야생동물을 처치해 기본 아이템을 획득해.</div>`:'';if(dock)dock.remove();return}
  const prep=roundState.phase==='prep';
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id];return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}</span><span class="shop-meta"><small>${esc(r.role)}</small>${creditHtml(r.cost)}</span></button>`}).join('');
  const benchOwned=gameState.owned.filter(o=>o.location==='bench');
@@ -352,19 +352,21 @@ function startRoundMode(){
  if(running||battle)reset();
  teams={A:[],B:[]};
  Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0});
- Object.assign(roundState,{active:true,phase:'combat',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:0,lastOutcome:'',lastDamage:0});
- const first=randomPlayable();
+ Object.assign(roundState,{active:true,phase:'prep',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:'',lastDamage:0});
+ const oneCost=playableRoster().filter(r=>r.cost===1);
+ const first=oneCost[Math.floor(Math.random()*oneCost.length)];
+ if(!first){roundState.active=false;roundState.phase='finished';gameState.message='1코스트 실험체 풀이 비어 있어 게임을 시작할 수 없어.';renderRoundUI();renderGameEconomy();return}
  addOwned(first.id,true);
- setupWildRound();
- gameState.message=`첫 실험체 ${displayName(first)} 지급 · 파밍 라운드 시작`;
- renderRoundUI();renderGameEconomy();
- if(!start()){roundState.phase='finished';roundState.active=false;gameState.message='파밍 라운드 시작 실패 · DEV 로그를 확인해.';renderRoundUI();renderGameEconomy();return}
- $('#status').textContent='ROUND 1 · 파밍 전투 중';
- renderRoundUI();renderGameEconomy();
+ rollShop();
+ teams.B=[];
+ gameState.message=`첫 1코스트 실험체 ${displayName(first)} 무료 지급 · 시작 크레딧 ${GAME_TEMP.startCredits}`;
+ reset();
+ $('#status').textContent='ROUND 1 · 파밍 준비';
+ renderRoundUI();renderGameEconomy();startPrepTimer();
 }
 function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
 function startPrepTimer(){clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0)beginRoundCombat()},1000)}
-function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep'||roundState.round===1)return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';startPrepTimer();return}$('#status').textContent=`ROUND ${roundState.round} · 전투 중`}
+function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
 function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const rewardCount=1+Math.floor(Math.random()*3),pool=[...BASIC_ITEMS],rewards=[];for(let i=0;i<rewardCount&&pool.length;i++){const pick=Math.floor(Math.random()*pool.length);rewards.push(pool.splice(pick,1)[0])}gameState.items.push(...rewards);gameState.message=`야생동물 처치 · ${rewards.join(' / ')} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';gameState.credits+=gameState.roundIncome;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${gameState.roundIncome} 크레딧`}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}gameState.credits+=gameState.roundIncome;resultText=`${outcome} · 정산 +${gameState.roundIncome} 크레딧`}addMasteryProgress(1,'라운드 자연 성장');$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
 function reset(){
