@@ -237,7 +237,8 @@ function ensureRoundUI(){
  if(document.querySelector('#roundModePanel'))return;const style=document.createElement('style');style.id='gameUiCleanupStyle';style.textContent=`
  #roundModePanel{position:fixed;left:50%;top:7px;transform:translateX(-50%);z-index:8600;width:min(760px,calc(100% - 18px));margin:0;padding:5px 9px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(8,11,17,.88);backdrop-filter:blur(9px);display:grid;gap:3px;box-shadow:0 5px 18px rgba(0,0,0,.24)}
  #roundModePanel .round-hud{min-height:30px}.round-side{gap:2px}.round-side-line{line-height:1}.round-side-line b{font-size:.72rem}.round-side-line strong{font-size:.86rem}.round-side-line span{font-size:.6rem;opacity:.55}.round-center{min-width:104px}.round-center b{font-size:.72rem}.round-center strong{font-size:.88rem}.round-center small{display:none}.round-hpbar{height:3px}.round-actions{position:absolute;left:50%;top:100%;transform:translate(-50%,4px)}.round-actions:empty{display:none}.round-actions .round-btn{padding:.3rem .6rem;font-size:.68rem;background:rgba(8,11,17,.9);white-space:nowrap}
- .game-board-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:10px;align-items:stretch;min-width:0}.game-board-row>.board-shell{min-width:0}.current-synergy-panel{position:relative;z-index:5;width:auto;min-width:0;padding:8px;border:1px solid rgba(116,171,160,.18);border-radius:8px;background:rgba(6,10,14,.72);pointer-events:none;align-self:start;max-height:100%;overflow:auto}.current-synergy-title{display:block;margin-bottom:5px;font-size:.62rem;letter-spacing:.12em;color:#8fa9a3}.current-synergy-panel .synergy-strip{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0;border:0;overflow:visible;white-space:normal}.current-synergy-panel .synergy-strip>i{display:none}.current-synergy-panel .synergy-strip span{font-size:.62rem;padding:3px 5px}.current-synergy-panel .role-chip{display:block;border-color:rgba(198,171,103,.34);color:#d9c78f;background:rgba(49,40,21,.34)}.current-synergy-panel .role-chip.synergy-off{opacity:.45}
+ .game-board-row{display:grid;grid-template-columns:180px minmax(0,1fr);gap:10px;align-items:stretch;min-width:0}.game-board-row>.board-shell{min-width:0}.current-synergy-panel{position:relative;z-index:5;width:auto;min-width:0;padding:8px;border:1px solid rgba(116,171,160,.18);border-radius:8px;background:rgba(6,10,14,.72);pointer-events:auto;align-self:start;max-height:100%;overflow:auto}.current-synergy-title{display:block;margin-bottom:5px;font-size:.62rem;letter-spacing:.12em;color:#8fa9a3}.current-synergy-panel .synergy-strip{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0;border:0;overflow:visible;white-space:normal}.current-synergy-panel .synergy-strip>i{display:none}.current-synergy-panel .synergy-strip span{font-size:.62rem;padding:3px 5px}.current-synergy-panel .role-chip{display:block;border-color:rgba(198,171,103,.34);color:#d9c78f;background:rgba(49,40,21,.34)}.current-synergy-panel .role-chip.synergy-off{opacity:.45}.current-synergy-panel .synergy-tip-chip{cursor:help;touch-action:manipulation}.current-synergy-panel .synergy-tip-chip:hover{border-color:rgba(173,226,211,.52)}
+ #synergyCursorTip{position:fixed;z-index:30000;display:none;max-width:min(330px,calc(100vw - 20px));padding:9px 11px;border:1px solid rgba(159,208,195,.34);border-radius:8px;background:rgba(5,9,12,.96);box-shadow:0 8px 24px rgba(0,0,0,.42);backdrop-filter:blur(8px);color:#dce9e5;font-size:.72rem;line-height:1.45;pointer-events:none;white-space:normal}#synergyCursorTip.show{display:block}#synergyCursorTip b{display:block;margin-bottom:3px;color:#f0f7f5;font-size:.78rem;font-weight:650}#synergyCursorTip small{display:block;color:#a7bbb5;font-size:.68rem}
  #board .cell.role-synergy-zone:before{content:"";position:absolute;inset:7px;z-index:1;border:1px solid rgba(102,220,176,.82);border-radius:50%;background:radial-gradient(circle,rgba(82,207,158,.16),rgba(82,207,158,.025) 62%,transparent 68%);box-shadow:0 0 18px rgba(82,207,158,.16),inset 0 0 16px rgba(82,207,158,.08);pointer-events:none;animation:roleZonePulse 1.05s ease-in-out infinite alternate}#board[data-role-preview]:after{content:attr(data-role-preview) " 시너지 유효 배치";position:absolute;left:50%;top:-24px;transform:translateX(-50%);z-index:70;padding:3px 8px;border-radius:999px;background:rgba(9,18,16,.88);border:1px solid rgba(102,220,176,.45);color:#a9e4cc;font-size:.62rem;letter-spacing:.03em;white-space:nowrap;pointer-events:none}@keyframes roleZonePulse{from{opacity:.58;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
  @media(max-width:850px){#roundModePanel{top:4px;width:calc(100% - 10px);padding:4px 6px}.game-board-row{grid-template-columns:1fr;gap:6px}.current-synergy-panel{padding:5px;max-height:none}.current-synergy-panel .synergy-strip{flex-direction:row;overflow-x:auto;white-space:nowrap}.current-synergy-panel .synergy-strip span{flex:0 0 auto}.current-synergy-title{display:none}}
 
@@ -336,7 +337,7 @@ function renderCurrentSynergyPanel(){
  let row=shell.closest('.game-board-row');
  if(!row){row=document.createElement('div');row.className='game-board-row';shell.parentElement.insertBefore(row,shell);row.appendChild(shell)}
  if(!panel){panel=document.createElement('aside');panel.id='currentSynergyPanel';panel.className='current-synergy-panel';row.insertBefore(panel,shell)}
- panel.innerHTML=`<span class="current-synergy-title">현재 시너지</span>${synergySummary('A')}`;
+ panel.innerHTML=`<span class="current-synergy-title">현재 시너지</span>${synergySummary('A')}`;bindSynergyTooltips(panel);
 }
 function rolePlacementColumns(role){
  if(role==='탱커')return [2];
@@ -466,15 +467,45 @@ function rosterCard(team,r){
    <span class="impl">${statusLabel(r)}</span>
  </button>`;
 }
+const SYNERGY_EFFECT_TEXT={
+ "현우정신":()=>`전열에 현우 혼자 배치 시 현우 최대 HP +5%, DEF +10%.`,
+ "파자마":t=>t>=3?`첫 5초부터 5초마다 무작위 적 1명을 1초 수면. 수면 해제 시 공격자 AMP 200% 추가 피해.`:`첫 5초부터 5초마다 무작위 적 1명을 1초 수면. 수면 해제 시 공격자 AMP 100% 추가 피해.`,
+ "바니걸":t=>t>=3?`바니걸 기본 공격 시 40% 확률로 적응형 능력치 75% 추가 피해.`:`바니걸 기본 공격 시 20% 확률로 적응형 능력치 50% 추가 피해.`,
+ "수영복":t=>t>=3?`수영복 기본 공격 공유 15회마다 적 전체에 각 대상 최대 HP 5% 고정 피해.`:`수영복 기본 공격 공유 20회마다 적 전체에 각 대상 최대 HP 3% 고정 피해.`,
+ "마츠리":t=>t>=3?`적 처치 시 전 아군이 10초간 ATK/AMP +30%, 최대 HP +30%. 재발동 시 지속시간 갱신.`:`적 처치 시 전 아군이 5초간 ATK/AMP +15%, 최대 HP +15%. 재발동 시 지속시간 갱신.`,
+ "프리즌":t=>t>=3?`프리즌 실험체의 피해 적중마다 감옥 +1. 8중첩 시 1.5초 행동 불능. 프리즌 실험체가 받는 행동 불능 지속시간 50% 감소.`:`프리즌 실험체의 피해 적중마다 감옥 +1. 8중첩 시 1초 행동 불능. 프리즌 실험체가 받는 행동 불능 지속시간 50% 감소.`,
+ "군악대":t=>t>=2?`아군이 회복되면 해당 아군이 10초간 ATK/AMP +20%, AS +20%. 중첩 없이 지속시간 갱신.`:`아군이 회복되면 해당 아군이 5초간 ATK/AMP +10%, AS +10%. 중첩 없이 지속시간 갱신.`,
+ "새해":t=>({1:`전투 시작 시 아군 전체 최대 HP +5%, DEF +10. 피격 10회 후 제거.`,2:`전투 시작 시 아군 전체 최대 HP +10%, DEF +20. 피격 20회 후 제거.`,3:`전투 시작 시 아군 전체 최대 HP +15%, DEF +25. 피격 30회 후 제거.`}[Math.min(3,t)]),
+ "악마사냥꾼":t=>t>=3?`악마사냥꾼의 기본 공격/스킬 적중 시 주 능력치 30% 추가 피해.`:`악마사냥꾼의 기본 공격/스킬 적중 시 주 능력치 15% 추가 피해.`,
+ "메이드":t=>t>=3?`메이드 기본 공격마다 클리닝 +15. 누적에 따라 아군 DEF가 최대 +15, 200 도달 시 아군 전체 최대 HP 12% 회복.`:`메이드 기본 공격마다 클리닝 +10. 누적에 따라 아군 DEF가 최대 +10, 200 도달 시 아군 전체 최대 HP 10% 회복.`,
+ "애증":()=>`케네스가 전장에 존재하면 가넷 AMP/AS +30%, 최대 HP/DEF +20%.`,
+ "치유의 노래":()=>`샬럿의 치유의 빛 발동 시 아군 전체를 샬럿 현재 AMP의 70%만큼 추가 회복.`,
+ "에레보스":()=>`현재 효과 미정.`,
+ "전사":()=>`중열 또는 전열 배치 시 주 능력치 +15%, AS +10%, DEF +10, 최대 HP +10%.`,
+ "탱커":()=>`전열 배치 시 DEF +20, 최대 HP +20%, AS +10%.`,
+ "원거리 평타":()=>`후열 또는 중열 배치 시 ATK +20%, AS +20%.`,
+ "원거리 스킬":()=>`후열 또는 중열 배치 시 AMP +25%, AS +10%.`,
+ "근거리 스킬":()=>`중열 또는 전열 배치 시 AMP +20%, AS +15%.`,
+ "암살자":()=>`배치와 무관하게 활성. 적 후열/중열 대상 공격 시 피해 +30%.`,
+ "서포터":()=>`배치와 무관하게 활성. 서포터 1명당 아군 전체 주 능력치/AS/최대 HP +5%.`
+};
+function synergyEffectText(name,tier=1){const f=SYNERGY_EFFECT_TEXT[name];return f?f(Math.max(1,+tier||1)):"현재 효과 설명 없음."}
+function synergyChip(name,label,tier=1,cls=""){return `<span class="synergy-tip-chip ${cls}" data-synergy-name="${esc(name)}" data-synergy-tier="${Math.max(1,+tier||1)}">${label}</span>`}
+function ensureSynergyCursorTip(){let t=document.querySelector("#synergyCursorTip");if(t)return t;t=document.createElement("div");t.id="synergyCursorTip";document.body.appendChild(t);return t}
+function positionSynergyCursorTip(x,y){const t=ensureSynergyCursorTip(),p=10,o=14;let l=x+o,top=y+o;t.style.left=l+"px";t.style.top=top+"px";const r=t.getBoundingClientRect();if(r.right>innerWidth-p)l=Math.max(p,x-r.width-o);if(r.bottom>innerHeight-p)top=Math.max(p,y-r.height-o);t.style.left=Math.round(l)+"px";t.style.top=Math.round(top)+"px"}
+function showSynergyCursorTip(c,x,y){const n=c.dataset.synergyName,tier=+c.dataset.synergyTier||1,t=ensureSynergyCursorTip();t.innerHTML=`<b>${esc(n)}${n==="현우정신"?"":` · ${tier}단계`}</b><small>${esc(synergyEffectText(n,tier))}</small>`;t.classList.add("show");positionSynergyCursorTip(x,y)}
+function hideSynergyCursorTip(){document.querySelector("#synergyCursorTip")?.classList.remove("show")}
+function bindSynergyTooltips(root=document){root.querySelectorAll?.(".synergy-tip-chip").forEach(c=>{if(c.dataset.tipBound)return;c.dataset.tipBound="1";c.addEventListener("pointerenter",e=>{if(e.pointerType!=="touch")showSynergyCursorTip(c,e.clientX,e.clientY)});c.addEventListener("pointermove",e=>{if(e.pointerType!=="touch"&&document.querySelector("#synergyCursorTip.show"))positionSynergyCursorTip(e.clientX,e.clientY)});c.addEventListener("pointerleave",e=>{if(e.pointerType!=="touch")hideSynergyCursorTip()});c.addEventListener("pointerup",e=>{if(e.pointerType==="touch"){e.preventDefault();e.stopPropagation();showSynergyCursorTip(c,e.clientX,e.clientY)}})})}
+document.addEventListener("pointerdown",e=>{if(!e.target.closest?.(".synergy-tip-chip"))hideSynergyCursorTip()});
 function synergySummary(team){
  const rs=[...new Map(teams[team].map(e=>byId[e.characterId]).filter(Boolean).map(r=>[r.id,r])).values()],count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
  const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
  const hy=teams[team].find(e=>e.characterId==='hyunwoo'),hyOn=!!hy&&hy.x===2&&!teams[team].some(e=>e!==hy&&e.x===2);
  const parts=[];
- if(hy)parts.push(`<span class="${hyOn?'synergy-on':'synergy-off'}">현우정신 ${hyOn?'1단계 ON':'1 · 미발동'}</span>`);
- parts.push(...names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return `<span class="${tier?"synergy-on":"synergy-off"}">${label}</span>`}).filter(Boolean));
+ if(hy)parts.push(synergyChip("현우정신",`현우정신 ${hyOn?'1단계 ON':'1 · 미발동'}`,1,hyOn?'synergy-on':'synergy-off'));
+ parts.push(...names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return synergyChip(n,label,Math.max(1,tier||c),tier?"synergy-on":"synergy-off")}).filter(Boolean));
  const roles=live?.roles||teams[team].map(e=>{const r=byId[e.characterId];if(!r)return null;const d=e.x,role=r.role,active=(role==='전사'||role==='근거리 스킬')?d>=1:role==='탱커'?d===2:(role==='원거리 평타'||role==='원거리 스킬')?d<=1:(role==='암살자'||role==='서포터')?true:null;return{name:r.name,role,active}}).filter(Boolean);
- return `<div class="synergy-strip">${parts.length?parts.join(""):"<em>소속 없음</em>"}<i></i>${roles.map(x=>`<span class="role-chip ${x.active===false?"synergy-off":""}">${esc(x.role)}${x.active===true?" ON":x.active===false?" OFF":""}</span>`).join("")}</div>`
+ return `<div class="synergy-strip">${parts.length?parts.join(""):"<em>소속 없음</em>"}<i></i>${roles.map(x=>synergyChip(x.role,`${esc(x.role)}${x.active===true?" ON":x.active===false?" OFF":""}`,1,`role-chip ${x.active===false?"synergy-off":""}`)).join("")}</div>`
 }
 function renderTeams(){
  for(const team of ["A","B"]){
@@ -505,6 +536,7 @@ function renderTeams(){
    teams[team][i]=updated;reset();
   });
  }
+ bindSynergyTooltips(document);hideSynergyCursorTip();
  for(const id of ["masteryA","masteryB","moveInterval","seed","fixedSeed","batch"])$("#"+id).disabled=running;
 }
 
