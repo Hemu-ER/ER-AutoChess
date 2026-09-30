@@ -4,6 +4,11 @@ const {CombatEngine,DT,coefficients:combatCoefficients={}}=ERCombat;
 const $=s=>document.querySelector(s),board=$("#board"),expandedMeters=new Set(),expandedSkillDetails=new Set();
 let teams={A:[],B:[]},battle=null,units=[],running=false,paused=false,time=0;
 let speed=1,last=0,accumulator=0,frame=null;
+
+// Round Mode v1: 기존 전투 테스트 모드와 분리된 1판 루프.
+const ROUND_PREP_SECONDS=30, ROUND_RESULT_SECONDS=4, PLAYER_START_HP=100;
+let roundTimer=null;
+const roundState={active:false,phase:"idle",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0};
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
 
 
@@ -136,6 +141,61 @@ function showError(e){$("#status").textContent=e.message}
 function statusLabel(r){return r.implemented?"SKILL READY":"SKILL PENDING"}
 function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affiliations:[r[field]]))]}
 
+function roundDamage(round){return Math.min(25,5+Math.floor((Math.max(1,round)-1)/3)*2)}
+function clearRoundTimer(){if(roundTimer!==null){clearInterval(roundTimer);roundTimer=null}}
+function ensureRoundUI(){
+ if(document.querySelector("#roundModePanel"))return;
+ const style=document.createElement("style");style.textContent=`
+ #roundModePanel{margin:12px 0;padding:12px 14px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:8px}
+ #roundModePanel .round-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}#roundModePanel .round-top b{font-size:1.05rem}
+ #roundModePanel .round-hp{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.round-player{display:grid;gap:3px}.round-player:last-child{text-align:right}
+ #roundModePanel .round-hpbar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.round-hpbar i{display:block;height:100%;background:currentColor;transition:width .25s ease}
+ #roundModePanel .round-actions{display:flex;gap:8px;flex-wrap:wrap}.round-btn{padding:.42rem .75rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.round-btn:hover{background:rgba(255,255,255,.13)}
+ #roundModePanel .round-note{opacity:.72;font-size:.78rem}`;document.head.appendChild(style);
+ const panel=document.createElement("section");panel.id="roundModePanel";
+ const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);renderRoundUI();
+}
+function phaseLabel(){return {idle:"대기",prep:"준비",combat:"전투",result:"결과",finished:"게임 종료"}[roundState.phase]||roundState.phase}
+function renderRoundUI(){
+ const p=document.querySelector("#roundModePanel");if(!p)return;
+ const timer=(roundState.phase==="prep"||roundState.phase==="result")?` · ${Math.max(0,Math.ceil(roundState.remaining))}초`:"";
+ p.innerHTML=`<div class="round-top"><b>ROUND ${roundState.round}</b><span>${phaseLabel()}${timer}</span><span style="margin-left:auto">이번 라운드 기본 피해 ${roundDamage(roundState.round)}</span></div>
+ <div class="round-hp"><div class="round-player"><strong>PLAYER A · ${roundState.hp.A} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><b>VS</b><div class="round-player"><strong>PLAYER B · ${roundState.hp.B} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.B}%"></i></div></div></div>
+ <div class="round-actions"><button class="round-btn" id="roundToggle">${roundState.active?"라운드 모드 종료":"라운드 모드 시작"}</button>${roundState.active&&roundState.phase==="prep"?'<button class="round-btn" id="roundSkip">준비 완료 · 바로 전투</button>':""}${roundState.phase==="finished"?'<button class="round-btn" id="roundRestart">새 게임</button>':""}</div>
+ <div class="round-note">v1 · 시작 HP 100 · 준비 30초 · 전투 최대 60초 · 무승부는 피해 없음 · 기물 수와 무관하게 라운드 기본 피해만 적용</div>`;
+ p.querySelector("#roundToggle")?.addEventListener("click",()=>roundState.active?stopRoundMode():startRoundMode());
+ p.querySelector("#roundSkip")?.addEventListener("click",()=>beginRoundCombat());
+ p.querySelector("#roundRestart")?.addEventListener("click",()=>startRoundMode());
+}
+function startRoundMode(){
+ clearRoundTimer();if(running||battle)reset();
+ Object.assign(roundState,{active:true,phase:"prep",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0});
+ $("#status").textContent="ROUND 1 · 준비 단계";renderRoundUI();startPrepTimer();
+}
+function stopRoundMode(){
+ clearRoundTimer();roundState.active=false;roundState.phase="idle";roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $("#status").textContent="배치 단계";renderRoundUI();
+}
+function startPrepTimer(){
+ clearRoundTimer();roundState.phase="prep";roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();
+ roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=="prep"){clearRoundTimer();return}roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0)beginRoundCombat()},1000);
+}
+function beginRoundCombat(){
+ if(!roundState.active||roundState.phase!=="prep")return;
+ if(teams.A.length===0||teams.B.length===0){$("#status").textContent="양 팀에 최소 1명씩 편성해야 해.";return}
+ clearRoundTimer();roundState.phase="combat";roundState.remaining=0;renderRoundUI();
+ if(!start()){roundState.phase="prep";startPrepTimer();return}
+ $("#status").textContent=`ROUND ${roundState.round} · 전투 중`;
+}
+function finishRound(outcome){
+ if(!roundState.active||roundState.phase!=="combat")return;
+ roundState.phase="result";roundState.lastOutcome=outcome;const dmg=roundDamage(roundState.round);roundState.lastDamage=0;
+ if(outcome==="A팀 승리"){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}
+ else if(outcome==="B팀 승리"){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}
+ const resultText=outcome==="무승부"?"무승부 · 플레이어 피해 없음":`${outcome} · ${outcome==="A팀 승리"?"B":"A"} -${dmg} HP`;
+ $("#status").textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();
+ if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase="finished";roundState.active=false;clearRoundTimer();$("#status").textContent=`게임 종료 · PLAYER ${roundState.hp.A>0?"A":"B"} 승리`;renderRoundUI();return}
+ clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;reset();roundState.active=true;roundState.phase="prep";$("#status").textContent=`ROUND ${roundState.round} · 준비 단계`;startPrepTimer()}},1000);
+}
 function reset(){
  if(frame!==null)cancelAnimationFrame(frame); frame=null;
  running=false;paused=false;accumulator=0;time=0;battle=null;
@@ -283,7 +343,7 @@ function sync(){
  const result=battle.getResult();units=result.units;time=result.time;
  for(const event of battle.drainEvents())if(event.type==="log"){const line=document.createElement("div");line.innerHTML=`[${event.time.toFixed(1)}] ${event.message}`;$("#log").prepend(line)}
  $("#clock").textContent=time.toFixed(1)+"s";
- if(result.battleOver){running=false;$("#status").textContent=result.outcome;renderTeams()}
+ if(result.battleOver){running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
  render();meters();
 }
 function start(){
@@ -297,8 +357,8 @@ function loop(now){
  frame=running?requestAnimationFrame(loop):null;
 }
 function batch(){try{const counts={"A팀 승리":0,"B팀 승리":0,"무승부":0},base=+$("#seed").value;for(let i=0;i<100;i++)counts[new CombatEngine(config(base+i)).run().outcome]++;$("#batchResult").textContent=`A팀 ${counts["A팀 승리"]}% · B팀 ${counts["B팀 승리"]}% · 무승부 ${counts["무승부"]}%`}catch(e){showError(e)}}
-$("#start").onclick=start;$("#pause").onclick=()=>{if(!running)return;paused=!paused;$("#pause").textContent=paused?"▶ 재개":"Ⅱ 일시정지"};
+$("#start").onclick=()=>{if(roundState.active){$("#status").textContent="라운드 모드에서는 준비 완료 버튼으로 전투를 시작해.";return}start()};$("#pause").onclick=()=>{if(!running)return;paused=!paused;$("#pause").textContent=paused?"▶ 재개":"Ⅱ 일시정지"};
 $("#step").onclick=()=>{if(!running&&!start())return;paused=true;$("#pause").textContent="▶ 재개";battle.step();battle.step();sync()};
 $("#reset").onclick=reset;$("#speed").onchange=e=>speed=+e.target.value;$("#batch").onclick=batch;
 for(const id of ["masteryA","masteryB","moveInterval","seed"])$("#"+id).onchange=reset;
-buildBoard();ensureInspector();reset();
+buildBoard();ensureInspector();ensureRoundUI();reset();renderRoundUI();
