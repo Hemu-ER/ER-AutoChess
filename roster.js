@@ -12,7 +12,7 @@ const roster=[
     "baseStats": {
       "hp": 1080,
       "atk": 76,
-      "amp": 38,
+      "amp": 0,
       "range": 1,
       "def": 39,
       "as": 0.92
@@ -56,7 +56,7 @@ const roster=[
     "baseStats": {
       "hp": 1030,
       "atk": 78,
-      "amp": 42,
+      "amp": 0,
       "range": 1,
       "def": 36,
       "as": 0.922
@@ -78,7 +78,7 @@ const roster=[
     "baseStats": {
       "hp": 1110,
       "atk": 72,
-      "amp": 36,
+      "amp": 0,
       "range": 1,
       "def": 42,
       "as": 0.84
@@ -100,7 +100,7 @@ const roster=[
     "baseStats": {
       "hp": 735,
       "atk": 76,
-      "amp": 24,
+      "amp": 0,
       "range": 3,
       "def": 18,
       "as": 1.08
@@ -189,7 +189,7 @@ const roster=[
     "baseStats": {
       "hp": 965,
       "atk": 80,
-      "amp": 34,
+      "amp": 0,
       "range": 1,
       "def": 31,
       "as": 0.928
@@ -211,7 +211,7 @@ const roster=[
     "baseStats": {
       "hp": 1260,
       "atk": 60,
-      "amp": 24,
+      "amp": 0,
       "range": 1,
       "def": 53,
       "as": 0.75
@@ -233,7 +233,7 @@ const roster=[
     "baseStats": {
       "hp": 925,
       "atk": 79,
-      "amp": 32,
+      "amp": 0,
       "range": 1,
       "def": 30,
       "as": 0.92
@@ -277,7 +277,7 @@ const roster=[
     "baseStats": {
       "hp": 1060,
       "atk": 70,
-      "amp": 34,
+      "amp": 0,
       "range": 1,
       "def": 38,
       "as": 0.88
@@ -322,7 +322,7 @@ const roster=[
     "baseStats": {
       "hp": 1015,
       "atk": 73,
-      "amp": 32,
+      "amp": 0,
       "range": 1,
       "def": 34,
       "as": 0.88
@@ -476,7 +476,7 @@ const roster=[
     "baseStats": {
       "hp": 720,
       "atk": 64,
-      "amp": 22,
+      "amp": 0,
       "range": 3,
       "def": 17,
       "as": 1.04
@@ -498,7 +498,7 @@ const roster=[
     "baseStats": {
       "hp": 750,
       "atk": 72,
-      "amp": 20,
+      "amp": 0,
       "range": 3,
       "def": 18,
       "as": 1.02
@@ -520,7 +520,7 @@ const roster=[
     "baseStats": {
       "hp": 690,
       "atk": 65,
-      "amp": 20,
+      "amp": 0,
       "range": 3,
       "def": 16,
       "as": 0.924
@@ -586,7 +586,7 @@ const roster=[
     "baseStats": {
       "hp": 730,
       "atk": 67,
-      "amp": 20,
+      "amp": 0,
       "range": 3,
       "def": 17,
       "as": 0.924
@@ -608,7 +608,7 @@ const roster=[
     "baseStats": {
       "hp": 780,
       "atk": 58,
-      "amp": 18,
+      "amp": 0,
       "range": 2,
       "def": 22,
       "as": 0.72
@@ -630,7 +630,7 @@ const roster=[
     "baseStats": {
       "hp": 705,
       "atk": 59,
-      "amp": 18,
+      "amp": 0,
       "range": 3,
       "def": 16,
       "as": 0.78
@@ -706,16 +706,6 @@ const roster=[
     "asset": {
       "sd": "assets/characters/charlotte.png"
     }
-  }
-  ,{
-    "id":"wild_boar","name":"멧돼지","cost":0,"role":"야생동물","affiliations":[],
-    "baseStats":{"hp":620,"atk":46,"amp":0,"range":1,"def":18,"as":0.72},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
-  },
-  {
-    "id":"wild_wolf","name":"들개","cost":0,"role":"야생동물","affiliations":[],
-    "baseStats":{"hp":500,"atk":54,"amp":0,"range":1,"def":12,"as":0.88},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
   }
 ];
 function freeze(v){if(v&&typeof v==='object'){Object.freeze(v);for(const x of Object.values(v))freeze(x)}return v}
