@@ -10,6 +10,10 @@ let appMode=null; // null=start, "game"=실제 게임 화면, "test"=전투 테�
 const ROUND_PREP_SECONDS=30, ROUND_RESULT_SECONDS=4, PLAYER_START_HP=100;
 let roundTimer=null;
 const roundState={active:false,phase:"idle",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0};
+const gameState={credits:0,shop:[],owned:[],items:[],nextOwnedId:1,message:"",roundIncome:5};
+const GAME_TEMP={startCredits:5,rerollCost:2,shopSize:5,benchSize:8};
+const BASIC_ITEMS=["철판","가죽","배터리","옷감","고철","오일"];
+const playableRoster=()=>roster.filter(r=>!r.pveOnly&&r.cost>=1&&r.cost<=3);
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
 
 
@@ -144,95 +148,48 @@ function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affi
 
 function roundDamage(round){return Math.min(25,5+Math.floor((Math.max(1,round)-1)/3)*2)}
 function clearRoundTimer(){if(roundTimer!==null){clearInterval(roundTimer);roundTimer=null}}
+function randomPlayable(){const pool=playableRoster();return pool[Math.floor(Math.random()*pool.length)]}
+function rollShop(){gameState.shop=Array.from({length:GAME_TEMP.shopSize},()=>randomPlayable().id)}
+function firstFreeCell(){for(const x of [2,1,0])for(const y of [1,0,2])if(!teams.A.some(e=>e.x===x&&e.y===y))return{x,y};return null}
+function syncOwnedBoard(){for(const o of gameState.owned){const e=teams.A.find(e=>e.ownedId===o.uid);o.location=e?'board':'bench'}renderGameEconomy()}
+function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench'};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}return o}
+function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;addOwned(id,false);gameState.shop[i]=null;gameState.message=`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
+function rerollShop(){if(roundState.phase!=='prep')return;if(gameState.credits<GAME_TEMP.rerollCost){gameState.message='리롤할 크레딧이 부족해.';renderGameEconomy();return}gameState.credits-=GAME_TEMP.rerollCost;rollShop();gameState.message='상점을 새로고침했어.';renderGameEconomy()}
+function deployOwned(uid){if(roundState.phase!=='prep'||teams.A.length>=3)return;const o=gameState.owned.find(x=>x.uid===uid);if(!o||o.location!=='bench')return;const pos=firstFreeCell();if(!pos)return;teams.A.push({characterId:o.characterId,star:o.star,...pos,ownedId:o.uid});o.location='board';reset();renderGameEconomy()}
+function benchOwned(uid){if(roundState.phase!=='prep')return;const i=teams.A.findIndex(e=>e.ownedId===uid);if(i<0)return;teams.A.splice(i,1);const o=gameState.owned.find(x=>x.uid===uid);if(o)o.location='bench';reset();renderGameEconomy()}
+function setupWildRound(){teams.B=[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_wolf',star:1,x:1,y:0}];}
+function setupRoundOpponent(){if(roundState.round===1)setupWildRound();else teams.B=[{characterId:'marcus',star:1,x:2,y:1},{characterId:'rio',star:1,x:0,y:0},{characterId:'cathy',star:1,x:1,y:2}]}
 function ensureAppShell(){
  if(document.querySelector("#appModeStart"))return;
  const style=document.createElement("style");style.id="appModeStyle";style.textContent=`
  body.mode-start{overflow:hidden}
- #appModeStart{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(8,10,16,.96);color:#f5f7fb}
- #appModeStart[hidden]{display:none}
+ #appModeStart{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(8,10,16,.96);color:#f5f7fb}#appModeStart[hidden]{display:none}
  .mode-start-inner{width:min(760px,100%);display:grid;gap:22px;text-align:center}.mode-brand small{letter-spacing:.28em;opacity:.6}.mode-brand h1{margin:.3rem 0;font-size:clamp(2rem,6vw,4.4rem);letter-spacing:-.04em}.mode-brand p{margin:0;opacity:.68}
  .mode-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.mode-card{min-height:190px;padding:22px;text-align:left;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(255,255,255,.055);color:inherit;cursor:pointer}.mode-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}.mode-card b{display:block;font-size:1.35rem;margin-bottom:.45rem}.mode-card span{display:block;line-height:1.55;opacity:.7}.mode-card em{display:inline-block;margin-top:1rem;font-style:normal;font-size:.75rem;letter-spacing:.08em;opacity:.5}
- #devExit{position:fixed;right:12px;bottom:12px;z-index:9000;padding:7px 10px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(0,0,0,.58);color:rgba(255,255,255,.6);font:inherit;font-size:.72rem;cursor:pointer}#devExit[hidden]{display:none}#devExit:hover{color:white;border-color:rgba(255,255,255,.35)}
- body[data-app-mode="test"] #roundModePanel{display:none!important}
- body[data-app-mode="game"] #teamA,body[data-app-mode="game"] #teamB{display:none!important}
- body[data-app-mode="game"] .dev-control-hidden{display:none!important}
- body[data-app-mode="game"] #roundModePanel{display:grid!important}
- @media(max-width:620px){.mode-cards{grid-template-columns:1fr}.mode-card{min-height:145px}}
- `;document.head.appendChild(style);
- const start=document.createElement("section");start.id="appModeStart";start.innerHTML=`<div class="mode-start-inner"><div class="mode-brand"><small>ETERNAL RETURN AUTO CHESS</small><h1>이리체스</h1><p>플레이할 모드를 선택해.</p></div><div class="mode-cards"><button type="button" class="mode-card" data-enter-mode="game"><b>게임 플레이</b><span>실제 멀티플레이에서 사용할 게임 화면.<br>라운드 · 플레이어 체력 · 준비 시간 · 전투 흐름을 확인해.</span><em>GAME CLIENT · ROUND v1</em></button><button type="button" class="mode-card" data-enter-mode="test"><b>전투 테스트</b><span>실험체 · 성급 · 배치 · 시드 등을 직접 설정하고 전투와 QA를 실행해.</span><em>DEVELOPER LAB</em></button></div></div>`;
- document.body.appendChild(start);
+ #devExit{position:fixed;right:12px;bottom:12px;z-index:9000;padding:7px 10px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(0,0,0,.58);color:rgba(255,255,255,.6);font:inherit;font-size:.72rem;cursor:pointer}#devExit[hidden]{display:none}
+ body[data-app-mode="test"] #roundModePanel,body[data-app-mode="test"] #gameEconomyPanel{display:none!important}body[data-app-mode="game"] #teamA,body[data-app-mode="game"] #teamB{display:none!important}body[data-app-mode="game"] .dev-control-hidden{display:none!important}
+ @media(max-width:620px){.mode-cards{grid-template-columns:1fr}.mode-card{min-height:145px}}`;document.head.appendChild(style);
+ const start=document.createElement("section");start.id="appModeStart";start.innerHTML=`<div class="mode-start-inner"><div class="mode-brand"><small>ETERNAL RETURN AUTO CHESS</small><h1>이리체스</h1><p>플레이할 모드를 선택해.</p></div><div class="mode-cards"><button type="button" class="mode-card" data-enter-mode="game"><b>게임 플레이</b><span>게임 시작부터 라운드를 진행하는 프로토타입.</span><em>GAME CLIENT · ROUND 1</em></button><button type="button" class="mode-card" data-enter-mode="test"><b>전투 테스트</b><span>실험체 · 성급 · 배치 · 시드와 QA를 직접 설정해.</span><em>DEVELOPER LAB</em></button></div></div>`;document.body.appendChild(start);
  const exit=document.createElement("button");exit.type="button";exit.id="devExit";exit.hidden=true;exit.textContent="DEV · 시작 화면으로";document.body.appendChild(exit);
- start.querySelectorAll("[data-enter-mode]").forEach(b=>b.addEventListener("click",()=>enterAppMode(b.dataset.enterMode)));
- exit.addEventListener("click",returnToModeStart);
- // 실제 게임 화면에서 개발용 조작만 숨긴다. 전투 테스트에서는 원래 UI를 그대로 유지.
- ["start","pause","step","reset","batch","speed","seed","fixedSeed","masteryA","masteryB","moveInterval"].forEach(id=>{const el=document.getElementById(id);if(!el)return;(el.closest("label")||el).classList.add("dev-control-hidden")});
- document.body.classList.add("mode-start");
+ start.querySelectorAll("[data-enter-mode]").forEach(b=>b.addEventListener("click",()=>enterAppMode(b.dataset.enterMode)));exit.addEventListener("click",returnToModeStart);
+ ["start","pause","step","reset","batch","speed","seed","fixedSeed","masteryA","masteryB","moveInterval"].forEach(id=>{const el=document.getElementById(id);if(!el)return;(el.closest("label")||el).classList.add("dev-control-hidden")});document.body.classList.add("mode-start");
 }
-function ensureGamePreviewSquads(){
- if(!teams.A.length){teams.A=[{characterId:"charlotte",star:1,x:2,y:1},{characterId:"nadine",star:1,x:0,y:0},{characterId:"johann",star:1,x:1,y:2}]}
- if(!teams.B.length){teams.B=[{characterId:"marcus",star:1,x:2,y:1},{characterId:"rio",star:1,x:0,y:0},{characterId:"cathy",star:1,x:1,y:2}]}
- reset();
-}
-function enterAppMode(mode){
- appMode=mode;document.body.dataset.appMode=mode;document.body.classList.remove("mode-start");document.querySelector("#appModeStart").hidden=true;document.querySelector("#devExit").hidden=false;
- if(mode==="game"){ensureGamePreviewSquads();startRoundMode();}else{stopRoundMode();}
-}
-function returnToModeStart(){
- clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase="idle";appMode=null;delete document.body.dataset.appMode;document.body.classList.add("mode-start");document.querySelector("#appModeStart").hidden=false;document.querySelector("#devExit").hidden=true;renderRoundUI();
-}
+function enterAppMode(mode){appMode=mode;document.body.dataset.appMode=mode;document.body.classList.remove('mode-start');$('#appModeStart').hidden=true;$('#devExit').hidden=false;if(mode==='game')startRoundMode();else stopRoundMode()}
+function returnToModeStart(){clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase='idle';appMode=null;delete document.body.dataset.appMode;document.body.classList.add('mode-start');$('#appModeStart').hidden=false;$('#devExit').hidden=true;renderRoundUI();renderGameEconomy()}
 function ensureRoundUI(){
- if(document.querySelector("#roundModePanel"))return;
- const style=document.createElement("style");style.textContent=`
- #roundModePanel{margin:12px 0;padding:14px 16px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:10px}
- #roundModePanel .round-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}#roundModePanel .round-top b{font-size:1.05rem}
- #roundModePanel .round-hp{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.round-player{display:grid;gap:3px}.round-player:last-child{text-align:right}
- #roundModePanel .round-hpbar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.round-hpbar i{display:block;height:100%;background:currentColor;transition:width .25s ease}
- #roundModePanel .round-actions{display:flex;gap:8px;flex-wrap:wrap}.round-btn{padding:.5rem .85rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.round-btn:hover{background:rgba(255,255,255,.13)}
- #roundModePanel .round-note{opacity:.68;font-size:.78rem}`;document.head.appendChild(style);
- const panel=document.createElement("section");panel.id="roundModePanel";
- const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);renderRoundUI();
+ if(document.querySelector('#roundModePanel'))return;const style=document.createElement('style');style.textContent=`
+ #roundModePanel,#gameEconomyPanel{margin:12px 0;padding:14px 16px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:10px}.round-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.round-hp{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.round-player:last-child{text-align:right}.round-hpbar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.round-hpbar i{display:block;height:100%;background:currentColor}.round-actions,.shop-row,.bench-row,.board-roster,.inventory-row{display:flex;gap:8px;flex-wrap:wrap}.round-btn,.econ-btn{padding:.48rem .75rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.econ-card{min-width:116px;padding:8px;border:1px solid rgba(255,255,255,.13);border-radius:7px;display:grid;gap:5px}.econ-card small,.round-note,.temp-note{opacity:.65;font-size:.76rem}.econ-card button{width:100%}.econ-card.empty{opacity:.35}.econ-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.econ-head strong{font-size:1.05rem}.econ-head span:last-child{margin-left:auto}.econ-section h4{margin:.2rem 0 .45rem}.game-msg{min-height:1.2em;font-size:.82rem}`;document.head.appendChild(style);
+ const panel=document.createElement('section');panel.id='roundModePanel';const eco=document.createElement('section');eco.id='gameEconomyPanel';const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);panel.insertAdjacentElement('afterend',eco);renderRoundUI();renderGameEconomy();
 }
-function phaseLabel(){return {idle:"대기",prep:"준비",combat:"전투",result:"결과",finished:"게임 종료"}[roundState.phase]||roundState.phase}
-function renderRoundUI(){
- const p=document.querySelector("#roundModePanel");if(!p)return;
- const timer=(roundState.phase==="prep"||roundState.phase==="result")?` · ${Math.max(0,Math.ceil(roundState.remaining))}초`:"";
- const opponent=roundState.phase==="prep"?"다음 상대 · PLAYER B":"PLAYER B";
- p.innerHTML=`<div class="round-top"><b>ROUND ${roundState.round}</b><span>${phaseLabel()}${timer}</span><span style="margin-left:auto">라운드 피해 ${roundDamage(roundState.round)}</span></div>
- <div class="round-hp"><div class="round-player"><strong>나 · ${roundState.hp.A} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><b>VS</b><div class="round-player"><strong>${opponent} · ${roundState.hp.B} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.B}%"></i></div></div></div>
- <div class="round-actions">${roundState.active&&roundState.phase==="prep"?'<button class="round-btn" id="roundSkip">준비 완료</button>':""}${roundState.phase==="finished"?'<button class="round-btn" id="roundRestart">새 게임</button>':""}</div>
- <div class="round-note">GAME CLIENT PREVIEW · 시작 HP 100 · 준비 30초 · 전투 최대 60초 · 무승부 피해 없음</div>`;
- p.querySelector("#roundSkip")?.addEventListener("click",()=>beginRoundCombat());
- p.querySelector("#roundRestart")?.addEventListener("click",()=>startRoundMode());
-}
-function startRoundMode(){
- clearRoundTimer();if(running||battle)reset();
- Object.assign(roundState,{active:true,phase:"prep",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0});
- $("#status").textContent="ROUND 1 · 준비 단계";renderRoundUI();startPrepTimer();
-}
-function stopRoundMode(){
- clearRoundTimer();roundState.active=false;roundState.phase="idle";roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $("#status").textContent="배치 단계";renderRoundUI();
-}
-function startPrepTimer(){
- clearRoundTimer();roundState.phase="prep";roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();
- roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=="prep"){clearRoundTimer();return}roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0)beginRoundCombat()},1000);
-}
-function beginRoundCombat(){
- if(!roundState.active||roundState.phase!=="prep")return;
- if(teams.A.length===0||teams.B.length===0){$("#status").textContent="양 팀에 최소 1명씩 편성해야 해.";return}
- clearRoundTimer();roundState.phase="combat";roundState.remaining=0;renderRoundUI();
- if(!start()){roundState.phase="prep";startPrepTimer();return}
- $("#status").textContent=`ROUND ${roundState.round} · 전투 중`;
-}
-function finishRound(outcome){
- if(!roundState.active||roundState.phase!=="combat")return;
- roundState.phase="result";roundState.lastOutcome=outcome;const dmg=roundDamage(roundState.round);roundState.lastDamage=0;
- if(outcome==="A팀 승리"){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}
- else if(outcome==="B팀 승리"){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}
- const resultText=outcome==="무승부"?"무승부 · 플레이어 피해 없음":`${outcome} · ${outcome==="A팀 승리"?"B":"A"} -${dmg} HP`;
- $("#status").textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();
- if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase="finished";roundState.active=false;clearRoundTimer();$("#status").textContent=`게임 종료 · PLAYER ${roundState.hp.A>0?"A":"B"} 승리`;renderRoundUI();return}
- clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;reset();roundState.active=true;roundState.phase="prep";$("#status").textContent=`ROUND ${roundState.round} · 준비 단계`;startPrepTimer()}},1000);
-}
+function phaseLabel(){return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
+function renderRoundUI(){const p=$('#roundModePanel');if(!p)return;const timer=(roundState.phase==='prep'||roundState.phase==='result')?` · ${Math.max(0,Math.ceil(roundState.remaining))}초`:'';const opp=roundState.round===1?'야생동물':`PLAYER B`;p.innerHTML=`<div class="round-top"><b>ROUND ${roundState.round}</b><span>${phaseLabel()}${timer}</span><span style="margin-left:auto">${roundState.round===1?'파밍 라운드':'PvP 준비'}</span></div><div class="round-hp"><div class="round-player"><strong>나 · ${roundState.hp.A} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><b>VS</b><div class="round-player"><strong>${opp}${roundState.round===1?'':' · '+roundState.hp.B+' HP'}</strong><div class="round-hpbar"><i style="width:${roundState.round===1?100:roundState.hp.B}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>':''}</div><div class="round-note">${roundState.round===1?'1R 목표 · 편성 후 야생동물 처치 → 기본 아이템 획득 → 정산 → 2R':'2R 이후 PvP/매칭은 다음 구현 단계'}</div>`;p.querySelector('#roundSkip')?.addEventListener('click',beginRoundCombat)}
+function renderGameEconomy(){const p=$('#gameEconomyPanel');if(!p)return;if(appMode!=='game'){p.innerHTML='';return}const prep=roundState.phase==='prep';const shop=gameState.shop.map((id,i)=>{if(!id)return `<div class="econ-card empty">판매 완료</div>`;const r=byId[id];return `<div class="econ-card"><b>${esc(displayName(r))}</b><small>${r.cost}C · ${esc(r.role)}</small><button class="econ-btn" data-buy="${i}" ${prep?'':'disabled'}>구매 ${r.cost}C</button></div>`}).join('');const bench=gameState.owned.filter(o=>o.location==='bench').map(o=>{const r=byId[o.characterId];return `<div class="econ-card"><b>${esc(displayName(r))}</b><small>★${o.star} · 벤치</small><button class="econ-btn" data-deploy="${o.uid}" ${prep&&teams.A.length<3?'':'disabled'}>배치</button></div>`}).join('')||'<span class="temp-note">비어 있음</span>';const field=gameState.owned.filter(o=>o.location==='board').map(o=>{const r=byId[o.characterId];return `<div class="econ-card"><b>${esc(displayName(r))}</b><small>★${o.star} · 전장</small><button class="econ-btn" data-bench="${o.uid}" ${prep?'':'disabled'}>벤치로</button></div>`}).join('')||'<span class="temp-note">배치된 실험체 없음</span>';p.innerHTML=`<div class="econ-head"><strong>크레딧 ${gameState.credits}</strong><span>아이템 ${gameState.items.length?gameState.items.map(esc).join(' · '):'없음'}</span><span class="temp-note">경제 수치 임시</span></div><div class="econ-section"><h4>상점</h4><div class="shop-row">${shop}</div><button class="econ-btn" id="shopReroll" ${prep?'':'disabled'}>리롤 ${GAME_TEMP.rerollCost}C</button></div><div class="econ-section"><h4>전장 ${teams.A.length}/3</h4><div class="board-roster">${field}</div></div><div class="econ-section"><h4>벤치 ${gameState.owned.filter(o=>o.location==='bench').length}/${GAME_TEMP.benchSize}</h4><div class="bench-row">${bench}</div></div><div class="game-msg">${esc(gameState.message||'첫 실험체는 무료 지급. 상점에서 사고 배치한 뒤 준비 완료를 눌러.')}</div>`;p.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));p.querySelectorAll('[data-deploy]').forEach(b=>b.addEventListener('click',()=>deployOwned(+b.dataset.deploy)));p.querySelectorAll('[data-bench]').forEach(b=>b.addEventListener('click',()=>benchOwned(+b.dataset.bench)));p.querySelector('#shopReroll')?.addEventListener('click',rerollShop)}
+function startRoundMode(){clearRoundTimer();if(running||battle)reset();teams={A:[],B:[]};Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5});Object.assign(roundState,{active:true,phase:'prep',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:'',lastDamage:0});const first=randomPlayable();addOwned(first.id,true);rollShop();setupRoundOpponent();gameState.message=`첫 실험체 ${displayName(first)} 무료 지급`;reset();$('#status').textContent='ROUND 1 · 파밍 준비';renderRoundUI();renderGameEconomy();startPrepTimer()}
+function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
+function startPrepTimer(){clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0)beginRoundCombat()},1000)}
+function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';startPrepTimer();return}$('#status').textContent=`ROUND ${roundState.round} · ${roundState.round===1?'야생동물 전투':'전투'} 중`}
+function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];gameState.items.push(item);gameState.message=`야생동물 처치 · ${item} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';gameState.credits+=gameState.roundIncome;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${gameState.roundIncome}C`}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}gameState.credits+=gameState.roundIncome;resultText=`${outcome} · 정산 +${gameState.roundIncome}C`}$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;rollShop();setupRoundOpponent();reset();roundState.active=true;roundState.phase='prep';gameState.message=roundState.round===2?'ROUND 2 진입 · PvP 매칭은 아직 임시 AI 상대야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderGameEconomy();startPrepTimer()}},1000)}
+
 function reset(){
  if(frame!==null)cancelAnimationFrame(frame); frame=null;
  running=false;paused=false;accumulator=0;time=0;battle=null;
@@ -243,7 +200,7 @@ function reset(){
 
 function rosterFiltered(team){
  const f=filters[team];
- return roster.filter(r=>{
+ return roster.filter(r=>!r.pveOnly).filter(r=>{
   const text=(displayName(r)+" "+skinName(r)+" "+r.role+" "+r.affiliations.join(" ")).toLowerCase();
   return (!f.q||text.includes(f.q.toLowerCase())) &&
    (f.cost==="all"||r.cost===+f.cost) &&
@@ -336,7 +293,7 @@ function drop(e,c){
  const occupied=teams[u.team].find(e=>e!==entry&&e.x===x&&e.y===y);
  if(occupied){const ox=entry.x,oy=entry.y;Object.assign(entry,{x,y});Object.assign(occupied,{x:ox,y:oy});}
  else Object.assign(entry,{x,y});
- reset();
+ reset();if(appMode==="game")syncOwnedBoard();
 }
 function unitMarkup(u){
  const r=byId[u.characterId]||{name:u.name,role:u.role,implemented:true,asset:{}},hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
