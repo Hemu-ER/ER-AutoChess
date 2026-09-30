@@ -152,8 +152,29 @@ function randomPlayable(){const pool=playableRoster();return pool[Math.floor(Mat
 function rollShop(){gameState.shop=Array.from({length:GAME_TEMP.shopSize},()=>randomPlayable().id)}
 function firstFreeCell(){for(const x of [2,1,0])for(const y of [1,0,2])if(!teams.A.some(e=>e.x===x&&e.y===y))return{x,y};return null}
 function syncOwnedBoard(){for(const o of gameState.owned){const e=teams.A.find(e=>e.ownedId===o.uid);o.location=e?'board':'bench'}renderGameEconomy()}
-function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench'};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}return o}
-function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;addOwned(id,false);gameState.shop[i]=null;gameState.message=`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
+function mergeOwnedUnits(){
+ let merged=[];
+ for(let guard=0;guard<12;guard++){
+  let trio=null;
+  for(const star of [1,2]){
+   const groups=new Map();
+   for(const o of gameState.owned.filter(o=>o.star===star)){const k=o.characterId+'|'+star;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(o)}
+   trio=[...groups.values()].find(g=>g.length>=3);if(trio)break;
+  }
+  if(!trio)break;
+  trio=trio.slice(0,3);
+  const survivor=trio.find(o=>o.location==='board')||trio[0],consumed=trio.filter(o=>o!==survivor);
+  for(const o of consumed){const bi=teams.A.findIndex(e=>e.ownedId===o.uid);if(bi>=0)teams.A.splice(bi,1);const oi=gameState.owned.findIndex(x=>x.uid===o.uid);if(oi>=0)gameState.owned.splice(oi,1)}
+  survivor.star++;
+  const boardEntry=teams.A.find(e=>e.ownedId===survivor.uid);if(boardEntry)boardEntry.star=survivor.star;
+  merged.push(`${displayName(byId[survivor.characterId])} ${'★'.repeat(survivor.star)}`);
+ }
+ return merged;
+}
+function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench'};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}const merged=mergeOwnedUnits();return {unit:o,merged}}
+function purchaseCanMerge(characterId){return gameState.owned.filter(o=>o.characterId===characterId&&o.star===1).length>=2}
+
+function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(id)){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;const added=addOwned(id,false);gameState.shop[i]=null;gameState.message=added.merged.length?`${displayName(r)} 구매 · ${added.merged.join(' → ')} 합성!`:`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
 function rerollShop(){if(roundState.phase!=='prep')return;if(gameState.credits<GAME_TEMP.rerollCost){gameState.message='리롤할 크레딧이 부족해.';renderGameEconomy();return}gameState.credits-=GAME_TEMP.rerollCost;rollShop();gameState.message='상점을 새로고침했어.';renderGameEconomy()}
 function deployOwned(uid){if(roundState.phase!=='prep'||teams.A.length>=3)return;const o=gameState.owned.find(x=>x.uid===uid);if(!o||o.location!=='bench')return;const pos=firstFreeCell();if(!pos)return;teams.A.push({characterId:o.characterId,star:o.star,...pos,ownedId:o.uid});o.location='board';reset();renderGameEconomy()}
 function benchOwned(uid){if(roundState.phase!=='prep')return;const i=teams.A.findIndex(e=>e.ownedId===uid);if(i<0)return;teams.A.splice(i,1);const o=gameState.owned.find(x=>x.uid===uid);if(o)o.location='bench';reset();renderGameEconomy()}
@@ -200,6 +221,20 @@ function ensureRoundUI(){
  .credit-price,.credit-wallet{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.credit-price img{width:22px;height:16px;object-fit:contain}.credit-wallet img{width:34px;height:24px;object-fit:contain}.credit-wallet b{font-size:1.25rem}.reroll-btn,.mastery-buy{display:flex;align-items:center;justify-content:center;gap:7px}
  .dock-shop{align-items:stretch}.shop-card{position:relative;min-width:0;min-height:118px;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:8px;overflow:hidden;background:rgba(255,255,255,.055);color:inherit;cursor:pointer;text-align:left;display:grid;grid-template-rows:72px auto auto}.shop-card:disabled{cursor:default;opacity:.65}.shop-card:not(:disabled):hover,.shop-card:focus-visible{border-color:rgba(255,255,255,.42);background:rgba(255,255,255,.1)}.shop-portrait{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;background:rgba(0,0,0,.2)}.shop-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 18%}.shop-portrait.fallback{align-items:center;font-size:2rem;font-weight:800}.shop-name{padding:5px 7px 1px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shop-meta{padding:0 7px 6px;display:flex;align-items:center;justify-content:space-between;gap:5px}.shop-meta small{opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.shop-card.sold{display:grid;place-items:center;min-height:118px;opacity:.3}.shop-card.sold .shop-portrait{display:none}
  .formation-layout{display:grid;gap:12px}.board-roster,.bench-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px}.formation-card{min-width:0;display:grid;grid-template-columns:58px minmax(0,1fr) auto;align-items:center;gap:9px;padding:7px;border:1px solid rgba(255,255,255,.13);border-radius:8px;background:rgba(255,255,255,.035)}.formation-card:hover,.formation-card:focus-visible{border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.07)}.formation-card.on-field{border-left-width:3px}.formation-portrait{width:58px;height:58px;border-radius:6px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.22);font-size:1.4rem;font-weight:800}.formation-portrait img{width:100%;height:100%;object-fit:cover;object-position:center 18%}.formation-info{min-width:0;display:grid;gap:2px}.formation-info b,.formation-info small,.formation-info span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.formation-info small{font-size:.75rem}.formation-info span{font-size:.7rem;opacity:.58}.formation-card>.econ-btn{padding:.4rem .55rem}
+
+ /* Board readability pass: board cells define position, not sprite bounds. */
+ .cell{overflow:visible}
+ .unit{overflow:visible}
+ .sd-slot{left:-18%;right:-18%;top:-62px;bottom:18px;overflow:visible;z-index:3}
+ .sd-image{width:100%;height:100%;object-fit:contain;object-position:center bottom;image-rendering:auto;filter:drop-shadow(0 5px 6px #000b)}
+ .ground-ring{z-index:2}
+ .unit-hud{left:10%;right:10%;bottom:2px;z-index:6}
+ .unit-top{font-size:9px;line-height:1.05}
+ .hpbar{height:3px;border-width:1px;margin-top:2px}
+ .unit-sub{font-size:6px;margin-top:1px}
+ .unit.star-1 .unit-name{color:#69b9ff;text-shadow:0 1px 3px #000,0 0 5px #2d7fc055}
+ .unit.star-2 .unit-name{color:#c58cff;text-shadow:0 1px 3px #000,0 0 5px #7c42ad55}
+ .unit.star-3 .unit-name{color:#ffd75f;text-shadow:0 1px 3px #000,0 0 5px #b88a2455}
  @media(max-width:850px){.game-bottom-dock{grid-template-columns:1fr}.dock-shop{grid-template-columns:repeat(5,minmax(76px,1fr));overflow-x:auto}.dock-side,.dock-mastery{min-width:0}.game-bottom-dock{max-height:48vh;overflow:auto}}`;document.head.appendChild(style);
  const panel=document.createElement('section');panel.id='roundModePanel';const eco=document.createElement('section');eco.id='gameEconomyPanel';const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);panel.insertAdjacentElement('afterend',eco);renderRoundUI();renderGameEconomy();
 }
@@ -299,7 +334,7 @@ function rosterCard(team,r){
  </button>`;
 }
 function synergySummary(team){
- const rs=teams[team].map(e=>byId[e.characterId]).filter(Boolean),count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
+ const rs=[...new Map(teams[team].map(e=>byId[e.characterId]).filter(Boolean).map(r=>[r.id,r])).values()],count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
  const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
  const parts=names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return `<span class="${tier?"synergy-on":"synergy-off"}">${label}</span>`}).filter(Boolean);
  const roles=live?.roles||rs.map((r,i)=>({name:r.name,role:r.role,active:null}));
@@ -377,7 +412,7 @@ function render(){
  for(const u of units){
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;
   const e=document.createElement("div");
-  e.className=`unit ${u.team}${u.dead?" dead":""}${u.ccUntil>time?" cc":""}`;
+  e.className=`unit ${u.team} star-${u.star}${u.dead?" dead":""}${u.ccUntil>time?" cc":""}`;
   e.draggable=!running&&!battle&&(appMode!=="game"||u.team==="A");e.dataset.id=u.id;e.innerHTML=unitMarkup(u);
   e.ondragstart=event=>event.dataTransfer.setData("text/plain",u.id);e.onmouseenter=()=>showInspector(u);e.onfocus=()=>showInspector(u);e.tabIndex=0;cell.appendChild(e);
  }
