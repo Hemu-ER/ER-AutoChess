@@ -54,7 +54,7 @@ const skillInfo={
  cathy:{active:['이머전시OP','[치명적 외상] 대상의 외상을 제거해 최대 체력·스킬 증폭 비례 고정 피해 + 아군 회복.'],passive:['외과 전문의','공격 속도 감소 대신 후방 적 우선 공격. 기본 공격 2회마다 [치명적 외상]을 부여하고 이머전시OP를 발동.']},
  abigail:{active:['바이너리 스핀','기본 공격 3회 후 적 전체에 스킬 증폭 비례 피해.'],passive:['티어링 블레이드','기본 공격 적중 시 대상 방어력 감소.']},
  leny:{active:['스프링! 트랩','[당근! 바주카] 효과가 2회 적용된 뒤 다음 기본 공격에 추가 피해 + 행동 불능.'],passive:['당근! 바주카','3초마다 아군 전체에 [골트베르]. 레니 2칸 이내 아군이 기본 공격하면 중첩을 소모해 추가 피해 + 체력 회복.']},
- hart:{active:['Peacemaker','체력 5% 이하에서 전투당 1회. 모든 실험체를 3초간 불사로 만들고 종료 직전 일부 회복. 즉사 피해에는 발동하지 않음.'],passive:['Feedback','기본 공격마다 공격력 비례 추가 피해 2회. 추가 피해는 기본 공격 판정이 아님.']},
+ hart:{active:['Peacemaker','사망 피해를 받을 때 전투당 1회 체력 1로 버티며 즉시 불사 상태가 된다. 동시에 모든 실험체를 3초간 불사로 만들고 종료 직전 일부 회복.'],passive:['Feedback','기본 공격마다 공격력 비례 추가 피해 2회. 추가 피해는 기본 공격 판정이 아님.']},
  isol:{active:['Mok제 폭탄','10초마다 발동. 현재 구체 효과는 아직 미완성/QA 중.'],passive:['유격전','전투 시작 시 공격력·공격 속도 증가.']},
  chloe:{active:['생명 공유','클로에 또는 니나가 체력 5% 이하일 때 한쪽만 발동. 발동자는 불사, 받는 기본/스킬 피해 70%를 상대에게 전이. 생명줄인 상대가 죽으면 발동자도 사망. 동시에 조건 충족 시 클로에 우선.'],passive:['살아 있는 마리오네트','전투 시작 시 자기 진영의 안전한 빈 칸에 [니나] 소환. 니나는 독립적으로 이동·공격·피격하며 실험체 시너지/트리거에는 포함되지 않음.']},
  sua:{active:['오딧세이','4초마다 현재 대상과 같은 행의 모든 적에게 스킬 피해 + 입힌 피해 비례 회복.'],passive:['마음의 양식','모든 기본 공격에 스킬 증폭 비례 추가 피해 + 체력 회복.']},
@@ -99,7 +99,7 @@ const coefficientLabelOverrides={
 };
 const characterDetailExtras={
  hyunwoo:['도그파이트: 기본 공격 6회 후 발동','허세 지속시간: 2초'],adela:['체크메이트: 10초 주기 · 0.5초 집중','폰 최대 3중첩'],dailin:['취기: 기본 공격당 +5 · 100에서 만취','만취 지속시간: 3초 · 공격속도 +100%'],yuki:['머리치기: 기본 공격 5회 후','단추: 전투 시작 2개 · 0.5초 집중 후 복구'],rio:['정사필중: 8초 주기 · 0.5초 집중','인접 적 피해: 주 대상의 50%'],justina:['섬멸 포격: 기본 공격 2회 후'],jenny:['페르소나: 기본 공격 2회 후 다음 타격','죽음의 연기 무적: 1.5초'],nicky:['다혈질: HP 50% 이하','가드 피해 경감: 80%'],shurin:['결심응진: 기본 공격 3회마다','만검귀종 후 강화 지속: 3초'],marcus:['지각변동: 10초 주기','충격 행동 불능: 0.5초'],ian:['해방: 사망 시 1회','해방 전 공격력: -20% · 해방 후 공격력: 120%'],yumin:['풍류운산: 전투 시작 즉시','행동 불능: 1초 후 0.5초'],
- 'debi-marlene':['트윈즈 러시: 전투 시작 즉시 + 모드 5중첩 소모','모드 전환 후 강화 기본 공격: 5회'],garnet:['처형식: 전투 시작 1회','행동 불능: 1초 · 방어력 감소 10%'],kenneth:['억압된 분노: 기본 공격당 +1, 최대 5','업화 강화 지속: 5초'],irem:['물고기: 3초마다 획득','방울 대상 공격 시 냥냥 펀치'],laura:['황혼의 도둑: 10초 주기','행동 불능: 1초'],bianca:['진조의 군림: 8초 주기'],cathy:['외과 전문의: 기본 공격 2회마다 외상+OP','OP 피해: 고정 피해'],abigail:['바이너리 스핀: 기본 공격 3회 후'],leny:['골트베르: 3초마다 아군 전체 부여','효과 소비: 레니 2칸 이내 아군 기본 공격','2회 적용 후 다음 레니 기본 공격에 트랩 · CC 0.5초'],hart:['Peacemaker: HP 5% 이하 · 전투당 1회','불사: 3초'],isol:['Mok제 폭탄: 10초 주기'],chloe:['생명 공유 기준: HP 5% 이하','피해 전이: 기본/스킬 피해 70%'],sua:['오딧세이: 4초 주기'],johann:['구원의 성역: 2칸 이내 아군 HP 45% 이하 · 전투당 1회','지속: 4초 · 1초마다 회복','요한: 행동 불능 면역'],nadine:['야성: 매초 +2 · 최대 15','15중첩에서 늑대 맹습 · 다음 기본 공격 3회','야성은 공격속도만 증가'],bernice:['레그샷: 기본 공격 3회마다','공격속도 감소: 30% · 3초'],rozzi:['더블샷: 공격 행동당 실제 기본 공격 2회','셈텍스탄: 실제 기본 공격 10회마다'],aya:['공포탄: 인접 적 존재 시 전투당 1회 · CC 0.5초','고정 사격: 기본 공격 3회 후 다음 5회 · AS +100%'],mirka:['리펄스: 초당 +1 · HP 1% 손실당 +2 · 기본 공격당 +5','100 이상에서 크래시 해머 · CC 1초'],charlotte:['치유의 빛: 기본 공격 3회마다 · 자신 포함 2칸 이내','공격 버프 지속: 3초','기적 실현: 10초마다 아군 전체 1초 무적','치유의 노래: 치유의 빛 발동 시 아군 전체 AMP 70% 회복']
+ 'debi-marlene':['트윈즈 러시: 전투 시작 즉시 + 모드 5중첩 소모','모드 전환 후 강화 기본 공격: 5회'],garnet:['처형식: 전투 시작 1회','행동 불능: 1초 · 방어력 감소 10%'],kenneth:['억압된 분노: 기본 공격당 +1, 최대 5','업화 강화 지속: 5초'],irem:['물고기: 3초마다 획득','방울 대상 공격 시 냥냥 펀치'],laura:['황혼의 도둑: 10초 주기','행동 불능: 1초'],bianca:['진조의 군림: 8초 주기'],cathy:['외과 전문의: 기본 공격 2회마다 외상+OP','OP 피해: 고정 피해'],abigail:['바이너리 스핀: 기본 공격 3회 후'],leny:['골트베르: 3초마다 아군 전체 부여','효과 소비: 레니 2칸 이내 아군 기본 공격','2회 적용 후 다음 레니 기본 공격에 트랩 · CC 0.5초'],hart:['Peacemaker: 사망 피해 시 체력 1 · 전투당 1회','하트 포함 전체 실험체 불사: 3초 · 종료 직전 전체 회복'],isol:['Mok제 폭탄: 10초 주기'],chloe:['생명 공유 기준: HP 5% 이하','피해 전이: 기본/스킬 피해 70%'],sua:['오딧세이: 4초 주기'],johann:['구원의 성역: 2칸 이내 아군 HP 45% 이하 · 전투당 1회','지속: 4초 · 1초마다 회복','요한: 행동 불능 면역'],nadine:['야성: 매초 +2 · 최대 15','15중첩에서 늑대 맹습 · 다음 기본 공격 3회','야성은 공격속도만 증가'],bernice:['레그샷: 기본 공격 3회마다','공격속도 감소: 30% · 3초'],rozzi:['더블샷: 공격 행동당 실제 기본 공격 2회','셈텍스탄: 실제 기본 공격 10회마다'],aya:['공포탄: 인접 적 존재 시 전투당 1회 · CC 0.5초','고정 사격: 기본 공격 3회 후 다음 5회 · AS +100%'],mirka:['리펄스: 초당 +1 · HP 1% 손실당 +2 · 기본 공격당 +5','100 이상에서 크래시 해머 · CC 1초'],charlotte:['치유의 빛: 기본 공격 3회마다 · 자신 포함 2칸 이내','공격 버프 지속: 3초','기적 실현: 10초마다 아군 전체 1초 무적','치유의 노래: 치유의 빛 발동 시 아군 전체 AMP 70% 회복']
 };
 function fmtCoeff(v,type){if(type==='flat')return fmtStat(v,1);return `${fmtStat(v*100,1)}%`}
 function coefficientDetailHtml(id,star){
@@ -218,7 +218,12 @@ function enterAppMode(mode){appMode=mode;document.body.dataset.appMode=mode;docu
 function returnToModeStart(){clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase='idle';appMode=null;delete document.body.dataset.appMode;document.body.classList.add('mode-start');$('#appModeStart').hidden=false;$('#devExit').hidden=true;renderRoundUI();renderGameEconomy()}
 function ensureRoundUI(){
  if(document.querySelector('#roundModePanel'))return;const style=document.createElement('style');style.id='gameUiCleanupStyle';style.textContent=`
- #roundModePanel{margin:10px 0 12px;padding:10px 12px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(8,11,17,.72);display:grid;gap:8px}
+ #roundModePanel{position:fixed;left:50%;top:7px;transform:translateX(-50%);z-index:8600;width:min(760px,calc(100% - 18px));margin:0;padding:5px 9px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(8,11,17,.88);backdrop-filter:blur(9px);display:grid;gap:3px;box-shadow:0 5px 18px rgba(0,0,0,.24)}
+ #roundModePanel .round-hud{min-height:30px}.round-side{gap:2px}.round-side-line{line-height:1}.round-side-line b{font-size:.72rem}.round-side-line strong{font-size:.86rem}.round-side-line span{font-size:.6rem;opacity:.55}.round-center{min-width:104px}.round-center b{font-size:.72rem}.round-center strong{font-size:.88rem}.round-center small{display:none}.round-hpbar{height:3px}.round-actions{position:absolute;left:50%;top:100%;transform:translate(-50%,4px)}.round-actions:empty{display:none}.round-actions .round-btn{padding:.3rem .6rem;font-size:.68rem;background:rgba(8,11,17,.9);white-space:nowrap}
+ .current-synergy-panel{position:absolute;left:8px;top:50%;transform:translateY(-50%);z-index:55;width:min(190px,22%);padding:8px;border:1px solid rgba(116,171,160,.18);border-radius:8px;background:rgba(6,10,14,.72);backdrop-filter:blur(6px);pointer-events:none}.current-synergy-title{display:block;margin-bottom:5px;font-size:.62rem;letter-spacing:.12em;color:#8fa9a3}.current-synergy-panel .synergy-strip{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0;border:0;overflow:visible;white-space:normal}.current-synergy-panel .synergy-strip>i{display:none}.current-synergy-panel .synergy-strip span{font-size:.62rem;padding:3px 5px}.current-synergy-panel .role-chip{display:block;border-color:rgba(198,171,103,.34);color:#d9c78f;background:rgba(49,40,21,.34)}.current-synergy-panel .role-chip.synergy-off{opacity:.45}
+ #board .cell.role-synergy-zone:before{content:"";position:absolute;inset:7px;z-index:1;border:1px solid rgba(102,220,176,.82);border-radius:50%;background:radial-gradient(circle,rgba(82,207,158,.16),rgba(82,207,158,.025) 62%,transparent 68%);box-shadow:0 0 18px rgba(82,207,158,.16),inset 0 0 16px rgba(82,207,158,.08);pointer-events:none;animation:roleZonePulse 1.05s ease-in-out infinite alternate}#board[data-role-preview]:after{content:attr(data-role-preview) " 시너지 유효 배치";position:absolute;left:50%;top:-24px;transform:translateX(-50%);z-index:70;padding:3px 8px;border-radius:999px;background:rgba(9,18,16,.88);border:1px solid rgba(102,220,176,.45);color:#a9e4cc;font-size:.62rem;letter-spacing:.03em;white-space:nowrap;pointer-events:none}@keyframes roleZonePulse{from{opacity:.58;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+ @media(max-width:850px){#roundModePanel{top:4px;width:calc(100% - 10px);padding:4px 6px}.current-synergy-panel{left:6px;right:6px;top:6px;transform:none;width:auto;max-width:none;padding:5px;display:block}.current-synergy-panel .synergy-strip{flex-direction:row;overflow-x:auto;white-space:nowrap}.current-synergy-panel .synergy-strip span{flex:0 0 auto}.current-synergy-title{display:none}.board-shell{padding-top:40px!important}}
+
  #gameEconomyPanel{margin:8px 0;padding:8px 12px;border:0;background:transparent;display:grid;gap:6px}
  .round-hud{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}.round-side{min-width:0;display:grid;gap:4px}.round-side.enemy{text-align:right}.round-side-line{display:flex;align-items:baseline;gap:6px}.round-side.enemy .round-side-line{justify-content:flex-end}.round-side-line b{font-size:.92rem}.round-side-line strong{font-size:1.05rem}.round-center{text-align:center;min-width:116px}.round-center b{display:block;font-size:1rem;letter-spacing:.04em}.round-center strong{display:block;font-size:1.3rem;line-height:1.15}.round-center small{display:block;opacity:.58;font-size:.68rem;margin-top:2px}.round-hpbar{height:5px;border-radius:999px;background:rgba(255,255,255,.09);overflow:hidden}.round-hpbar i{display:block;height:100%;background:currentColor}.round-actions{display:flex;justify-content:center}.round-btn,.econ-btn{padding:.48rem .75rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.round-note,.temp-note{opacity:.58;font-size:.72rem;text-align:center}.game-msg{min-height:1.1em;font-size:.78rem;text-align:center;opacity:.72}
  body[data-app-mode="game"] #gameEconomyPanel{padding-bottom:188px}
@@ -262,6 +267,7 @@ function syncBoardPresentation(){
  document.body.classList.toggle('formation-phase',prep);
  const legend=document.querySelector('.arena-top .legend');if(legend)legend.style.display=prep?'none':'';
  const hint=document.querySelector('.arena-card .hint');if(hint)hint.textContent=prep?(roundState.round===1?'ROUND 1 파밍 준비 · 내 진영 3×3 편성 · 상점 구매 후 준비 완료':'내 진영 3×3 편성 · 드래그로 배치 / 교환 · 전투 시작 시 3×6으로 결합'):'양 팀 3×3 결합 전장 · 전투/QA는 3×6';
+ renderCurrentSynergyPanel();
 }
 function renderRoundUI(){
  syncBoardPresentation();
@@ -306,15 +312,41 @@ function normalizeVisuals(root=document){
  root.querySelectorAll?.('img[data-alpha-normalize]').forEach(img=>{const run=()=>normalizePortraitImage(img);img.complete?requestAnimationFrame(run):img.addEventListener('load',()=>requestAnimationFrame(run),{once:true})});
  root.querySelectorAll?.('.sd-image').forEach(img=>{const run=()=>positionUnitHud(img);img.complete?requestAnimationFrame(run):img.addEventListener('load',()=>requestAnimationFrame(run),{once:true})});
 }
+function renderCurrentSynergyPanel(){
+ let panel=document.querySelector('#currentSynergyPanel');
+ if(appMode!=='game'||!roundState.active){panel?.remove();return}
+ const shell=document.querySelector('.board-shell');if(!shell)return;
+ if(!panel){panel=document.createElement('aside');panel.id='currentSynergyPanel';panel.className='current-synergy-panel';shell.appendChild(panel)}
+ panel.innerHTML=`<span class="current-synergy-title">현재 시너지</span>${synergySummary('A')}`;
+}
+function rolePlacementColumns(role){
+ if(role==='탱커')return [2];
+ if(role==='전사'||role==='근거리 스킬')return [1,2];
+ if(role==='원거리 평타'||role==='원거리 스킬')return [0,1];
+ if(role==='암살자'||role==='서포터')return [0,1,2];
+ return [];
+}
+function showRolePlacementHints(role){
+ clearRolePlacementHints();
+ const cols=rolePlacementColumns(role);if(!cols.length)return;
+ document.body.classList.add('role-placement-preview');
+ board?.setAttribute('data-role-preview',role);
+ board?.querySelectorAll('.cell').forEach(cell=>{const x=+cell.dataset.x;if(x<=2&&cols.includes(x))cell.classList.add('role-synergy-zone')});
+}
+function clearRolePlacementHints(){
+ document.body.classList.remove('role-placement-preview');
+ board?.removeAttribute('data-role-preview');
+ board?.querySelectorAll('.role-synergy-zone').forEach(cell=>cell.classList.remove('role-synergy-zone'));
+}
 function moveOwnedToCell(uid,cell){
  if(appMode!=='game'||roundState.phase!=='prep'||!cell)return false;const o=gameState.owned.find(x=>x.uid===uid);if(!o)return false;const gx=+cell.dataset.x,y=+cell.dataset.y;if(gx>2)return false;let entry=teams.A.find(e=>e.ownedId===uid),occupied=teams.A.find(e=>e!==entry&&e.x===gx&&e.y===y);
  if(!entry){if(teams.A.length>=3&&!occupied){gameState.message='전장에는 최대 3명까지 배치할 수 있어.';renderGameEconomy();return false}entry={characterId:o.characterId,star:o.star,x:gx,y,ownedId:o.uid};if(occupied){const old=gameState.owned.find(x=>x.uid===occupied.ownedId);if(old)old.location='bench';teams.A.splice(teams.A.indexOf(occupied),1)}teams.A.push(entry);o.location='board'}else if(occupied){const ox=entry.x,oy=entry.y;entry.x=gx;entry.y=y;occupied.x=ox;occupied.y=oy}else{entry.x=gx;entry.y=y}reset();renderGameEconomy();return true
 }
 function clearOwnedDrag(){
- if(!ownedPointerDrag)return;ownedPointerDrag.source?.classList.remove('dragging-owned');ownedPointerDrag.ghost?.remove();document.querySelectorAll('.drag-target').forEach(e=>e.classList.remove('drag-target'));document.body.classList.remove('shop-sell-active');ownedPointerDrag=null;
+ if(!ownedPointerDrag)return;ownedPointerDrag.source?.classList.remove('dragging-owned');ownedPointerDrag.ghost?.remove();document.querySelectorAll('.drag-target').forEach(e=>e.classList.remove('drag-target'));document.body.classList.remove('shop-sell-active');clearRolePlacementHints();ownedPointerDrag=null;
 }
 function beginOwnedPointerDrag(ev,uid,source){
- if(appMode!=='game'||roundState.phase!=='prep'||ev.button>0)return;const o=gameState.owned.find(x=>x.uid===uid),r=o&&byId[o.characterId];if(!o||!r)return;ev.preventDefault();const ghost=document.createElement('div');ghost.className='drag-ghost';ghost.innerHTML=r.asset?.sd?`<img src="${esc(r.asset.sd)}" alt="">`:`<b>${esc(displayName(r))}</b>`;document.body.appendChild(ghost);source.classList.add('dragging-owned');ownedPointerDrag={uid,source,ghost,pointerId:ev.pointerId};source.setPointerCapture?.(ev.pointerId);moveOwnedPointerDrag(ev);document.addEventListener('pointermove',moveOwnedPointerDrag,{passive:false});document.addEventListener('pointerup',endOwnedPointerDrag,{once:true});document.addEventListener('pointercancel',cancelOwnedPointerDrag,{once:true});
+ if(appMode!=='game'||roundState.phase!=='prep'||ev.button>0)return;const o=gameState.owned.find(x=>x.uid===uid),r=o&&byId[o.characterId];if(!o||!r)return;ev.preventDefault();const ghost=document.createElement('div');ghost.className='drag-ghost';ghost.innerHTML=r.asset?.sd?`<img src="${esc(r.asset.sd)}" alt="">`:`<b>${esc(displayName(r))}</b>`;document.body.appendChild(ghost);source.classList.add('dragging-owned');ownedPointerDrag={uid,source,ghost,pointerId:ev.pointerId,role:r.role};showRolePlacementHints(r.role);source.setPointerCapture?.(ev.pointerId);moveOwnedPointerDrag(ev);document.addEventListener('pointermove',moveOwnedPointerDrag,{passive:false});document.addEventListener('pointerup',endOwnedPointerDrag,{once:true});document.addEventListener('pointercancel',cancelOwnedPointerDrag,{once:true});
 }
 function moveOwnedPointerDrag(ev){
  if(!ownedPointerDrag)return;ev.preventDefault();ownedPointerDrag.ghost.style.left=`${ev.clientX}px`;ownedPointerDrag.ghost.style.top=`${ev.clientY}px`;document.querySelectorAll('.drag-target').forEach(e=>e.classList.remove('drag-target'));const hit=document.elementFromPoint(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell');document.body.classList.toggle('shop-sell-active',!!shop);if(shop){const o=gameState.owned.find(x=>x.uid===ownedPointerDrag.uid),r=o&&byId[o.characterId],refund=r?r.cost*Math.pow(3,o.star-1):0;shop.dataset.sellHint=`판매 +${refund}`;shop.classList.add('drag-target')}else if(bench)bench.classList.add('drag-target');else if(cell&&+cell.dataset.x<=2)cell.classList.add('drag-target');
@@ -419,7 +451,7 @@ function synergySummary(team){
  const rs=[...new Map(teams[team].map(e=>byId[e.characterId]).filter(Boolean).map(r=>[r.id,r])).values()],count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
  const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
  const parts=names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return `<span class="${tier?"synergy-on":"synergy-off"}">${label}</span>`}).filter(Boolean);
- const roles=live?.roles||rs.map((r,i)=>({name:r.name,role:r.role,active:null}));
+ const roles=live?.roles||teams[team].map(e=>{const r=byId[e.characterId];if(!r)return null;const d=e.x,role=r.role,active=(role==='전사'||role==='근거리 스킬')?d>=1:role==='탱커'?d===2:(role==='원거리 평타'||role==='원거리 스킬')?d<=1:(role==='암살자'||role==='서포터')?true:null;return{name:r.name,role,active}}).filter(Boolean);
  return `<div class="synergy-strip">${parts.length?parts.join(""):"<em>소속 없음</em>"}<i></i>${roles.map(x=>`<span class="role-chip ${x.active===false?"synergy-off":""}">${esc(x.role)}${x.active===true?" ON":x.active===false?" OFF":""}</span>`).join("")}</div>`
 }
 function renderTeams(){
@@ -489,6 +521,7 @@ function unitMarkup(u){
 }
 function render(){
  syncBoardPresentation();
+ renderCurrentSynergyPanel();
  board.querySelectorAll('.unit').forEach(e=>e.remove());
  for(const u of units){
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);
