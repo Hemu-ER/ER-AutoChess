@@ -230,8 +230,20 @@ function ensureRoundUI(){
  .shop-sell-active .dock-shop{outline:2px solid rgba(255,95,95,.72);outline-offset:3px;border-radius:8px}.shop-sell-active .dock-shop::after{content:attr(data-sell-hint);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;padding:7px 12px;border-radius:999px;background:rgba(22,8,8,.92);border:1px solid rgba(255,110,110,.7);font-size:.78rem;font-weight:800;pointer-events:none}.dock-shop{position:relative}
  .drag-ghost{position:fixed;z-index:20000;width:58px;height:74px;pointer-events:none;opacity:.82;transform:translate(-50%,-55%);filter:drop-shadow(0 6px 8px #000b)}.drag-ghost img{width:100%;height:100%;object-fit:contain}.drag-target{outline:2px solid rgba(92,211,255,.65)!important;outline-offset:-2px}.dragging-owned{opacity:.35!important}
  .shop-lock-btn.locked{border-color:rgba(255,215,95,.7);background:rgba(255,215,95,.12)}
- /* One visual battlefield in both game and QA. Logical 3x6 cells remain intact. */
- #board{border:0!important;box-shadow:none!important;background:radial-gradient(ellipse at center,rgba(40,64,72,.10),transparent 67%)!important;overflow:visible!important}.cell{overflow:visible!important;border:0!important;background:transparent!important}.cell.divider{border:0!important}.coord{opacity:.24!important;font-size:7px!important}.ground-ring{opacity:.32;z-index:2}.unit{overflow:visible!important}.sd-slot{left:-18%;right:-18%;top:-62px;bottom:18px;overflow:visible;z-index:3}.sd-image{width:100%;height:100%;object-fit:contain;object-position:center bottom;image-rendering:auto;filter:drop-shadow(0 5px 6px #000b)}
+ /* Battlefield rendering: prep = own 3x3, combat/QA = full 3x6. */
+ .board-shell{overflow:visible!important}
+ #board{border:0!important;box-shadow:none!important;background:radial-gradient(ellipse at center,rgba(40,64,72,.10),transparent 67%)!important;overflow:visible!important;transition:width .16s ease}
+ #board.formation-board{grid-template-columns:repeat(3,minmax(0,1fr))!important;width:50%;margin-inline:auto}
+ #board.formation-board .cell[data-x="3"],#board.formation-board .cell[data-x="4"],#board.formation-board .cell[data-x="5"]{display:none!important}
+ #board.combat-board{grid-template-columns:repeat(6,minmax(0,1fr))!important;width:100%;margin-inline:0}
+ #board.combat-board .cell{display:block!important}
+ body[data-app-mode="game"].formation-phase .field-b{display:none!important}
+ body[data-app-mode="game"].formation-phase .field-a{left:50%!important;right:auto!important;transform:translateX(-50%)}
+ .cell{overflow:visible!important;border:0!important;background:transparent!important}.cell.divider{border:0!important}.coord{opacity:.24!important;font-size:7px!important}.ground-ring{opacity:.32;z-index:2}
+ #board .unit{overflow:visible!important;z-index:10!important}
+ #board .sd-slot{left:-8%!important;right:-8%!important;top:-38px!important;bottom:18px!important;overflow:visible!important;z-index:3!important;display:flex!important;align-items:flex-end!important;justify-content:center!important}
+ #board .sd-image{display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center bottom!important;opacity:1!important;visibility:visible!important;image-rendering:auto;filter:drop-shadow(0 5px 6px #000b)}
+ @media(max-width:850px){#board.formation-board{width:100%}#board .sd-slot{top:-24px!important}}
  .unit-hud.compact-hud{left:12%;right:12%;top:var(--hud-top,-42px);bottom:auto;z-index:80;display:grid;grid-template-columns:11px minmax(0,1fr);gap:3px;align-items:center;pointer-events:none}.compact-hud .hud-star{font-size:9px;line-height:1;text-align:center;text-shadow:0 1px 3px #000,0 0 4px #000}.compact-hud .hud-star.star-1{color:#69b9ff}.compact-hud .hud-star.star-2{color:#c58cff}.compact-hud .hud-star.star-3{color:#ffd75f}.compact-hud .hpbar{height:3px;margin:0;position:relative;z-index:81}.unit{z-index:10}.unit:hover,.unit:focus{z-index:20}.unit .unit-hud{z-index:80}
 
  /* Cross-device polish: collapsible dock, readable controls, lighter typography. */
@@ -242,7 +254,17 @@ function ensureRoundUI(){
  const panel=document.createElement('section');panel.id='roundModePanel';const eco=document.createElement('section');eco.id='gameEconomyPanel';const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);panel.insertAdjacentElement('afterend',eco);renderRoundUI();renderGameEconomy();
 }
 function phaseLabel(){return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
+function syncBoardPresentation(){
+ if(!board)return;
+ const prep=appMode==='game'&&roundState.active&&roundState.phase==='prep';
+ board.classList.toggle('formation-board',prep);
+ board.classList.toggle('combat-board',!prep);
+ document.body.classList.toggle('formation-phase',prep);
+ const legend=document.querySelector('.arena-top .legend');if(legend)legend.style.display=prep?'none':'';
+ const hint=document.querySelector('.arena-card .hint');if(hint)hint.textContent=prep?'내 진영 3×3 편성 · 드래그로 배치 / 교환 · 전투 시작 시 3×6으로 결합':'양 팀 3×3 결합 전장 · 전투/QA는 3×6';
+}
 function renderRoundUI(){
+ syncBoardPresentation();
  const p=$('#roundModePanel');if(!p)return;const opp=roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
  const seconds=(roundState.phase==='prep'||roundState.phase==='result')?Math.max(0,Math.ceil(roundState.remaining)):null;
  const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:phaseLabel();
@@ -274,7 +296,11 @@ function normalizePortraitImage(img){
  img.style.width=`${width}px`;img.style.height=`${height}px`;img.style.left=`${left}px`;img.style.top=`${top}px`;img.dataset.alphaReady='1';
 }
 function positionUnitHud(img){
- if(!img.isConnected||!img.complete||!img.naturalWidth)return;const unit=img.closest('.unit'),slot=img.closest('.sd-slot'),b=alphaBounds(img);if(!unit||!slot||!b)return;const W=slot.clientWidth,H=slot.clientHeight;if(!W||!H)return;const scale=Math.min(W/img.naturalWidth,H/img.naturalHeight),drawH=img.naturalHeight*scale,drawTop=H-drawH,opaqueTop=drawTop+b.minY*scale;const top=slot.offsetTop+opaqueTop-8;unit.style.setProperty('--hud-top',`${Math.round(top)}px`);
+ if(!img.isConnected||!img.complete||!img.naturalWidth)return;
+ const unit=img.closest('.unit'),slot=img.closest('.sd-slot'),b=alphaBounds(img);if(!unit||!slot||!b)return;
+ const ir=img.getBoundingClientRect(),ur=unit.getBoundingClientRect();if(!ir.width||!ir.height)return;
+ const scaleY=ir.height/img.naturalHeight,opaqueTop=ir.top-ur.top+b.minY*scaleY;
+ const top=Math.max(-70,opaqueTop-8);unit.style.setProperty('--hud-top',`${Math.round(top)}px`);
 }
 function normalizeVisuals(root=document){
  root.querySelectorAll?.('img[data-alpha-normalize]').forEach(img=>{const run=()=>normalizePortraitImage(img);img.complete?requestAnimationFrame(run):img.addEventListener('load',()=>requestAnimationFrame(run),{once:true})});
@@ -443,6 +469,7 @@ function unitMarkup(u){
   </div>`;
 }
 function render(){
+ syncBoardPresentation();
  board.querySelectorAll('.unit').forEach(e=>e.remove());
  for(const u of units){
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);
