@@ -706,7 +706,18 @@ const roster=[
     "asset": {
       "sd": "assets/characters/charlotte.png"
     }
+  },
+  {
+    "id":"wild_boar","name":"멧돼지","cost":0,"role":"야생동물","affiliations":[],
+    "baseStats":{"hp":360,"atk":25,"amp":0,"range":1,"def":18,"as":0.62},
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
+  },
+  {
+    "id":"wild_wolf","name":"들개","cost":0,"role":"야생동물","affiliations":[],
+    "baseStats":{"hp":300,"atk":29,"amp":0,"range":1,"def":14,"as":0.78},
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
   }
+
 ];
 function freeze(v){if(v&&typeof v==='object'){Object.freeze(v);for(const x of Object.values(v))freeze(x)}return v}
 for(const r of roster)freeze(r);freeze(roster);const byId=Object.freeze(Object.fromEntries(roster.map(r=>[r.id,r])));const api={roster,byId};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.ERRoster=api;})(globalThis);

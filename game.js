@@ -253,7 +253,7 @@ function ensureRoundUI(){
  `;document.head.appendChild(style);
  const panel=document.createElement('section');panel.id='roundModePanel';const eco=document.createElement('section');eco.id='gameEconomyPanel';const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);panel.insertAdjacentElement('afterend',eco);renderRoundUI();renderGameEconomy();
 }
-function phaseLabel(){return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
+function phaseLabel(){if(roundState.round===1&&roundState.phase==='combat')return '파밍 전투';return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
 function syncBoardPresentation(){
  if(!board)return;
  const prep=appMode==='game'&&roundState.active&&roundState.phase==='prep';
@@ -333,7 +333,10 @@ function bindEconomyInspect(root){
  });
 }
 function renderGameEconomy(){
- const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');if(appMode!=='game'){p.innerHTML='';if(dock)dock.remove();return}const prep=roundState.phase==='prep';
+ const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
+ const farmingRound=appMode==='game'&&roundState.round===1&&roundState.phase!=='idle'&&roundState.phase!=='finished';
+ if(appMode!=='game'||farmingRound){p.innerHTML=farmingRound?`<div class="game-msg">ROUND 1 · 첫 실험체로 야생동물을 처치해 기본 아이템을 획득해.</div>`:'';if(dock)dock.remove();return}
+ const prep=roundState.phase==='prep';
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id];return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}</span><span class="shop-meta"><small>${esc(r.role)}</small>${creditHtml(r.cost)}</span></button>`}).join('');
  const benchOwned=gameState.owned.filter(o=>o.location==='bench');
  const bench=benchOwned.map(o=>{const r=byId[o.characterId];return `<article class="bench-unit star-${o.star}" data-owned-drag="${o.uid}" tabindex="0" data-inspect-character="${esc(r.id)}" data-inspect-star="${o.star}" title="${esc(displayName(r))} · 드래그해서 배치 / 상점에 놓아 판매">${characterPortrait(r,'bench-portrait')}<span class="bench-star">★</span></article>`}).join('')||'<span class="bench-empty">벤치가 비어 있어.</span>';
@@ -344,11 +347,25 @@ function renderGameEconomy(){
  dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;renderGameEconomy()});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindOwnedPointerDrag(dock);normalizeVisuals(dock);
 }
 
-function startRoundMode(){clearRoundTimer();if(running||battle)reset();teams={A:[],B:[]};Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0});Object.assign(roundState,{active:true,phase:'prep',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:'',lastDamage:0});const first=randomPlayable();addOwned(first.id,true);rollShop();setupRoundOpponent();gameState.message=`첫 실험체 ${displayName(first)} 무료 지급`;reset();$('#status').textContent='ROUND 1 · 파밍 준비';renderRoundUI();renderGameEconomy();startPrepTimer()}
+function startRoundMode(){
+ clearRoundTimer();
+ if(running||battle)reset();
+ teams={A:[],B:[]};
+ Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0});
+ Object.assign(roundState,{active:true,phase:'combat',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:0,lastOutcome:'',lastDamage:0});
+ const first=randomPlayable();
+ addOwned(first.id,true);
+ setupWildRound();
+ gameState.message=`첫 실험체 ${displayName(first)} 지급 · 파밍 라운드 시작`;
+ renderRoundUI();renderGameEconomy();
+ if(!start()){roundState.phase='finished';roundState.active=false;gameState.message='파밍 라운드 시작 실패 · DEV 로그를 확인해.';renderRoundUI();renderGameEconomy();return}
+ $('#status').textContent='ROUND 1 · 파밍 전투 중';
+ renderRoundUI();renderGameEconomy();
+}
 function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
 function startPrepTimer(){clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0)beginRoundCombat()},1000)}
-function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';startPrepTimer();return}$('#status').textContent=`ROUND ${roundState.round} · ${roundState.round===1?'야생동물 전투':'전투'} 중`}
-function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];gameState.items.push(item);gameState.message=`야생동물 처치 · ${item} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';gameState.credits+=gameState.roundIncome;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${gameState.roundIncome} 크레딧`}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}gameState.credits+=gameState.roundIncome;resultText=`${outcome} · 정산 +${gameState.roundIncome} 크레딧`}addMasteryProgress(1,'라운드 자연 성장');$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();roundState.active=true;roundState.phase='prep';gameState.message=roundState.round===2?'ROUND 2 진입 · PvP 매칭은 아직 임시 AI 상대야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderGameEconomy();startPrepTimer()}},1000)}
+function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep'||roundState.round===1)return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';startPrepTimer();return}$('#status').textContent=`ROUND ${roundState.round} · 전투 중`}
+function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const rewardCount=1+Math.floor(Math.random()*3),pool=[...BASIC_ITEMS],rewards=[];for(let i=0;i<rewardCount&&pool.length;i++){const pick=Math.floor(Math.random()*pool.length);rewards.push(pool.splice(pick,1)[0])}gameState.items.push(...rewards);gameState.message=`야생동물 처치 · ${rewards.join(' / ')} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';gameState.credits+=gameState.roundIncome;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${gameState.roundIncome} 크레딧`}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}gameState.credits+=gameState.roundIncome;resultText=`${outcome} · 정산 +${gameState.roundIncome} 크레딧`}addMasteryProgress(1,'라운드 자연 성장');$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
 function reset(){
  if(frame!==null)cancelAnimationFrame(frame); frame=null;
