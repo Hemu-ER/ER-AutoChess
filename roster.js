@@ -7,6 +7,7 @@ const roster=[
     "cost": 1,
     "role": "전사",
     "affiliations": [
+      "현우정신",
       "파자마"
     ],
     "baseStats": {
