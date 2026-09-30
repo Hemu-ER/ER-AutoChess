@@ -4,6 +4,7 @@ const {CombatEngine,DT,coefficients:combatCoefficients={}}=ERCombat;
 const $=s=>document.querySelector(s),board=$("#board"),expandedMeters=new Set(),expandedSkillDetails=new Set();
 let teams={A:[],B:[]},battle=null,units=[],running=false,paused=false,time=0;
 let speed=1,last=0,accumulator=0,frame=null;
+let appMode=null; // null=start, "game"=실제 게임 화면, "test"=전투 테스트
 
 // Round Mode v1: 기존 전투 테스트 모드와 분리된 1판 루프.
 const ROUND_PREP_SECONDS=30, ROUND_RESULT_SECONDS=4, PLAYER_START_HP=100;
@@ -143,15 +144,51 @@ function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affi
 
 function roundDamage(round){return Math.min(25,5+Math.floor((Math.max(1,round)-1)/3)*2)}
 function clearRoundTimer(){if(roundTimer!==null){clearInterval(roundTimer);roundTimer=null}}
+function ensureAppShell(){
+ if(document.querySelector("#appModeStart"))return;
+ const style=document.createElement("style");style.id="appModeStyle";style.textContent=`
+ body.mode-start{overflow:hidden}
+ #appModeStart{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:24px;background:rgba(8,10,16,.96);color:#f5f7fb}
+ #appModeStart[hidden]{display:none}
+ .mode-start-inner{width:min(760px,100%);display:grid;gap:22px;text-align:center}.mode-brand small{letter-spacing:.28em;opacity:.6}.mode-brand h1{margin:.3rem 0;font-size:clamp(2rem,6vw,4.4rem);letter-spacing:-.04em}.mode-brand p{margin:0;opacity:.68}
+ .mode-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.mode-card{min-height:190px;padding:22px;text-align:left;border:1px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(255,255,255,.055);color:inherit;cursor:pointer}.mode-card:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3)}.mode-card b{display:block;font-size:1.35rem;margin-bottom:.45rem}.mode-card span{display:block;line-height:1.55;opacity:.7}.mode-card em{display:inline-block;margin-top:1rem;font-style:normal;font-size:.75rem;letter-spacing:.08em;opacity:.5}
+ #devExit{position:fixed;right:12px;bottom:12px;z-index:9000;padding:7px 10px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(0,0,0,.58);color:rgba(255,255,255,.6);font:inherit;font-size:.72rem;cursor:pointer}#devExit[hidden]{display:none}#devExit:hover{color:white;border-color:rgba(255,255,255,.35)}
+ body[data-app-mode="test"] #roundModePanel{display:none!important}
+ body[data-app-mode="game"] #teamA,body[data-app-mode="game"] #teamB{display:none!important}
+ body[data-app-mode="game"] .dev-control-hidden{display:none!important}
+ body[data-app-mode="game"] #roundModePanel{display:grid!important}
+ @media(max-width:620px){.mode-cards{grid-template-columns:1fr}.mode-card{min-height:145px}}
+ `;document.head.appendChild(style);
+ const start=document.createElement("section");start.id="appModeStart";start.innerHTML=`<div class="mode-start-inner"><div class="mode-brand"><small>ETERNAL RETURN AUTO CHESS</small><h1>이리체스</h1><p>플레이할 모드를 선택해.</p></div><div class="mode-cards"><button type="button" class="mode-card" data-enter-mode="game"><b>게임 플레이</b><span>실제 멀티플레이에서 사용할 게임 화면.<br>라운드 · 플레이어 체력 · 준비 시간 · 전투 흐름을 확인해.</span><em>GAME CLIENT · ROUND v1</em></button><button type="button" class="mode-card" data-enter-mode="test"><b>전투 테스트</b><span>실험체 · 성급 · 배치 · 시드 등을 직접 설정하고 전투와 QA를 실행해.</span><em>DEVELOPER LAB</em></button></div></div>`;
+ document.body.appendChild(start);
+ const exit=document.createElement("button");exit.type="button";exit.id="devExit";exit.hidden=true;exit.textContent="DEV · 시작 화면으로";document.body.appendChild(exit);
+ start.querySelectorAll("[data-enter-mode]").forEach(b=>b.addEventListener("click",()=>enterAppMode(b.dataset.enterMode)));
+ exit.addEventListener("click",returnToModeStart);
+ // 실제 게임 화면에서 개발용 조작만 숨긴다. 전투 테스트에서는 원래 UI를 그대로 유지.
+ ["start","pause","step","reset","batch","speed","seed","fixedSeed","masteryA","masteryB","moveInterval"].forEach(id=>{const el=document.getElementById(id);if(!el)return;(el.closest("label")||el).classList.add("dev-control-hidden")});
+ document.body.classList.add("mode-start");
+}
+function ensureGamePreviewSquads(){
+ if(!teams.A.length){teams.A=[{characterId:"charlotte",star:1,x:2,y:1},{characterId:"nadine",star:1,x:0,y:0},{characterId:"johann",star:1,x:1,y:2}]}
+ if(!teams.B.length){teams.B=[{characterId:"marcus",star:1,x:2,y:1},{characterId:"rio",star:1,x:0,y:0},{characterId:"cathy",star:1,x:1,y:2}]}
+ reset();
+}
+function enterAppMode(mode){
+ appMode=mode;document.body.dataset.appMode=mode;document.body.classList.remove("mode-start");document.querySelector("#appModeStart").hidden=true;document.querySelector("#devExit").hidden=false;
+ if(mode==="game"){ensureGamePreviewSquads();startRoundMode();}else{stopRoundMode();}
+}
+function returnToModeStart(){
+ clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase="idle";appMode=null;delete document.body.dataset.appMode;document.body.classList.add("mode-start");document.querySelector("#appModeStart").hidden=false;document.querySelector("#devExit").hidden=true;renderRoundUI();
+}
 function ensureRoundUI(){
  if(document.querySelector("#roundModePanel"))return;
  const style=document.createElement("style");style.textContent=`
- #roundModePanel{margin:12px 0;padding:12px 14px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:8px}
+ #roundModePanel{margin:12px 0;padding:14px 16px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:rgba(0,0,0,.16);display:grid;gap:10px}
  #roundModePanel .round-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}#roundModePanel .round-top b{font-size:1.05rem}
  #roundModePanel .round-hp{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}.round-player{display:grid;gap:3px}.round-player:last-child{text-align:right}
  #roundModePanel .round-hpbar{height:8px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden}.round-hpbar i{display:block;height:100%;background:currentColor;transition:width .25s ease}
- #roundModePanel .round-actions{display:flex;gap:8px;flex-wrap:wrap}.round-btn{padding:.42rem .75rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.round-btn:hover{background:rgba(255,255,255,.13)}
- #roundModePanel .round-note{opacity:.72;font-size:.78rem}`;document.head.appendChild(style);
+ #roundModePanel .round-actions{display:flex;gap:8px;flex-wrap:wrap}.round-btn{padding:.5rem .85rem;border:1px solid rgba(255,255,255,.2);border-radius:7px;background:rgba(255,255,255,.07);color:inherit;cursor:pointer}.round-btn:hover{background:rgba(255,255,255,.13)}
+ #roundModePanel .round-note{opacity:.68;font-size:.78rem}`;document.head.appendChild(style);
  const panel=document.createElement("section");panel.id="roundModePanel";
  const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);renderRoundUI();
 }
@@ -159,11 +196,11 @@ function phaseLabel(){return {idle:"대기",prep:"준비",combat:"전투",result
 function renderRoundUI(){
  const p=document.querySelector("#roundModePanel");if(!p)return;
  const timer=(roundState.phase==="prep"||roundState.phase==="result")?` · ${Math.max(0,Math.ceil(roundState.remaining))}초`:"";
- p.innerHTML=`<div class="round-top"><b>ROUND ${roundState.round}</b><span>${phaseLabel()}${timer}</span><span style="margin-left:auto">이번 라운드 기본 피해 ${roundDamage(roundState.round)}</span></div>
- <div class="round-hp"><div class="round-player"><strong>PLAYER A · ${roundState.hp.A} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><b>VS</b><div class="round-player"><strong>PLAYER B · ${roundState.hp.B} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.B}%"></i></div></div></div>
- <div class="round-actions"><button class="round-btn" id="roundToggle">${roundState.active?"라운드 모드 종료":"라운드 모드 시작"}</button>${roundState.active&&roundState.phase==="prep"?'<button class="round-btn" id="roundSkip">준비 완료 · 바로 전투</button>':""}${roundState.phase==="finished"?'<button class="round-btn" id="roundRestart">새 게임</button>':""}</div>
- <div class="round-note">v1 · 시작 HP 100 · 준비 30초 · 전투 최대 60초 · 무승부는 피해 없음 · 기물 수와 무관하게 라운드 기본 피해만 적용</div>`;
- p.querySelector("#roundToggle")?.addEventListener("click",()=>roundState.active?stopRoundMode():startRoundMode());
+ const opponent=roundState.phase==="prep"?"다음 상대 · PLAYER B":"PLAYER B";
+ p.innerHTML=`<div class="round-top"><b>ROUND ${roundState.round}</b><span>${phaseLabel()}${timer}</span><span style="margin-left:auto">라운드 피해 ${roundDamage(roundState.round)}</span></div>
+ <div class="round-hp"><div class="round-player"><strong>나 · ${roundState.hp.A} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><b>VS</b><div class="round-player"><strong>${opponent} · ${roundState.hp.B} HP</strong><div class="round-hpbar"><i style="width:${roundState.hp.B}%"></i></div></div></div>
+ <div class="round-actions">${roundState.active&&roundState.phase==="prep"?'<button class="round-btn" id="roundSkip">준비 완료</button>':""}${roundState.phase==="finished"?'<button class="round-btn" id="roundRestart">새 게임</button>':""}</div>
+ <div class="round-note">GAME CLIENT PREVIEW · 시작 HP 100 · 준비 30초 · 전투 최대 60초 · 무승부 피해 없음</div>`;
  p.querySelector("#roundSkip")?.addEventListener("click",()=>beginRoundCombat());
  p.querySelector("#roundRestart")?.addEventListener("click",()=>startRoundMode());
 }
@@ -293,7 +330,7 @@ function buildBoard(){
 }
 function drop(e,c){
  e.preventDefault();if(running||battle)return;
- const u=units.find(u=>u.id===e.dataTransfer.getData("text/plain"));if(!u)return;
+ const u=units.find(u=>u.id===e.dataTransfer.getData("text/plain"));if(!u||appMode==="game"&&u.team!=="A")return;
  const globalX=+c.dataset.x,y=+c.dataset.y;if((u.team==="A"&&globalX>2)||(u.team==="B"&&globalX<3))return;
  const x=u.team==="A"?globalX:5-globalX,entry=teams[u.team].find(e=>e.characterId===u.characterId);
  const occupied=teams[u.team].find(e=>e!==entry&&e.x===x&&e.y===y);
@@ -322,7 +359,7 @@ function render(){
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;
   const e=document.createElement("div");
   e.className=`unit ${u.team}${u.dead?" dead":""}${u.ccUntil>time?" cc":""}`;
-  e.draggable=!running&&!battle;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);
+  e.draggable=!running&&!battle&&(appMode!=="game"||u.team==="A");e.dataset.id=u.id;e.innerHTML=unitMarkup(u);
   e.ondragstart=event=>event.dataTransfer.setData("text/plain",u.id);e.onmouseenter=()=>showInspector(u);e.onfocus=()=>showInspector(u);e.tabIndex=0;cell.appendChild(e);
  }
 }
@@ -361,4 +398,4 @@ $("#start").onclick=()=>{if(roundState.active){$("#status").textContent="라운�
 $("#step").onclick=()=>{if(!running&&!start())return;paused=true;$("#pause").textContent="▶ 재개";battle.step();battle.step();sync()};
 $("#reset").onclick=reset;$("#speed").onchange=e=>speed=+e.target.value;$("#batch").onclick=batch;
 for(const id of ["masteryA","masteryB","moveInterval","seed"])$("#"+id).onchange=reset;
-buildBoard();ensureInspector();ensureRoundUI();reset();renderRoundUI();
+buildBoard();ensureInspector();ensureRoundUI();reset();renderRoundUI();ensureAppShell();
