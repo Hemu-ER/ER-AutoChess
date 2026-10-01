@@ -5,6 +5,28 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>LIVE — Lumia Island Virtual Experiment</title>
 <link rel="stylesheet" href="style.css" />
+<style id="test-board-width-hotfix">
+/* QA/test mode must always use the full 3x6 battlefield.
+   Game PREP may use the centered 3x3 formation board. */
+body[data-app-mode="test"] #board,
+body[data-app-mode="test"] #board.formation-board,
+body[data-app-mode="test"] #board.combat-board {
+  width: 100% !important;
+  margin-inline: 0 !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+body[data-app-mode="test"] #board .cell {
+  display: block !important;
+}
+body[data-app-mode="test"] .field-a {
+  left: 25% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+body[data-app-mode="test"] .field-b {
+  display: block !important;
+}
+</style>
 </head>
 <body>
 <div class="app">
