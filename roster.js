@@ -711,12 +711,22 @@ const roster=[
   {
     "id":"wild_boar","name":"멧돼지","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":360,"atk":25,"amp":0,"range":1,"def":18,"as":0.62},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_boar.png"}
   },
   {
-    "id":"wild_wolf","name":"들개","cost":0,"role":"야생동물","affiliations":[],
+    "id":"wild_dog","name":"들개","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":300,"atk":29,"amp":0,"range":1,"def":14,"as":0.78},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_dog.png"}
+  },
+  {
+    "id":"wild_wolf","name":"늑대","cost":0,"role":"야생동물","affiliations":[],
+    "baseStats":{"hp":430,"atk":34,"amp":0,"range":1,"def":20,"as":0.82},
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_wolf.png"}
+  },
+  {
+    "id":"wild_bear","name":"곰","cost":0,"role":"야생동물","affiliations":[],
+    "baseStats":{"hp":650,"atk":42,"amp":0,"range":1,"def":30,"as":0.58},
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_bear.png"}
   }
 
 ];
