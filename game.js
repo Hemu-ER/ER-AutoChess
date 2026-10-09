@@ -257,11 +257,46 @@ function bindItemTooltips(root=document){root.querySelectorAll?.('[data-item-too
 function ensureCraftPreview(){let p=document.querySelector('#liveCraftPreview');if(!p){p=document.createElement('div');p.id='liveCraftPreview';document.body.appendChild(p)}return p}
 function updateCraftPreview(d,x,y){const p=ensureCraftPreview();const hit=document.elementFromPoint(x,y);const slot=hit?.closest('[data-item-index]');const index=slot?+slot.dataset.itemIndex:-1;const name=index>=0&&index!==d.i?LIVEItems.craft(gameState.items[d.i],gameState.items[index]):null;p.hidden=!name;document.querySelectorAll('.live-item.craft-target').forEach(el=>el.classList.remove('craft-target'));if(name){slot.classList.add('craft-target');p.innerHTML=`<small>조합 결과</small><div>${itemIconMarkup(name)}<b>${esc(name)}</b></div><small>${esc(itemStatsText(name))}</small>`;p.style.left=Math.max(8,Math.min(x+28,innerWidth-230))+'px';p.style.top=Math.max(8,Math.min(y-85,innerHeight-140))+'px'}return name}
 function closeCraftPreview(){const p=document.querySelector('#liveCraftPreview');if(p)p.hidden=true;document.querySelectorAll('.live-item.craft-target').forEach(el=>el.classList.remove('craft-target'))}
+// 도감 인원 조건: 특수 1인 효과와 역할 배치 효과는 인원 단계가 아님.
+function codexSynergyStages(name){
+ if(name==='에레보스')return [['미정',synergyEffectText(name,1)]];
+ if(['현우정신','애증','치유의 노래'].includes(name))return [['특수 조건',synergyEffectText(name,1)]];
+ if(['전사','탱커','원거리 평타','원거리 스킬','근거리 스킬','암살자','서포터'].includes(name))return [['배치/역할 효과',synergyEffectText(name,1)]];
+ if(name==='새해')return [[1,1],[2,2],[3,3]].map(([count,tier])=>[`${count}명`,synergyEffectText(name,tier)]);
+ if(name==='군악대')return [['1명',synergyEffectText(name,1)],['2명 이상',synergyEffectText(name,2)]];
+ return [['2명',synergyEffectText(name,2)],['3명',synergyEffectText(name,3)]];
+}
+// 브라우저 Web Audio 기반 가벼운 SFX. 사용자 입력 이후에만 활성화한다.
+let liveAudioContext=null;
+function liveBeep(kind='pick'){
+ try{
+  const Context=window.AudioContext||window.webkitAudioContext;
+  if(!Context)return;
+  if(!liveAudioContext)liveAudioContext=new Context();
+  if(liveAudioContext.state==='suspended'){liveAudioContext.resume().catch(()=>{});return;}
+  const now=liveAudioContext.currentTime;
+  const play=(freq,start,duration,volume=0.025)=>{const osc=liveAudioContext.createOscillator(),gain=liveAudioContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(0.0001,start);gain.gain.exponentialRampToValueAtTime(volume,start+0.009);gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);osc.connect(gain);gain.connect(liveAudioContext.destination);osc.start(start);osc.stop(start+duration+0.008)};
+  if(kind==='level'){play(523,now,0.12,0.039);play(659,now+0.11,0.13,0.039);play(784,now+0.22,0.21,0.047)}
+  else if(kind==='drop')play(440,now,0.075);
+  else play(610,now,0.06,0.018);
+ }catch(e){/* 사운드가 불가한 환경에서도 게임은 계속 진행 */}
+}
+let liveMasteryToastTimeout=null;
+function showMasteryLevelUp(level){
+ const dock=document.querySelector('.dock-mastery');
+ dock?.classList.remove('mastery-level-flash');void dock?.offsetWidth;dock?.classList.add('mastery-level-flash');
+ let toast=document.querySelector('#liveMasteryToast');
+ if(!toast){toast=document.createElement('div');toast.id='liveMasteryToast';toast.setAttribute('role','status');document.body.appendChild(toast)}
+ toast.textContent=`숙련도 Lv.${level} 달성!`;
+ toast.classList.remove('visible');void toast.offsetWidth;toast.classList.add('visible');
+ clearTimeout(liveMasteryToastTimeout);liveMasteryToastTimeout=setTimeout(()=>{toast.classList.remove('visible');dock?.classList.remove('mastery-level-flash')},1900);
+ liveBeep('level');
+}
 function openLiveCodex(){
  let dlg=document.querySelector('#liveCodex');if(!dlg){dlg=document.createElement('div');dlg.id='liveCodex';document.body.appendChild(dlg)}
  const entries={
  items:Object.keys(LIVEItems.all).map(n=>({search:n+' '+itemStatsText(n)+' '+(ITEM_EFFECT_HINTS[n]||'')+' '+(LIVEItems.all[n].materials||[]).join(' '),html:`<article class="codex-item-card"><div class="codex-item-head">${itemIconMarkup(n)}<h4>${esc(n)}</h4></div><p class="codex-item-stats">${esc(itemStatsText(n))}</p>${ITEM_EFFECT_HINTS[n]?`<p class="codex-item-effect"><b>고유효과</b> ${esc(ITEM_EFFECT_HINTS[n])}</p>`:''}${LIVEItems.all[n].basic?'':`<p class="codex-tier">조합: ${esc((LIVEItems.all[n].materials||[]).join(' + '))}</p>`}</article>`})),
- synergy:Object.keys(SYNERGY_EFFECT_TEXT).map(n=>({search:n+' '+synergyEffectText(n,1)+' '+synergyEffectText(n,3),html:`<article><h4>${esc(n)}</h4><p>${esc(synergyEffectText(n,1))}</p><p class="codex-tier">${esc(synergyEffectText(n,3))}</p></article>`})),
+ synergy:Object.keys(SYNERGY_EFFECT_TEXT).map(n=>{const stages=codexSynergyStages(n);return {search:n+' '+stages.map(x=>x[0]+' '+x[1]).join(' '),html:`<article class="codex-synergy-card"><h4>${esc(n)}</h4>${stages.map(([label,effect])=>`<div class="codex-synergy-stage"><b>${esc(label)}</b><p>${esc(effect)}</p></div>`).join('')}</article>`}}),
  characters:roster.filter(r=>!r.pveOnly).map(r=>{const skill=skillInfo[r.id]||{};const active=skill.active||[];const passive=skill.passive||[];const nickname=skinName(r);return {search:[r.name,displayName(r),nickname,r.role,...(r.affiliations||[]),...active,...passive].join(' '),html:`<article class="codex-character-card"><div class="codex-character-art">${characterPortrait(r,'codex-character-portrait')}</div><div class="codex-character-details"><h4>${esc(displayName(r))}</h4><p class="codex-character-nickname">${esc(nickname)}</p><p class="codex-character-meta">${esc(r.cost)}C · ${esc(r.role)} · ${esc((r.affiliations||[]).join(' / '))}</p><div class="codex-skill"><b>ACTIVE · ${esc(active[0]||'없음')}</b><p>${esc(active[1]||'설명 없음')}</p></div><div class="codex-skill"><b>PASSIVE · ${esc(passive[0]||'없음')}</b><p>${esc(passive[1]||'설명 없음')}</p></div></div></article>`}})
  };
  dlg.innerHTML=`<div class="codex-window" role="dialog" aria-modal="true" aria-label="이리체스 도감"><header><b>이리체스 도감</b><button data-codex-close>닫기 ×</button></header><nav><button data-codex-tab="items">아이템</button><button data-codex-tab="synergy">시너지</button><button data-codex-tab="characters">캐릭터</button></nav><div class="codex-search-wrap"><input type="search" data-codex-search placeholder="이름, 소속, 역할, 효과 검색" aria-label="도감 검색"></div><section class="codex-content" data-codex-content></section><footer>아이템 고유효과 중 일부는 아직 전투 미구현 · 게임 내 설명 기준</footer></div>`;
@@ -269,8 +304,8 @@ function openLiveCodex(){
 }
 
 function beginItemPointerDrag(ev,i,source){if(roundState.phase!=='prep'||ev.button>0)return;itemPointerDrag={i,id:ev.pointerId,x:ev.clientX,y:ev.clientY,started:false,ghost:null};source.setPointerCapture?.(ev.pointerId);}
-function moveItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;if(!d.started){if(Math.hypot(d.x-ev.clientX,d.y-ev.clientY)<8)return;d.started=true;d.ghost=document.createElement('div');d.ghost.className='live-item-drag-ghost';d.ghost.innerHTML=itemIconMarkup(gameState.items[d.i]);document.body.appendChild(d.ghost)}ev.preventDefault();d.ghost.style.left=ev.clientX+'px';d.ghost.style.top=ev.clientY+'px';updateCraftPreview(d,ev.clientX,ev.clientY);}
-function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;d.ghost?.remove();closeCraftPreview();if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=document.elementFromPoint(ev.clientX,ev.clientY);const targetItem=hit?.closest('[data-item-index]');if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();return}const alt=hit?.closest('[data-equip-uid]');if(alt){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();}}
+function moveItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;if(!d.started){if(Math.hypot(d.x-ev.clientX,d.y-ev.clientY)<8)return;d.started=true;liveBeep('pick');d.ghost=document.createElement('div');d.ghost.className='live-item-drag-ghost';d.ghost.innerHTML=itemIconMarkup(gameState.items[d.i]);document.body.appendChild(d.ghost)}ev.preventDefault();d.ghost.style.left=ev.clientX+'px';d.ghost.style.top=ev.clientY+'px';updateCraftPreview(d,ev.clientX,ev.clientY);}
+function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;d.ghost?.remove();closeCraftPreview();if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=document.elementFromPoint(ev.clientX,ev.clientY);const targetItem=hit?.closest('[data-item-index]');if(hit?.closest('.dock-shop,[data-equip-uid],[data-owned-drag]')||targetItem)liveBeep('drop');if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();return}const alt=hit?.closest('[data-equip-uid]');if(alt){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();}}
 function cancelItemPointerDrag(){itemPointerDrag?.ghost?.remove();itemPointerDrag=null;closeCraftPreview()}
 function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
@@ -291,7 +326,7 @@ function addMasteryProgress(amount=1,reason='숙련도'){
  gameState.masteryProgress+=amount;let leveled=false;
  while(gameState.masteryLevel<20){const need=masteryExpToNext();if(gameState.masteryProgress<need)break;gameState.masteryProgress-=need;gameState.masteryLevel++;leveled=true}
  if(gameState.masteryLevel>=20)gameState.masteryProgress=0;
- if(leveled)gameState.message=`${reason} · 숙련도 ${gameState.masteryLevel} 달성`;
+ if(leveled){gameState.message=`${reason} · 숙련도 ${gameState.masteryLevel} 달성`;showMasteryLevelUp(gameState.masteryLevel)}
 }
 function investMastery(){
  if(appMode!=='game'||roundState.phase!=='prep')return;
@@ -512,7 +547,7 @@ function clearOwnedDrag(){
  if(ownedPointerDrag){ownedPointerDrag.source?.classList.remove('dragging-owned');ownedPointerDrag.ghost?.remove()}document.querySelectorAll('.drag-ghost').forEach(e=>e.remove());document.querySelectorAll('.drag-target').forEach(e=>e.classList.remove('drag-target'));document.body.classList.remove('shop-sell-active');clearRolePlacementHints();ownedPointerDrag=null;
 }
 function startOwnedPointerDrag(ev){
- const d=ownedPointerDrag;if(!d||d.started)return;const o=gameState.owned.find(x=>x.uid===d.uid),r=o&&byId[o.characterId];if(!o||!r){clearOwnedDrag();return}const ghost=document.createElement('div');ghost.className='drag-ghost';ghost.innerHTML=r.asset?.sd?`<img src="${esc(r.asset.sd)}" alt="">`:`<b>${esc(displayName(r))}</b>`;document.body.appendChild(ghost);d.ghost=ghost;d.started=true;d.source.classList.add('dragging-owned');showRolePlacementHints(r.role);d.source.setPointerCapture?.(ev.pointerId);
+ const d=ownedPointerDrag;if(!d||d.started)return;const o=gameState.owned.find(x=>x.uid===d.uid),r=o&&byId[o.characterId];if(!o||!r){clearOwnedDrag();return}const ghost=document.createElement('div');ghost.className='drag-ghost';ghost.innerHTML=r.asset?.sd?`<img src="${esc(r.asset.sd)}" alt="">`:`<b>${esc(displayName(r))}</b>`;document.body.appendChild(ghost);d.ghost=ghost;d.started=true;d.source.classList.add('dragging-owned');liveBeep('pick');showRolePlacementHints(r.role);d.source.setPointerCapture?.(ev.pointerId);
 }
 function beginOwnedPointerDrag(ev,uid,source){
  if(ev.target.closest?.('.live-equip-slots'))return;
@@ -522,7 +557,7 @@ function moveOwnedPointerDrag(ev){
  const d=ownedPointerDrag;if(!d||ev.pointerId!==d.pointerId)return;if(!d.started){if(Math.hypot(ev.clientX-d.startX,ev.clientY-d.startY)<OWNED_DRAG_THRESHOLD)return;startOwnedPointerDrag(ev);if(!ownedPointerDrag?.started)return}ev.preventDefault();d.ghost.style.left=`${ev.clientX}px`;d.ghost.style.top=`${ev.clientY}px`;document.querySelectorAll('.drag-target').forEach(e=>e.classList.remove('drag-target'));const hit=document.elementFromPoint(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell');document.body.classList.toggle('shop-sell-active',!!shop);if(shop){const o=gameState.owned.find(x=>x.uid===d.uid),r=o&&byId[o.characterId],refund=r?sellRefund(o,r):0;shop.dataset.sellHint=`판매 +${refund}`;shop.classList.add('drag-target')}else if(bench)bench.classList.add('drag-target');else if(cell&&+cell.dataset.x<=2)cell.classList.add('drag-target');
 }
 function endOwnedPointerDrag(ev){
- if(!ownedPointerDrag||ev.pointerId!==ownedPointerDrag.pointerId)return;const d=ownedPointerDrag;document.removeEventListener('pointermove',moveOwnedPointerDrag);if(!d.started){clearOwnedDrag();return}ev.preventDefault();const uid=d.uid,hit=document.elementFromPoint(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell');if(shop)sellOwned(uid);else if(bench)benchOwned(uid);else if(cell)moveOwnedToCell(uid,cell);clearOwnedDrag();
+ if(!ownedPointerDrag||ev.pointerId!==ownedPointerDrag.pointerId)return;const d=ownedPointerDrag;document.removeEventListener('pointermove',moveOwnedPointerDrag);if(!d.started){clearOwnedDrag();return}ev.preventDefault();const uid=d.uid,hit=document.elementFromPoint(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell');if(shop||bench||cell)liveBeep('drop');if(shop)sellOwned(uid);else if(bench)benchOwned(uid);else if(cell)moveOwnedToCell(uid,cell);clearOwnedDrag();
 }
 function cancelOwnedPointerDrag(){document.removeEventListener('pointermove',moveOwnedPointerDrag);clearOwnedDrag()}
 function bindOwnedPointerDrag(root){root?.querySelectorAll('[data-owned-drag]').forEach(el=>el.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,+el.dataset.ownedDrag,el)))}

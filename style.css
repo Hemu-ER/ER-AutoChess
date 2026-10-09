@@ -127,3 +127,24 @@ body,button,input,select,textarea{font-family:'Freesentation',Pretendard,'Noto S
 .codex-content .codex-skill p{font-size:12px;line-height:1.6;margin:5px 0 0}
 @media(max-width:900px){#liveItemsPanel{width:min(280px,calc(100vw - 12px));max-height:60dvh}#liveItemsPanel .live-item img{width:38px;height:38px}}
 @media(max-width:560px){.codex-content.character-layout{grid-template-columns:1fr}.codex-character-card{grid-template-columns:38% minmax(0,1fr);gap:9px;min-height:230px}.codex-character-art{min-height:218px}.codex-character-portrait{height:218px}.codex-character-details h4{font-size:17px}.codex-content .codex-skill p{font-size:11px}}
+
+/* M2-07 시너지 도감의 단계 레이블과 기본 텍스트 색상 */
+.codex-content .codex-synergy-stage{border-top:1px solid rgba(158,181,194,.18);padding:9px 0 2px}
+.codex-content .codex-synergy-stage:first-of-type{margin-top:8px}
+.codex-content .codex-synergy-stage>b{display:block;font-size:12px;font-weight:700;color:inherit;margin-bottom:5px}
+.codex-content .codex-synergy-stage p{font-size:12px;color:inherit;line-height:1.55;margin:0}
+#liveMasteryToast{position:fixed;left:50%;top:19%;transform:translate(-50%,-12px) scale(.96);z-index:24000;pointer-events:none;opacity:0;padding:13px 24px;border:1px solid rgba(221,239,247,.7);border-radius:10px;background:rgba(10,22,31,.95);color:#f6faff;font-size:23px;font-weight:800;text-shadow:0 0 14px rgba(152,226,246,.68);box-shadow:0 0 20px rgba(140,217,255,.19);transition:opacity .22s,transform .22s}
+#liveMasteryToast.visible{opacity:1;transform:translate(-50%,0) scale(1)}
+.dock-mastery.mastery-level-flash{animation:masteryFlash .55s ease-in-out 2}
+@keyframes masteryFlash{0%,100%{filter:brightness(1)}40%{filter:brightness(1.9);box-shadow:0 0 20px rgba(165,225,255,.55)}}
+@media(prefers-reduced-motion:reduce){#liveMasteryToast{transition:none}.dock-mastery.mastery-level-flash{animation:none}}
+
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-1Thin.ttf') format('truetype');font-style:normal;font-weight:100;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-2ExtraLight.ttf') format('truetype');font-style:normal;font-weight:200;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-3Light.ttf') format('truetype');font-style:normal;font-weight:300;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-4Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-5Medium.ttf') format('truetype');font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-6SemiBold.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-7Bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-8ExtraBold.ttf') format('truetype');font-style:normal;font-weight:800;font-display:swap}
+@font-face{font-family:'Freesentation';src:url('assets/fonts/Freesentation-9Black.ttf') format('truetype');font-style:normal;font-weight:900;font-display:swap}
