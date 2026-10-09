@@ -55,3 +55,33 @@ footer{text-align:center;padding:14px;color:#425867;font-size:8px;letter-spacing
 .unit .live-equip-slot{width:17px;height:17px;font-size:11px}
 .live-item-drag-ghost{position:fixed;z-index:99999;pointer-events:none;transform:translate(-50%,-50%);background:#17212de8;border:1px solid #96b3c2;border-radius:7px;padding:5px;box-shadow:0 3px 15px #000b}
 .live-item-drag-ghost img{width:42px;height:42px;object-fit:contain}
+
+/* M2-04: inventory visibility, crafting feedback, equipped-item inspect, reference book */
+#liveItemsPanel{width:min(405px,calc(100vw - 24px));max-height:calc(100dvh - 110px)}
+#liveItemsPanel .live-item-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+#liveItemsPanel .live-item{min-height:90px;padding:8px 4px;font-size:11px;justify-content:center}
+#liveItemsPanel .live-item img{width:58px;height:58px}
+#liveItemsPanel .live-item.craft-target{outline:3px solid #7bd8b7;background:#17453c}
+.live-equip-slot{width:34px;height:34px}
+.bench-unit .live-equip-slot{width:22px;height:22px;font-size:13px}
+.unit .live-equip-slot{width:26px;height:26px;font-size:14px}
+.live-equipped{grid-template-columns:minmax(70px,1fr) auto auto}
+.live-items-heading{display:flex;align-items:center;justify-content:space-between}
+.live-items-heading button{background:#263941;border:1px solid #6e8a91;color:#e4f2f1;border-radius:7px;padding:6px 10px;cursor:pointer}
+#liveItemCursorTip{position:fixed;z-index:210000;pointer-events:none;width:270px;max-width:calc(100vw - 20px);padding:12px;background:#101a21f7;color:#eef8f7;border:1px solid #8db4aa;border-radius:10px;box-shadow:0 8px 28px #000a;font-size:12px;line-height:1.55}
+#liveItemCursorTip[hidden],#liveCraftPreview[hidden]{display:none}
+.live-tip-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:14px}.live-tip-head img{width:44px;height:44px;object-fit:contain}
+.live-tip-effect{border-top:1px solid #ffffff30;margin-top:7px;padding-top:7px;color:#afe6cc}
+#liveCraftPreview{position:fixed;z-index:210001;pointer-events:none;background:#102621f7;border:1px solid #66d2a6;border-radius:9px;min-width:190px;max-width:220px;padding:9px;color:#e5fff3;box-shadow:0 7px 20px #000a}
+#liveCraftPreview>div{display:flex;gap:8px;align-items:center}#liveCraftPreview img{width:51px;height:51px;object-fit:contain}#liveCraftPreview small{display:block;opacity:.8}
+#liveCodex{position:fixed;inset:0;z-index:200000;background:#000b;display:flex;align-items:center;justify-content:center;padding:18px}
+.codex-window{width:min(850px,100%);height:min(82dvh,760px);display:flex;flex-direction:column;background:#10171f;border:1px solid #71838b;border-radius:14px;color:#e5f0ef;box-shadow:0 15px 50px #000d;overflow:hidden}
+.codex-window>header{display:flex;justify-content:space-between;align-items:center;padding:17px 20px;border-bottom:1px solid #ffffff24;font-size:20px}
+.codex-window button{cursor:pointer;border:1px solid #5f7780;border-radius:7px;background:#1d2c35;color:#eef5f5;padding:7px 12px}
+.codex-window nav{display:flex;gap:8px;padding:10px 18px}.codex-window nav button.active{background:#285349;border-color:#86d8b9}
+.codex-content{overflow:auto;padding:12px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;align-content:start}
+.codex-content article{border:1px solid #344752;background:#18232c;padding:12px;border-radius:9px;min-width:0}
+.codex-content h4{font-size:14px;margin:0 0 7px}.codex-content p{font-size:12px;line-height:1.5;color:#c3d6d3;margin:6px 0}
+.codex-item-head{display:flex;align-items:center;gap:9px}.codex-item-head img{width:46px;height:46px;object-fit:contain}
+.codex-content p.codex-tier{color:#95bfae}.codex-window footer{padding:10px 18px;border-top:1px solid #ffffff1a;color:#9eb6b2;font-size:11px}
+@media(max-width:900px){#liveItemsPanel{width:min(350px,calc(100vw - 12px));max-height:58vh}#liveItemsPanel .live-item img{width:48px;height:48px}}
