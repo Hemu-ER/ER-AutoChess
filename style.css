@@ -37,3 +37,21 @@ footer{text-align:center;padding:14px;color:#425867;font-size:8px;letter-spacing
 #liveItemsPanel{position:fixed;right:12px;top:86px;z-index:8501;width:min(325px,calc(100vw - 24px));max-height:calc(100vh - 300px);overflow-y:auto;background:rgba(12,14,20,.95);border:1px solid #667077;border-radius:12px;padding:12px;color:#eee;font-size:12px;box-shadow:0 5px 30px #0008}
 #liveItemsPanel header{display:grid;gap:3px;margin-bottom:8px}#liveItemsPanel small{opacity:.65}.live-item-row{display:flex;flex-wrap:wrap;gap:5px;min-height:42px}.live-item{padding:5px;border:1px solid #54606b;border-radius:5px;color:#eee;background:#263039;font-size:11px}.live-item.picked{outline:2px solid #9ac7e8}.live-item-actions{display:flex;gap:6px;margin:8px 0}.live-item-actions button,.live-equipped button{background:#343a45;color:#fff;border:1px solid #626c76;border-radius:5px;padding:4px;cursor:pointer}.live-equipped-list{display:grid;gap:4px}.live-equipped{display:grid;grid-template-columns:75px 1fr auto;gap:4px;align-items:center;border-top:1px solid #ffffff1a;padding:5px 0}.live-equipped span{overflow-wrap:anywhere}.live-equipped button:disabled{opacity:.4}
 @media(max-width:900px){#liveItemsPanel{top:70px;right:4px;width:250px;max-height:45vh}}
+
+/* M2-02 아이템 아이콘, 장비 3칸, 드래그 */
+#liveItemsPanel .live-item-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+#liveItemsPanel .live-item{min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:grab;touch-action:none;user-select:none;font-size:9px;text-align:center}
+#liveItemsPanel .live-item img{width:36px;height:36px;object-fit:contain;pointer-events:none}
+#liveItemsPanel .live-item span{overflow-wrap:anywhere}
+.live-equipped{grid-template-columns:minmax(70px,1fr) auto auto}
+.live-equip-slots{display:inline-flex;gap:3px;align-items:center;position:relative;z-index:90}
+.live-equip-slot{width:23px;height:23px;display:grid;place-items:center;background:rgba(12,20,27,.85);border:1px solid #647786;border-radius:4px;cursor:help}
+.live-equip-slot img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.live-equip-slot.empty{border-style:dashed;color:#849ba9;font-size:14px;opacity:.72}
+.bench-unit{overflow:visible!important}
+.bench-unit>.live-equip-slots{position:absolute;right:2px;bottom:2px;z-index:95;gap:1px}
+.bench-unit .live-equip-slot{width:13px;height:13px;font-size:9px}
+.unit>.live-equip-slots{position:absolute;left:50%;bottom:13px;transform:translateX(-50%);z-index:100;pointer-events:auto}
+.unit .live-equip-slot{width:17px;height:17px;font-size:11px}
+.live-item-drag-ghost{position:fixed;z-index:99999;pointer-events:none;transform:translate(-50%,-50%);background:#17212de8;border:1px solid #96b3c2;border-radius:7px;padding:5px;box-shadow:0 3px 15px #000b}
+.live-item-drag-ghost img{width:42px;height:42px;object-fit:contain}
