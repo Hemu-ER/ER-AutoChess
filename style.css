@@ -85,3 +85,9 @@ footer{text-align:center;padding:14px;color:#425867;font-size:8px;letter-spacing
 .codex-item-head{display:flex;align-items:center;gap:9px}.codex-item-head img{width:46px;height:46px;object-fit:contain}
 .codex-content p.codex-tier{color:#95bfae}.codex-window footer{padding:10px 18px;border-top:1px solid #ffffff1a;color:#9eb6b2;font-size:11px}
 @media(max-width:900px){#liveItemsPanel{width:min(350px,calc(100vw - 12px));max-height:58vh}#liveItemsPanel .live-item img{width:48px;height:48px}}
+
+/* M2-05 */
+.compact-hud .hpbar.invincible-hp,.hpbar.invincible-hp{border:2px solid #fff!important;box-shadow:0 0 0 1px #f9ffff,0 0 8px 2px #ffffffad!important;overflow:visible}
+.codex-search-wrap{padding:0 18px 12px}.codex-search-wrap input{box-sizing:border-box;width:100%;padding:11px 13px;color:#eaf6f2;background:#0a1218;border:1px solid #658076;border-radius:8px;outline-offset:3px;font-size:14px}
+.codex-character-portrait{display:block;position:relative;width:55px;height:64px;flex-shrink:0;overflow:hidden}.codex-character-portrait img{max-width:100%;max-height:100%;object-fit:contain}
+.live-item{cursor:grab}.live-item:active{cursor:grabbing}
