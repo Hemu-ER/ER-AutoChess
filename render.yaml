@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: live-irichess
+    runtime: node
+    plan: starter
+    buildCommand: echo "No build needed"
+    startCommand: node server.cjs
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LIVE_DATA_DIR
+        value: /var/data
+    disk:
+      name: live-accounts
+      mountPath: /var/data
+      sizeGB: 1

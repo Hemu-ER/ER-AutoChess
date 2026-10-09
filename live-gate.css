@@ -1,0 +1,13 @@
+body.live-gated{overflow:hidden!important}
+body.live-gated .app,body.live-gated #roundModePanel,body.live-gated #gameBottomDock,body.live-gated #devExit{visibility:hidden!important;pointer-events:none!important}
+#liveGate{position:fixed;inset:0;z-index:20000;background:radial-gradient(circle at 50% 20%,#1a2227,#070a0d 60%);display:grid;place-items:center;padding:20px;color:#e7eeee;font-family:inherit}
+#liveGate[hidden],#liveGameChat[hidden],#liveGate [hidden]{display:none!important}
+.live-gate-card{width:min(480px,100%);padding:36px;border:1px solid #36454d;background:#11171d;border-radius:14px;box-shadow:0 24px 100px #0009;display:grid;gap:14px}
+.live-eyebrow{letter-spacing:.18em;font-size:11px;color:#8ca4a8}.live-gate-card h1{font-size:54px;letter-spacing:.16em;margin:0}.live-gate-card h2{font-size:19px;margin:12px 0}.live-gate-card p,.live-gate-card small{color:#94a8ae}.live-sub{margin:0 0 12px}.live-gate-card input,.live-chat-send input{width:100%;min-width:0;padding:12px;background:#090d12;border:1px solid #3c4c55;border-radius:6px;color:#eff}
+.live-gate-card button,.live-chat-send button{padding:10px 14px;border:1px solid #52636a;border-radius:6px;background:#27323a;color:#f1f6f7;cursor:pointer;white-space:nowrap}.live-gate-card button:disabled{opacity:.4;cursor:not-allowed}.live-gate-card button.live-primary{background:#42636a;border-color:#6c9299}.live-gate-card button:hover:not(:disabled){filter:brightness(1.17)}
+#liveAuth,#liveRooms,#liveWaiting{display:grid;gap:12px}.live-line{display:flex;gap:8px;align-items:center}.live-line>*{min-width:0}.live-line input{flex:1}.live-line h2{flex:1}.live-member{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #ffffff20}.live-member span{color:#9fb1b5}
+#liveNotice{margin:6px 0 0;min-height:20px;font-size:13px;color:#bdd1d4!important}
+#liveGameChat{position:fixed;left:10px;top:72px;bottom:210px;width:min(262px,24vw);min-height:120px;z-index:8400;border:1px solid #374650;border-radius:9px;background:#10151be8;display:flex;flex-direction:column;padding:9px;gap:8px;color:#dee6e9;font-size:12px}.live-chat-head{display:flex;justify-content:space-between}.live-chat-log{flex:1;overflow-y:auto;overflow-wrap:anywhere;line-height:1.7}.live-chat-log b{color:#b0d1d6}.live-chat-log i{color:#849ba0}.live-chat-send{display:flex;gap:5px}.live-chat-send input{padding:8px}.live-chat-send button{padding:5px}.live-help{font-size:12px}#liveGameChat small{color:#91a8af;line-height:1.5}
+@media(max-width:800px){#liveGameChat{width:170px;top:65px;bottom:230px}.live-gate-card{padding:20px}}
+body.live-gated #appModeStart{visibility:hidden!important;pointer-events:none!important}
+body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!important}

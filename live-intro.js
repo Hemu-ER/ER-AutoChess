@@ -36,7 +36,7 @@
   root.id=ROOT_ID;
   root.tabIndex=0;
   root.setAttribute("role","button");
-  root.setAttribute("aria-label","LIVE 시작 화면. 언제든 클릭하면 건너뜁니다.");
+  root.setAttribute("aria-label","LIVE 시작 화면. 연출이 끝난 뒤 클릭하면 계속합니다.");
 
   const chars=[...FULL].map((c,i)=>{
     const cls=INITIAL_INDEX.has(i)?"ch initial":"ch";
@@ -80,27 +80,21 @@
 
   async function play(){
     await sleep(420);
-    if(closing)return;
     for(const s of spans){
-      if(closing)return;
       s.classList.add("typed");
       await sleep(s.textContent.trim()?46:24);
     }
     await sleep(620);
-    if(closing)return;
 
     // L/I/V/E만 남기고 나머지는 제자리에서 사라진다.
     for(const s of spans) if(!s.classList.contains("initial")) s.classList.add("fade");
     await sleep(480);
-    if(closing)return;
 
     // 남아 있던 네 글자 자체가 중앙으로 모이며 확대된다.
     moveInitialsToLogo();
     await sleep(1080);
-    if(closing)return;
     root.classList.add("show-subtitle");
     await sleep(420);
-    if(closing)return;
 
     ready=true;
     root.classList.add("live-ready");
@@ -108,7 +102,7 @@
   }
 
   function finish(ev){
-    if(closing)return;
+    if(!ready||closing)return;
     closing=true;
     ev?.preventDefault?.();
     ev?.stopPropagation?.();
@@ -117,6 +111,6 @@
   }
 
   root.addEventListener("pointerup",finish);
-  root.addEventListener("keydown",ev=>{if(ev.key==="Enter"||ev.key===" ")finish(ev)});
+  root.addEventListener("keydown",ev=>{if((ev.key==="Enter"||ev.key===" ")&&ready)finish(ev)});
   play();
 })();
