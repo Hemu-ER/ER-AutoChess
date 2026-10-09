@@ -681,7 +681,7 @@ const roster=[
       "as": 0.72
     },
     "implemented": true,
-    "main": "hp",
+    "main": "atk",
     "asset": {
       "sd": "assets/characters/mirka.png"
     }

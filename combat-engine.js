@@ -65,7 +65,7 @@ function CombatEngine(input){
  function makeUnit(characterId,star,team,mastery,pos,instanceKey='0'){
   const r=byId[characterId],m=1+(mastery-1)*.01,u={id:team+':'+characterId+':'+instanceKey,characterId,name:r.name,team,role:r.role,aff:[...r.affiliations],range:r.baseStats.range,main:r.main,star,x:pos.x,y:pos.y,initialX:pos.x,initialY:pos.y};
   u.coefficients=Object.fromEntries(Object.entries(coefficients[characterId]||{}).map(([k,v])=>[k,v[star-1]]));
-  u.base=Object.fromEntries(Object.entries(growth).map(([k,v])=>[k,r.baseStats[k]*v[star-1]*m]));resetCombatState(u);return u;
+  u.base=Object.fromEntries(Object.entries(growth).map(([k,v])=>[k,r.baseStats[k]*v[star-1]*(k===r.main?m:1)]));resetCombatState(u);return u;
  }
  const sourceCatalog={
  '멧현우':{'도그파이트':'skill','허세':'passive'},'꿈델라':{'체크메이트':'skill','프로모션':'passive'},'다이린':{'만취':'skill','취기':'passive'},'유키멍':{'머리치기!':'skill','옷매무새 정리':'passive'},
