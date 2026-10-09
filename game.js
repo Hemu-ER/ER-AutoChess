@@ -421,7 +421,7 @@ function renderRoundUI(){
  p.querySelector('#roundSkip')?.addEventListener('click',beginRoundCombat)
 }
 function creditHtml(amount,cls='credit-price'){
- return `<span class="${cls}"><img src="assets/ui/credit.png" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
+ return `<span class="${cls}"><img src="assets/ui/credit.png?v=20261010-1" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
 }
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
