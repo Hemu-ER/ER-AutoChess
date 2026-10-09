@@ -19,7 +19,9 @@ const SELL_REFUND_RATE=0.50;
 const alphaBoundsCache=new Map();
 let ownedPointerDrag=null;
 let shopDockCollapsed=false;
-const BASIC_ITEMS=["철판","가죽","배터리","옷감","고철","오일"];
+const BASIC_ITEMS=LIVEItems.baseNames;
+const INVENTORY_LIMIT=12;
+let itemSelected=null;
 const playableRoster=()=>roster.filter(r=>!r.pveOnly&&r.cost>=1&&r.cost<=3);
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
 
@@ -148,7 +150,7 @@ function showInspector(u,rOverride=null,starOverride=null){
 document.addEventListener('click',e=>{const btn=e.target.closest?.('.inspect-detail-toggle');if(!btn)return;e.preventDefault();e.stopPropagation();const id=btn.dataset.detailId;if(expandedSkillDetails.has(id))expandedSkillDetails.delete(id);else expandedSkillDetails.add(id);const u=units.find(x=>x.characterId===id)||null;const r=byId[id];if(r)showInspector(u,r)});
 
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A,teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value}}
+function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A.map(e=>({...e,items:[...(gameState.owned.find(o=>o.uid===e.ownedId)?.equipment||[])]})),teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value}}
 function showError(e){$("#status").textContent=e.message}
 function statusLabel(r){return r.implemented?"SKILL READY":"SKILL PENDING"}
 function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affiliations:[r[field]]))]}
@@ -189,33 +191,65 @@ function rollShop(){
 function shopOddsLabel(){const o=shopCostOdds();return `상점 확률 · 1코 ${o[1]}% · 2코 ${o[2]}% · 3코 ${o[3]}%`}
 function firstFreeCell(){for(const x of [2,1,0])for(const y of [1,0,2])if(!teams.A.some(e=>e.x===x&&e.y===y))return{x,y};return null}
 function syncOwnedBoard(){for(const o of gameState.owned){const e=teams.A.find(e=>e.ownedId===o.uid);o.location=e?'board':'bench'}renderGameEconomy()}
+// 합성은 배치 우선, 전열부터/상단부터, 다음은 벤치 좌측 순서.
+const mergePriority=o=>{const entry=teams.A.find(e=>e.ownedId===o.uid);return entry?(2-entry.x)*10+entry.y:100+gameState.owned.filter(v=>v.location==='bench').indexOf(o)};
 function mergeOwnedUnits(){
- let merged=[];
- for(let guard=0;guard<12;guard++){
+ const merged=[];
+ for(let guard=0;guard<20;guard++){
   let trio=null;
-  for(const star of [1,2]){
-   const groups=new Map();
-   for(const o of gameState.owned.filter(o=>o.star===star)){const k=o.characterId+'|'+star;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(o)}
-   trio=[...groups.values()].find(g=>g.length>=3);if(trio)break;
+  for(const star of [2,1]){
+   const groups=new Map();for(const o of gameState.owned.filter(o=>o.star===star)){const k=o.characterId+'|'+star;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(o)}
+   trio=[...groups.values()].find(a=>a.length>=3&&a.sort((a,b)=>mergePriority(a)-mergePriority(b)).slice(0,3).reduce((n,o)=>n+(o.equipment?.length||0),0)<=INVENTORY_LIMIT-gameState.items.length);
+   if(trio)break;
   }
   if(!trio)break;
-  trio=trio.slice(0,3);
-  const survivor=trio.find(o=>o.location==='board')||trio[0],consumed=trio.filter(o=>o!==survivor);
-  for(const o of consumed){const bi=teams.A.findIndex(e=>e.ownedId===o.uid);if(bi>=0)teams.A.splice(bi,1);const oi=gameState.owned.findIndex(x=>x.uid===o.uid);if(oi>=0)gameState.owned.splice(oi,1)}
+  trio=trio.slice(0,3);const survivor=trio[0],returnItems=trio.flatMap(o=>o.equipment||[]);
+  gameState.items.push(...returnItems);
+  survivor.equipment=[];
+  for(const o of trio.slice(1)){const bi=teams.A.findIndex(e=>e.ownedId===o.uid);if(bi>=0)teams.A.splice(bi,1);gameState.owned.splice(gameState.owned.indexOf(o),1)}
   survivor.star++;
-  const boardEntry=teams.A.find(e=>e.ownedId===survivor.uid);if(boardEntry)boardEntry.star=survivor.star;
+  const entry=teams.A.find(e=>e.ownedId===survivor.uid);if(entry)entry.star=survivor.star;
   merged.push(`${displayName(byId[survivor.characterId])} ${'★'.repeat(survivor.star)}`);
  }
  return merged;
 }
-function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench'};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}const merged=mergeOwnedUnits();return {unit:o,merged}}
-function purchaseCanMerge(characterId){return gameState.owned.filter(o=>o.characterId===characterId&&o.star===1).length>=2}
+function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench',equipment:[]};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}const merged=mergeOwnedUnits();return {unit:o,merged}}
+function purchaseCanMerge(characterId){const a=gameState.owned.filter(o=>o.characterId===characterId&&o.star===1).sort((a,b)=>mergePriority(a)-mergePriority(b)).slice(0,2);return a.length===2&&a.reduce((n,o)=>n+(o.equipment||[]).length,0)<=INVENTORY_LIMIT-gameState.items.length}
 
-function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(id)){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;const added=addOwned(id,false);gameState.shop[i]=null;gameState.message=added.merged.length?`${displayName(r)} 구매 · ${added.merged.join(' → ')} 합성!`:`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
+function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(id)){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;const added=addOwned(id,false);gameState.shop[i]=null;mergeOwnedUnits();gameState.message=added.merged.length?`${displayName(r)} 구매 · ${added.merged.join(' → ')} 합성!`:`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
 function rerollShop(){if(roundState.phase!=='prep')return;if(gameState.credits<GAME_TEMP.rerollCost){gameState.message='리롤할 크레딧이 부족해.';renderGameEconomy();return}gameState.credits-=GAME_TEMP.rerollCost;rollShop();gameState.message='상점을 새로고침했어.';renderGameEconomy()}
 function toggleShopLock(){if(appMode!=='game')return;gameState.shopLocked=!gameState.shopLocked;gameState.message=gameState.shopLocked?'상점을 다음 라운드까지 고정했어.':'상점 고정을 해제했어.';renderGameEconomy()}
 function sellRefund(o,r=byId[o?.characterId]){if(!o||!r)return 0;const base=r.cost*Math.pow(3,Math.max(0,o.star-1));return o.star<=1?base:Math.ceil(base*SELL_REFUND_RATE)}
-function sellOwned(uid){if(appMode!=='game'||roundState.phase!=='prep')return;const i=gameState.owned.findIndex(o=>o.uid===uid);if(i<0)return;const o=gameState.owned[i],r=byId[o.characterId];if(!r)return;const refund=sellRefund(o,r);const bi=teams.A.findIndex(e=>e.ownedId===uid);if(bi>=0)teams.A.splice(bi,1);gameState.owned.splice(i,1);gameState.credits+=refund;gameState.message=`${displayName(r)} ${'★'.repeat(o.star)} 판매 · +${refund} 크레딧`;reset();renderGameEconomy()}
+function sellOwned(uid){if(appMode!=='game'||roundState.phase!=='prep')return;const i=gameState.owned.findIndex(o=>o.uid===uid);if(i<0)return;const o=gameState.owned[i],r=byId[o.characterId];if(!r)return;if(gameState.items.length+(o.equipment||[]).length>INVENTORY_LIMIT){alert('인벤토리 공간 부족 · 장착 아이템을 반환할 공간이 없어 판매할 수 없어.');return}gameState.items.push(...(o.equipment||[]));const refund=sellRefund(o,r);const bi=teams.A.findIndex(e=>e.ownedId===uid);if(bi>=0)teams.A.splice(bi,1);gameState.owned.splice(i,1);gameState.credits+=refund;gameState.message=`${displayName(r)} ${'★'.repeat(o.star)} 판매 · +${refund} 크레딧`;reset();renderGameEconomy()}
+function pushItem(name){
+ if(gameState.items.length>=INVENTORY_LIMIT){const chosen=Math.floor(Math.random()*(gameState.items.length+1));const all=[...gameState.items,name],sold=all.splice(chosen,1)[0];gameState.items=all;gameState.credits+=LIVEItems.all[sold].basic?2:5;gameState.message=`인벤토리 초과 · ${sold} 자동 판매`;return}
+ gameState.items.push(name);
+}
+function inventoryCraft(i,j){
+ if(roundState.phase!=='prep'||i===j)return false;
+ const a=gameState.items[i],b=gameState.items[j],name=LIVEItems.craft(a,b);if(!name)return false;
+ for(const k of [i,j].sort((a,b)=>b-a))gameState.items.splice(k,1);
+ gameState.items.push(name);gameState.message=`${a} + ${b} → ${name}`;mergeOwnedUnits();renderGameEconomy();return true;
+}
+function equipItem(uid,i){
+ if(roundState.phase!=='prep')return;
+ const unit=gameState.owned.find(o=>o.uid===uid),item=gameState.items[i];if(!unit||!item)return;
+ const eq=unit.equipment||(unit.equipment=[]),basic=LIVEItems.all[item].basic,existing=eq.findIndex(n=>LIVEItems.all[n]?.basic);
+ if(basic&&existing>=0){const result=LIVEItems.craft(eq[existing],item);if(!result)return;eq[existing]=result}
+ else{if(eq.length>=3){gameState.message='장비 슬롯이 가득 찼어.';renderGameEconomy();return}eq.push(item)}
+ gameState.items.splice(i,1);gameState.message=`${displayName(byId[unit.characterId])} · ${item} 지급`;mergeOwnedUnits();reset();renderGameEconomy();
+}
+function sellInventoryItem(i){if(roundState.phase!=='prep')return;const item=gameState.items.splice(i,1)[0];if(!item)return;const price=LIVEItems.all[item].basic?2:5;gameState.credits+=price;gameState.message=`${item} 판매 · +${price}C`;mergeOwnedUnits();renderGameEconomy()}
+function renderItemPanel(){
+ let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
+ if(!panel){panel=document.createElement('section');panel.id='liveItemsPanel';document.body.appendChild(panel)}
+ if(itemSelected>=gameState.items.length)itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item ${i===itemSelected?'picked':''}" title="${name}">${name}</button>`).join('');
+ const equipment=gameState.owned.map(o=>`<div class="live-equipped"><b>${displayName(byId[o.characterId])} ${'★'.repeat(o.star)}</b><span>${(o.equipment||[]).join(' · ')||'장비 없음'}</span><button data-equip-uid="${o.uid}" ${itemSelected===null||roundState.phase!=='prep'?'disabled':''}>선택 장착</button></div>`).join('');
+ panel.innerHTML=`<header><b>아이템 ${gameState.items.length}/12</b><small>PREP 전용 · 재료 둘 선택해 조합 · 장착 후 해제 불가</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div><div class="live-item-actions"><button id="liveItemSell" ${itemSelected===null||roundState.phase!=='prep'?'disabled':''}>선택 아이템 판매</button><button id="liveItemCancel">선택 해제</button></div><div class="live-equipped-list">${equipment}</div>`;
+ panel.querySelectorAll('[data-item-index]').forEach(b=>b.onclick=()=>{const i=+b.dataset.itemIndex;if(itemSelected!==null&&itemSelected!==i&&inventoryCraft(itemSelected,i)){itemSelected=null;renderItemPanel();return}itemSelected=i;renderItemPanel()});
+ panel.querySelectorAll('[data-equip-uid]').forEach(b=>b.onclick=()=>{equipItem(+b.dataset.equipUid,itemSelected);itemSelected=null;renderItemPanel()});
+ panel.querySelector('#liveItemSell').onclick=()=>{sellInventoryItem(itemSelected);itemSelected=null;renderItemPanel()};panel.querySelector('#liveItemCancel').onclick=()=>{itemSelected=null;renderItemPanel()};
+}
 function deployOwned(uid){if(roundState.phase!=='prep'||teams.A.length>=3)return;const o=gameState.owned.find(x=>x.uid===uid);if(!o||o.location!=='bench')return;const pos=firstFreeCell();if(!pos)return;teams.A.push({characterId:o.characterId,star:o.star,...pos,ownedId:o.uid});o.location='board';reset();renderGameEconomy()}
 function benchOwned(uid){if(roundState.phase!=='prep')return;const i=teams.A.findIndex(e=>e.ownedId===uid);if(i<0)return;teams.A.splice(i,1);const o=gameState.owned.find(x=>x.uid===uid);if(o)o.location='bench';reset();renderGameEconomy()}
 function masteryExpToNext(level=gameState.masteryLevel){return level>=20?0:(MASTERY_EXP_TO_NEXT[level]||6)}
@@ -480,7 +514,7 @@ function bindShopSynergyTags(root){
 function renderGameEconomy(){
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&roundState.round===1&&(roundState.phase==='combat'||roundState.phase==='result');
- if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();return}
+ if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
  const prep=roundState.phase==='prep';
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id];return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${characterPortrait(r,'shop-portrait')}${shopSynergyTags(r)}<span class="shop-name">${esc(displayName(r))}</span><span class="shop-meta"><small>${esc(r.role)}</small>${creditHtml(r.cost)}</span></button>`}).join('');
  const benchOwned=gameState.owned.filter(o=>o.location==='bench');
@@ -490,7 +524,7 @@ function renderGameEconomy(){
  if(!dock){dock=document.createElement('section');dock.id='gameBottomDock';dock.className='game-bottom-dock';document.body.appendChild(dock)}
  const max=masteryExpToNext(),prog=Math.min(max||0,gameState.masteryProgress),pct=max?prog/max*100:100,bonus=Math.max(0,gameState.masteryLevel-1);
  dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 열기':'▼ 상점 접기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span><div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div></div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>고정 적응형 능력치 +${bonus}%</small></div><div class="mastery-track"><i style="width:${pct}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} EXP · 라운드마다 +${GAME_TEMP.masteryNaturalExp} EXP`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 EXP +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
- dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;renderGameEconomy()});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindShopSynergyTags(dock);bindOwnedPointerDrag(dock);normalizeVisuals(dock);
+ dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;renderGameEconomy()});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindShopSynergyTags(dock);bindOwnedPointerDrag(dock);normalizeVisuals(dock);renderItemPanel();
 }
 
 function startRoundMode(){
@@ -513,7 +547,7 @@ function startRoundMode(){
 function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
 function startPrepTimer(){clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining=Math.max(0,roundState.remaining-1);renderRoundUI();if(roundState.remaining===0)beginRoundCombat()},1000)}
 function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
-function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const rewardCount=1+Math.floor(Math.random()*3),pool=[...BASIC_ITEMS],rewards=[];for(let i=0;i<rewardCount&&pool.length;i++){const pick=Math.floor(Math.random()*pool.length);rewards.push(pool.splice(pick,1)[0])}gameState.items.push(...rewards);gameState.message=`야생동물 처치 · ${rewards.join(' / ')} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
+function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;let resultText=outcome;if(roundState.round===1){if(outcome==='A팀 승리'){const rewardCount=1+Math.floor(Math.random()*3),pool=[...BASIC_ITEMS],rewards=[];for(let i=0;i<rewardCount&&pool.length;i++){const pick=Math.floor(Math.random()*pool.length);rewards.push(pool.splice(pick,1)[0])}for(const item of rewards)pushItem(item);gameState.message=`야생동물 처치 · ${rewards.join(' / ')} 획득`}else gameState.message='야생동물전 패배 · 아이템 획득 실패';{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
 function reset(){
  clearOwnedDrag();document.querySelectorAll('.drag-ghost').forEach(e=>e.remove());

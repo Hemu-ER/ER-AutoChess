@@ -45,7 +45,7 @@ function validateConfig(input){
   if(!Array.isArray(entries)||entries.length>3)throw new Error(team+'팀은 최대 3명입니다.');
   const ids=new Set(),cells=new Set();
   for(const e of entries){
-   if(!byId[e.characterId])throw new Error('알 수 없는 실험체: '+e.characterId);
+   if(!byId[e.characterId])throw new Error('알 수 없는 실험체: '+e.characterId);if(e.items!==undefined&&(!Array.isArray(e.items)||e.items.length>3||e.items.some(n=>!root.LIVEItems?.all[n])))throw new Error('장비 데이터가 올바르지 않아.');
    ids.add(e.characterId); // 동일 실험체 중복 출전 허용
    if(![1,2,3].includes(e.star))throw new Error('별 단계는 1~3입니다.');
    if(![e.x,e.y].every(n=>Number.isInteger(n)&&n>=0&&n<=2))throw new Error('배치는 팀별 3×3 좌표여야 합니다.');
@@ -65,7 +65,7 @@ function CombatEngine(input){
  function makeUnit(characterId,star,team,mastery,pos,instanceKey='0'){
   const r=byId[characterId],m=1+(mastery-1)*.01,u={id:team+':'+characterId+':'+instanceKey,characterId,name:r.name,team,role:r.role,aff:[...r.affiliations],range:r.baseStats.range,main:r.main,star,x:pos.x,y:pos.y,initialX:pos.x,initialY:pos.y};
   u.coefficients=Object.fromEntries(Object.entries(coefficients[characterId]||{}).map(([k,v])=>[k,v[star-1]]));
-  u.base=Object.fromEntries(Object.entries(growth).map(([k,v])=>[k,r.baseStats[k]*v[star-1]*(k===r.main?m:1)]));resetCombatState(u);return u;
+  u.base=Object.fromEntries(Object.entries(growth).map(([k,v])=>[k,r.baseStats[k]*v[star-1]*(k===r.main?m:1)]));u.equipment=[];resetCombatState(u);return u;
  }
  const sourceCatalog={
  '멧현우':{'도그파이트':'skill','허세':'passive'},'꿈델라':{'체크메이트':'skill','프로모션':'passive'},'다이린':{'만취':'skill','취기':'passive'},'유키멍':{'머리치기!':'skill','옷매무새 정리':'passive'},
@@ -214,7 +214,7 @@ if(dst.name==='니키'&&!dst.hot&&dst.hp>0&&dst.hp<=dst.maxHp*.5){dst.hot=true;a
  // for a given seed while making initiative symmetric across seeds.
  let actions=[];for(const u of units.filter(u=>!u.dead)){if(u.ccUntil>time||u.channel)continue;let t=target(u);if(t&&time+1e-9>=u.nextAttack){actions.push({type:'attack',u,t});u.nextAttack=time+1/currentAs(u,t)}else if(!t&&time+1e-9>=u.nextMove){actions.push({type:'move',u});u.nextMove=time+config.moveInterval}}
  for(let i=actions.length-1;i>0;i--){let j=Math.floor(rng()*(i+1));[actions[i],actions[j]]=[actions[j],actions[i]]}for(const a of actions){if(a.type==='attack'){if(a.t&&!a.t.dead)basicAttack(a.u,a.t);else{let t=target(a.u);if(t)basicAttack(a.u,t)}}else if(a.type==='move'&&!a.u.dead)move(a.u)}let a=units.some(u=>u.team==='A'&&!u.dead),b=units.some(u=>u.team==='B'&&!u.dead);if(!a||!b||time>=60){battleOver=true;running=false;outcome=!a&&!b?'무승부':!a?'B팀 승리':!b?'A팀 승리':timeoutResult();log(`<b>${outcome}</b> · ${time.toFixed(1)}초`)}}
- for(const team of ['A','B'])config['team'+team].forEach((e,i)=>units.push(makeUnit(e.characterId,e.star,team,config['mastery'+team],toCombatPosition(team,e.x,e.y),e.ownedId??i)));
+ for(const team of ['A','B'])config['team'+team].forEach((e,i)=>{const u=makeUnit(e.characterId,e.star,team,config['mastery'+team],toCombatPosition(team,e.x,e.y),e.ownedId??i);u.equipment=[...(e.items||[])];for(const name of u.equipment){const st=root.LIVEItems?.all[name]?.stats||{};for(const key of ['hp','atk','amp','def'])if(st[key]){if(key==='hp'){u.maxHp+=st.hp;u.hp+=st.hp}else u[key]+=st[key]}if(st.as)u.as*=1+st.as;if(st.crit)u.critChance=(u.critChance||0)+st.crit;if(st.penFlat)u.penFlat=(u.penFlat||0)+st.penFlat}units.push(u)});
  const getResult=()=>JSON.parse(JSON.stringify({time,battleOver,outcome,units,synergies:prepared?synergySnapshot():null}));
  const api={start:prepareBattle,step(){prepareBattle();tick(DT);return getResult()},run(){prepareBattle();while(!battleOver)tick(DT);return getResult()},getResult,drainEvents(){return events.splice(0)}};
  api.runtime={makeUnit,resetCombatState,roleBuff,lockSynergies,prepareBattle,seeded,sourceStats,activateSource,recordSourceDamage,dist,adjacent,enemies,target,nearestEnemy,actual,currentAs,applyCC,shurinBasic,move,periodicAndSkills,tick,timeoutResult,healingSong,heal,damage,triggerPeacemaker,currentAtk,currentAmp,synergySnapshot,roleActive,maidBasic,matsuriKill,pajamaTick};Object.defineProperties(api.runtime,{stage:{get:()=>stage},shared:{get:()=>shared},units:{get:()=>units},time:{get:()=>time}});
