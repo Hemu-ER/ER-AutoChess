@@ -1,4 +1,4 @@
-/* L.I.V.E. M4-14 — region-matched combat artwork, 3x6 scaling and curtain.
+/* L.I.V.E. M4-15 — region-matched floor, fitted decor and opaque curtain.
    Visual-only; no combat, inventory, or account state mutations. */
 (() => {
   'use strict';
@@ -20,6 +20,9 @@
   let curtainRequest = 0;
   let fixedPreviewRegion = null;
   let appliedSize = "";
+  // The PNG artwork's transparent opening nearly fills the original width.
+  // 118% aligns its inner edge with the floor instead of floating far outside it.
+  const DECOR_WIDTH = "118%";
   const loading = new Map();
   const hash = value => {
     let n = 2166136261;
@@ -63,6 +66,7 @@
     const [floor, decor] = urls(key);
     board.style.setProperty('--live-floor-url', `url("${floor}")`);
     board.style.setProperty('--live-decor-url', `url("${decor}")`);
+    board.style.setProperty('--live-decor-width', DECOR_WIDTH);
     board.dataset.liveArenaRegion = key;
     preload(key);
   }
@@ -119,7 +123,7 @@
     }
     const token = ++curtainRequest;
     curtain.querySelector('strong').textContent = `ROUND ${round} · ${kind}`;
-    curtain.querySelector('small').textContent = `${zones.find(z => z[0] === key)?.[1] || ''} 전장 진입`;
+    curtain.querySelector('small').textContent = kind === '보급' ? '지원 물자 도착' : `${zones.find(z => z[0] === key)?.[1] || ''} 전장 진입`;
     curtain.classList.remove('live-animating');
     void curtain.offsetWidth;
     if (token === curtainRequest) curtain.classList.add('live-animating');
@@ -136,6 +140,16 @@
     // Preload during preparation so there is no image flash on phase change.
     if (mode === 'game' && phase === 'prep') preload(key);
     const shouldShow = mode === 'test' || (mode === 'game' && (phase === 'combat' || phase === 'result'));
+    const currentKey = `${room?.code || 'local'}:${round}:${phase}`;
+    const enteredStage = mode === 'game' && prevPhase === 'prep' &&
+      (phase === 'combat' || phase === 'supply') && lastKey !== currentKey;
+    // The curtain is immediately opaque. Arm it BEFORE swapping the floor,
+    // so not even one transparent frame exposes the next arena prematurely.
+    if (enteredStage) {
+      const kind = phase === 'supply' ? '보급' :
+        (game?.pve || (!game && (round === 1 || round === 3)) ? '파밍' : '결투');
+      showCurtain(round, kind, key);
+    }
     if (shouldShow) setArtwork(key);
     if (shouldShow !== visible || mode !== prevMode) {
       visible = shouldShow;
@@ -148,10 +162,6 @@
       }
     }
     if (shouldShow) resizeBattlefield();
-    const currentKey = `${room?.code || 'local'}:${round}:${phase}`;
-    if (mode === 'game' && phase === 'combat' && prevPhase === 'prep' && lastKey !== currentKey) {
-      showCurtain(round, game?.pve || (!game && (round === 1 || round === 3)) ? '파밍' : '결투', key);
-    }
     lastKey = currentKey;
     prevPhase = phase;
     prevMode = mode;

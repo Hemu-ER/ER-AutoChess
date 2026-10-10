@@ -1,6 +1,6 @@
-/* L.I.V.E. M4-14 — matched battlefield floor + transparent peripheral decor.
-   All percentages are derived from the creator's 2560x1440 reference canvas,
-   centered on a 1916x821 floor. Do not stretch either layer independently. */
+/* L.I.V.E. M4-15 — floor fully visible, decor fitted against its perimeter.
+   All artwork is anchored to the existing responsive 3x6 #board.
+   PREP 3x3 stays undecorated. No gameplay / cell layout changes. */
 body[data-app-mode="game"] #board,
 body[data-app-mode="test"] #board {
   position: relative;
@@ -8,7 +8,7 @@ body[data-app-mode="test"] #board {
   background: transparent !important;
 }
 
-/* Draw ONLY during combat/results. Never draw on the 3x3 prep board. */
+/* Show the entire 1916x821 floor, without cover cropping or stretching. */
 body[data-live-arena-visible="1"] #board.combat-board::before,
 body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::before {
   content: "";
@@ -16,35 +16,43 @@ body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-t
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: var(--live-floor-url) center / 100% 100% no-repeat;
-  filter: brightness(.82) saturate(.88);
-  opacity: .99;
+  background-image: var(--live-floor-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  filter: brightness(.86) saturate(.9);
+  opacity: 1;
 }
 
-/* The 1672x941 decorative artwork is a downsampled 2560x1440 frame.
-   Scale relative to the floor's 1916x821 original reference rectangle. */
+/* The original decor PNG is 1672x941 with a LARGE transparent center.
+   M4-14 sized it to a 2560x1440 *reference canvas*, making the peripheral
+   structures float too far from the board (133.6% width / 175.4% height).
+   Fit the artwork's INNER opening to the actual floor perimeter instead.
+   Natural aspect-ratio is retained by setting only the width. */
 body[data-live-arena-visible="1"] #board.combat-board::after,
 body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::after {
   content: "";
   position: absolute;
-  width: 133.611691%; /* 2560 / 1916 */
-  height: 175.395859%; /* 1440 / 821 */
   left: 50%;
   top: 50%;
+  width: var(--live-decor-width, 118%);
+  height: auto;
+  aspect-ratio: 1672 / 941;
   transform: translate(-50%, -50%);
   z-index: 1;
   pointer-events: none;
-  background: var(--live-decor-url) center / 100% 100% no-repeat;
-  filter: brightness(.83) saturate(.89);
-  -webkit-mask-image: radial-gradient(ellipse farthest-side at center, black 76%, transparent 100%);
-  mask-image: radial-gradient(ellipse farthest-side at center, black 76%, transparent 100%);
+  background-image: var(--live-decor-url);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: brightness(.85) saturate(.91);
+  -webkit-mask-image: radial-gradient(ellipse farthest-side at center, black 84%, transparent 100%);
+  mask-image: radial-gradient(ellipse farthest-side at center, black 84%, transparent 100%);
 }
 body[data-live-arena-visible="1"] #board > .cell { position: relative; z-index: 2; }
 body[data-app-mode="game"] #board.formation-board::before,
 body[data-app-mode="game"] #board.formation-board::after { content: none !important; }
 
-/* The full 3x6 board uses the exact floor aspect ratio, sized by JS
-   against the available board-shell dimensions instead of browser zoom. */
 body[data-live-arena-visible="1"][data-app-mode="game"] #board.combat-board,
 body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
   aspect-ratio: 1916 / 821;
@@ -54,57 +62,60 @@ body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
   flex: none;
 }
 
-/* The transition is UI-only. It does not delay authoritative game turns. */
+/* Full blackout: the next arena is swapped in the same frame while covered.
+   1.7s total: title appears on solid black, then the new arena is revealed. */
 #liveArenaTransition {
   position: fixed;
   inset: 0;
-  z-index: 18000;
+  z-index: 2147483000;
   display: grid;
   place-items: center;
-  background: #03080d;
+  background: #02060a;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
 }
 #liveArenaTransition.live-animating {
   visibility: visible;
-  animation: liveArenaCurtain 1.12s ease-in-out both;
+  pointer-events: auto;
+  animation: liveArenaCurtain 1.7s linear both;
 }
 #liveArenaTransition .live-arena-title {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   text-align: center;
-  color: #eef8f8;
+  color: #f0f8f8;
   text-shadow: 0 3px 20px #000;
-  transform: translateY(9px);
-  animation: liveArenaText 1.12s ease-out both;
+  transform: translateY(7px);
+  animation: none;
+}
+#liveArenaTransition.live-animating .live-arena-title {
+  animation: liveArenaText 1.7s ease-out both;
 }
 #liveArenaTransition .live-arena-kicker {
-  color: #91b0ab;
+  color: #9dbbb7;
   letter-spacing: .28em;
   font-size: 12px;
 }
 #liveArenaTransition strong {
-  font-size: clamp(24px, 4vw, 48px);
+  font-size: clamp(26px, 4vw, 50px);
   font-weight: 800;
-  letter-spacing: .1em;
+  letter-spacing: .11em;
 }
 #liveArenaTransition small {
-  font-size: 12px;
-  color: #a3c5c2;
+  font-size: 13px;
+  color: #a6c7c3;
 }
 @keyframes liveArenaCurtain {
-  0% { opacity: 0; }
-  24% { opacity: .97; }
-  65% { opacity: .97; }
+  0%, 70% { opacity: 1; }
   100% { opacity: 0; }
 }
 @keyframes liveArenaText {
-  0%, 13% { opacity: 0; transform: translateY(9px); }
-  31%, 70% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-5px); }
+  0%, 12% { opacity: 0; transform: translateY(7px); }
+  20%, 68% { opacity: 1; transform: translateY(0); }
+  86%, 100% { opacity: 0; transform: translateY(-6px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  #liveArenaTransition.live-animating { animation-duration: .3s; }
-  #liveArenaTransition .live-arena-title { animation-duration: .3s; }
+  #liveArenaTransition.live-animating { animation-duration: .35s; }
+  #liveArenaTransition.live-animating .live-arena-title { animation-duration: .35s; }
 }
