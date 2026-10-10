@@ -1,58 +1,110 @@
-/* L.I.V.E. M4-13 — Responsive battlefield integration.
-   The artwork is attached to the live 3x6/3x3 board itself, not to the
-   browser window. Do not hardcode its pixel dimensions: zoom and viewport
-   changes then resize the arena artwork and unit placement together. */
-
+/* L.I.V.E. M4-14 — matched battlefield floor + transparent peripheral decor.
+   All percentages are derived from the creator's 2560x1440 reference canvas,
+   centered on a 1916x821 floor. Do not stretch either layer independently. */
 body[data-app-mode="game"] #board,
 body[data-app-mode="test"] #board {
   position: relative;
   isolation: isolate;
-  --live-arena-brightness: .78;
-  --live-arena-opacity: .97;
+  background: transparent !important;
 }
 
-/* Decorative layer: cannot intercept clicks, pointer drags, or tooltips. */
-body[data-app-mode="game"] #board::before,
-body[data-app-mode="test"] #board::before {
+/* Draw ONLY during combat/results. Never draw on the 3x3 prep board. */
+body[data-live-arena-visible="1"] #board.combat-board::before,
+body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::before {
   content: "";
   position: absolute;
-  inset: -12px;
+  inset: 0;
   z-index: 0;
   pointer-events: none;
-  border-radius: 14px;
-  background-image:
-    linear-gradient(90deg,
-      rgba(5, 10, 15, .27) 0%,
-      transparent 18%,
-      transparent 82%,
-      rgba(5, 10, 15, .27) 100%),
-    url("assets/backgrounds/lumia_helipad_no_grid.png");
-  background-repeat: no-repeat;
-  background-size: cover, cover;
-  background-position: center, center 52%;
-  opacity: var(--live-arena-opacity);
-  filter: brightness(var(--live-arena-brightness)) saturate(.86);
-  -webkit-mask-image: radial-gradient(ellipse 82% 81% at center,
-      #000 58%, transparent 98%);
-  mask-image: radial-gradient(ellipse 82% 81% at center,
-      #000 58%, transparent 98%);
+  background: var(--live-floor-url) center / 100% 100% no-repeat;
+  filter: brightness(.82) saturate(.88);
+  opacity: .99;
 }
 
-/* Retain the existing CSS-grid positioning and interaction behavior. */
-body[data-app-mode="game"] #board > .cell,
-body[data-app-mode="test"] #board > .cell {
-  position: relative;
+/* The 1672x941 decorative artwork is a downsampled 2560x1440 frame.
+   Scale relative to the floor's 1916x821 original reference rectangle. */
+body[data-live-arena-visible="1"] #board.combat-board::after,
+body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::after {
+  content: "";
+  position: absolute;
+  width: 133.611691%; /* 2560 / 1916 */
+  height: 175.395859%; /* 1440 / 821 */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1;
+  pointer-events: none;
+  background: var(--live-decor-url) center / 100% 100% no-repeat;
+  filter: brightness(.83) saturate(.89);
+  -webkit-mask-image: radial-gradient(ellipse farthest-side at center, black 76%, transparent 100%);
+  mask-image: radial-gradient(ellipse farthest-side at center, black 76%, transparent 100%);
+}
+body[data-live-arena-visible="1"] #board > .cell { position: relative; z-index: 2; }
+body[data-app-mode="game"] #board.formation-board::before,
+body[data-app-mode="game"] #board.formation-board::after { content: none !important; }
+
+/* The full 3x6 board uses the exact floor aspect ratio, sized by JS
+   against the available board-shell dimensions instead of browser zoom. */
+body[data-live-arena-visible="1"][data-app-mode="game"] #board.combat-board,
+body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
+  aspect-ratio: 1916 / 821;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
+  max-height: none !important;
+  flex: none;
 }
 
-/* The PREP board is the current centered 3x3 grid. It uses the same
-   image source as combat; background-size:cover keeps the aspect ratio. */
-body[data-app-mode="game"] #board.formation-board::before {
-  background-position: center, center 52%;
+/* The transition is UI-only. It does not delay authoritative game turns. */
+#liveArenaTransition {
+  position: fixed;
+  inset: 0;
+  z-index: 18000;
+  display: grid;
+  place-items: center;
+  background: #03080d;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
 }
-
-/* Avoid repaint work on touch drags; background remains purely cosmetic. */
+#liveArenaTransition.live-animating {
+  visibility: visible;
+  animation: liveArenaCurtain 1.12s ease-in-out both;
+}
+#liveArenaTransition .live-arena-title {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+  color: #eef8f8;
+  text-shadow: 0 3px 20px #000;
+  transform: translateY(9px);
+  animation: liveArenaText 1.12s ease-out both;
+}
+#liveArenaTransition .live-arena-kicker {
+  color: #91b0ab;
+  letter-spacing: .28em;
+  font-size: 12px;
+}
+#liveArenaTransition strong {
+  font-size: clamp(24px, 4vw, 48px);
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+#liveArenaTransition small {
+  font-size: 12px;
+  color: #a3c5c2;
+}
+@keyframes liveArenaCurtain {
+  0% { opacity: 0; }
+  24% { opacity: .97; }
+  65% { opacity: .97; }
+  100% { opacity: 0; }
+}
+@keyframes liveArenaText {
+  0%, 13% { opacity: 0; transform: translateY(9px); }
+  31%, 70% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-5px); }
+}
 @media (prefers-reduced-motion: reduce) {
-  body[data-app-mode="game"] #board::before,
-  body[data-app-mode="test"] #board::before { transition: none; }
+  #liveArenaTransition.live-animating { animation-duration: .3s; }
+  #liveArenaTransition .live-arena-title { animation-duration: .3s; }
 }
