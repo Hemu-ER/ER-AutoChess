@@ -1,96 +1,199 @@
 'use strict';
-/* M4-11: six interactive local QA minigames. No network, storage or account writes. */
+/* M4-12: five interactive QA-only minigames. No account/API/storage mutation. */
 (()=>{
-const $=id=>document.getElementById(id), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const games=[
- ['recover','금지구역 보급품 회수','INVENTORY / RISK','가방 배치 · 철수','보급품을 가방의 제한된 칸에 직접 배치하고, 과열되기 전에 철수해.'],
- ['zones','루미아 섬 탐색 작전','EXPLORATION / AP','구역 · 타일 · 경로','구역을 고르고 4×4 지도를 탐색해. 행동력·위험·단서가 경로를 바꿔.'],
- ['divide','전리품 분배 협정','TRUST / CLAIM','전리품 · 심리전','세 차례 전리품 선점. 같은 상자를 두고 나눌지 독식할지 비밀리에 결정해.'],
- ['bomb','AGLAIA 폭발물 해체','ASYMMETRIC / CO-OP','채팅 · 장치 3단계','한 명은 장치, 한 명은 매뉴얼. 채팅으로 협력하고 실제 모듈을 해체해.'],
- ['ultimatum','생존자 간 크레딧 협상','NEGOTIATION / DEAL','역제안 · 합의','총 10C를 놓고 제안·역제안·수락을 주고받아. 합의하지 못하면 추가 보상 없음.'],
- ['craft','긴급 제작 작전','CO-OP / RECIPE','조합 · 작업대','분산된 재료 중 정답을 직접 찾아 공동 작업대에 올리고 장비 3개를 제작해.']
+ ['stack','보급 적재 작전','SUPPLY / BLOCK STACK','블록 쌓기 · 줄 제거','방향키로 보급 블록을 쌓고 가로줄을 완성해. 철수·가방 배치 대신 직접 조작하는 게임.'],
+ ['zones','루미아 섬 탐색 작전','LUMIA / EXPLORATION','4×4 지도 · 경로 · 수색','구역을 선택해 이동·수색하고, 행동력과 위험을 관리해.'],
+ ['divide','전리품 분배 협정','TRUST / NEGOTIATION','보상 분배 · 협상','한 명에게 몰린 크레딧·EXP·아이템을 제안하고 상대가 수락할지 결정해.'],
+ ['bomb','AGLAIA 폭발물 해체','AGLAIA / DEFUSAL','문양 · 매뉴얼 · 채팅','조작자에게만 보이는 장치와 매뉴얼 담당자에게만 보이는 규칙을 채팅으로 조합해.'],
+ ['quiz','이리체스 도감 퀴즈','CODEX / PERSONAL','레시피 · 시너지 · 도감 검색','실제 아이템 조합표와 실험체 정보를 검색하면서 문제를 풀어. 개인형.']
 ];
-let selected='recover',seed=0,g,log=[],rng=Math.random;
-const R=n=>Math.floor(rng()*n),pick=a=>a[R(a.length)],shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){let j=R(i+1);[b[i],b[j]]=[b[j],b[i]]}return b},opp=r=>r==='A'?'B':'A';
-function seeded(n){let s=n>>>0;return()=>{s+=0x6d2b79f5;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296}}
-function note(s){log.unshift(s);log=log.slice(0,26)}
-function done(message,bonuses){g.finished=true;g.message=message;g.bonus={A:Math.max(0,Math.min(10,bonuses.A||0)),B:Math.max(0,Math.min(10,bonuses.B||0))};note(message)}
-function personState(){return {A:{done:false,points:0},B:{done:false,points:0}}}
 const ZONES=['숲','병원','공장','항구','성당','학교','절','연못','번화가','골목길','묘지','호텔'];
+const GLYPHS=['◇','⌬','✦','☾','Ψ','△','⊕','⌘','☷','⊗'];
+const KEYPAD_COLUMNS=[['⌬','△','◇','✦','☾','Ψ'],['⊕','◇','⌘','☷','✦','⌬'],['Ψ','☾','⊗','⊕','△','☷']];
+const TETROS=[[[0,0],[1,0],[2,0],[3,0]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[2,0],[1,1]],[[1,0],[2,0],[0,1],[1,1]],[[0,0],[1,0],[1,1],[2,1]],[[0,0],[0,1],[1,1],[2,1]],[[2,0],[0,1],[1,1],[2,1]]];
+let selected='stack',seed=0,game,history=[],rng=Math.random;
+const roles=['A','B'];
+const R=n=>Math.floor(rng()*n),pick=xs=>xs[R(xs.length)];
+function shuffle(xs){const a=[...xs];for(let i=a.length-1;i>0;i--){const j=R(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+function seeded(n){let s=n>>>0;return()=>{s+=0x6d2b79f5;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return ((t^(t>>>14))>>>0)/4294967296}}
+function note(t){history.unshift(String(t));history=history.slice(0,30)}
+const emptyReward=()=>({credits:3,exp:0,items:[]});
+const basic=()=>pick(LIVEItems.baseNames);
+const nonBase=(points)=>points>=6?{credits:0,exp:6,items:[basic()]}:points>=3?{credits:0,exp:4,items:[basic()]}:points>=1?{credits:0,exp:5,items:[]}:{credits:0,exp:0,items:[]};
+function addReward(a,b){return {credits:(a.credits||0)+(b.credits||0),exp:(a.exp||0)+(b.exp||0),items:[...(a.items||[]),...(b.items||[])]}}
+const rewardText=r=>`${r.credits}C · 숙련도 +${r.exp} EXP${r.items.length?' · '+r.items.join(' · '):''}`;
+function finish(label,rewards){game.finished=true;game.message=label;game.rewards={A:addReward(emptyReward(),rewards?.A||{}),B:addReward(emptyReward(),rewards?.B||{})};note(label)}
+const btn=(title,action,val='',disabled=false,style='qa-cta secondary')=>`<button type="button" class="${style}" data-action="${action}" data-val="${esc(val)}" ${disabled?'disabled':''}>${title}</button>`;
+const stat=(k,v)=>`<div class="qa-statline"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`;
+function roleTabs(){return `<div class="qa-role-tabs">${roles.map(r=>`<button data-action="view" data-role="${r}" aria-pressed="${game.view===r}">${r} 화면</button>`).join('')}</div>`}
+const target=()=>game.players?.[game.view];
+function panel(body){return `<div class="qa-console">${body}</div>${game.finished?`<div class="qa-result"><span class="qa-kicker">QA RESULT / ACCOUNT INDEPENDENT</span><h3>${esc(game.message)}</h3>${roles.map(r=>`<p><strong>플레이어 ${r}</strong> · ${esc(rewardText(game.rewards[r]))}</p>`).join('')}${btn('같은 시드 재시작','replay','',false,'qa-cta')}</div>`:''}`}
+function initStack(){game.players={};for(const r of roles){const p={board:Array.from({length:16},()=>Array(10).fill(0)),piece:null,queue:[],lines:0,score:0,done:false,started:false,lastDrop:Date.now()};game.players[r]=p;spawnPiece(p)}}
+function spawnPiece(p){while(p.queue.length<3)p.queue.push(R(TETROS.length));const shapeId=p.queue.shift();p.piece={id:shapeId,coords:TETROS[shapeId].map(c=>[...c]),x:3,y:0};if(!canPiece(p,p.piece,p.piece.x,p.piece.y)){p.piece=null;p.done=true;note('보급 적재 공간 부족: 종료')}}
+function canPiece(p,piece,x,y,coords=piece.coords){return coords.every(([dx,dy])=>x+dx>=0&&x+dx<10&&y+dy>=0&&y+dy<16&&!p.board[y+dy][x+dx])}
+function movePiece(p,dx,dy){if(!p.piece)return false;const n=p.piece;if(canPiece(p,n,n.x+dx,n.y+dy)){n.x+=dx;n.y+=dy;return true}return false}
+function rotatePiece(p){if(!p.piece)return;const n=p.piece,rot=n.coords.map(([x,y])=>[-y,x]);const minX=Math.min(...rot.map(v=>v[0])),minY=Math.min(...rot.map(v=>v[1]));const shifted=rot.map(([x,y])=>[x-minX,y-minY]);for(const kick of [0,-1,1,-2,2]){if(canPiece(p,n,n.x+kick,n.y,shifted)){n.x+=kick;n.coords=shifted;break}}}
+function lockPiece(p){if(!p.piece)return;for(const [dx,dy] of p.piece.coords)p.board[p.piece.y+dy][p.piece.x+dx]=p.piece.id+1;const keep=p.board.filter(row=>row.some(c=>!c));const removed=16-keep.length;while(keep.length<16)keep.unshift(Array(10).fill(0));p.board=keep;p.lines+=removed;p.score+=(removed?([0,100,250,450,700][removed]||700):5);if(removed)note(`${game.view}: ${removed}줄 적재 정리!`);spawnPiece(p)}
+function dropPiece(p){if(!movePiece(p,0,1))lockPiece(p)}
+function hardDrop(p){while(movePiece(p,0,1))p.score+=1;lockPiece(p)}
+function stackReward(p){return p.lines>=5?{credits:3,exp:7,items:[basic()]}:p.lines>=3?{exp:8,items:[basic()]}:p.lines>=1?{exp:5}: {exp:2}}
+function stopStack(){const p=target();p.done=true;p.piece=null;note(`${game.view}: 블록 적재 종료 · ${p.lines}줄`);if(roles.every(r=>game.players[r].done))finish('보급 적재 결과',{A:stackReward(game.players.A),B:stackReward(game.players.B)})}
+function stackUI(){const p=target();const show=p.board.map(row=>[...row]);if(p.piece)for(const [dx,dy] of p.piece.coords){const x=p.piece.x+dx,y=p.piece.y+dy;if(y>=0&&y<16&&x>=0&&x<10)show[y][x]=p.piece.id+1}return panel(`${roleTabs()}<span class="qa-kicker">AGLAIA / CARGO STACKING</span><h3 class="qa-question">보급 블록을 쌓고 줄을 완성해.</h3><p class="qa-instructions">← → 이동 · ↑ 회전 · ↓ 한 칸 내리기 · Space 즉시 떨어뜨리기. 모바일에서는 아래 조작 버튼을 사용해.</p><div class="qa-stack-layout"><div class="qa-block-grid">${show.flat().map((n,i)=>`<div class="qa-block ${n?'qa-b'+n:''}" title="${Math.floor(i/10)},${i%10}"></div>`).join('')}</div><div>${stat('정리한 줄',p.lines)}${stat('적재 점수',p.score)}${stat('다음 블록',p.queue.length?`TYPE ${p.queue[0]+1}`:'—')}<div class="qa-control-pad">${btn('←','left','',p.done)}${btn('↻','rotate','',p.done)}${btn('→','right','',p.done)}${btn('↓','down','',p.done)}${btn('즉시 내려놓기','drop','',p.done,'qa-cta')}</div><div class="qa-row">${btn('적재 완료 · 보상 정산','stackStop','',p.done)}</div><p class="qa-caption">줄을 1개만 완성해도 EXP 보상이 추가돼. 3줄 이상이면 기본 아이템 획득 기회가 있어.</p></div></div>`)}
 function dist(a,b){return Math.abs(a%4-b%4)+Math.abs(Math.floor(a/4)-Math.floor(b/4))}
-function zoneMap(){const tiles=shuffle(['supply','supply','rare','scanner','risk','risk','trace','trace','empty','empty','empty','empty','empty','empty','empty']);tiles.splice(12,0,'start');return tiles}
-function reveal(p){for(let i=0;i<16;i++)if(dist(i,p.pos)<=1)p.seen.add(i)}
-function initZone(){let options=shuffle(ZONES).slice(0,3);g.options=options;g.players={};for(const r of ['A','B'])g.players[r]={zone:null,map:zoneMap(),pos:12,seen:new Set([12,8,13]),visited:new Set([12]),ap:8,points:0,risk:0,opened:new Set(),done:false,scan:false};g.deadline=Date.now()+90000}
-const shapes=[[[0,0]],[[0,0],[1,0]],[[0,0],[0,1],[1,1]],[[0,0],[1,0],[0,1],[1,1]],[[0,0],[1,0],[2,0]]];
-function initRecover(){g.players={};for(const r of ['A','B'])g.players[r]={board:Array(16).fill(-1),packs:Array.from({length:8},(_,i)=>({name:pick(['회수한 배터리','응급 의약품','고급 부품','전자 재료','파손된 장비','보급 식량','감시장치','에너지 팩']),shape:shapes[R(shapes.length)],value:2+R(5),used:false,id:i})),selection:null,rotation:0,heat:0,points:0,done:false}}
-function initDivide(){g.round=0;g.scores={A:0,B:0};g.choices={};g.history=[];g.crates=Array.from({length:3},()=>({value:2+R(4),tag:pick(['보급 상자','희귀 물자','연구소 물품','의약품'])}))}
-function bombStep(module){const wire=shuffle(['red','blue','yellow','green']);return {type:module,wires:wire,code:pick(['A','B','C']),digits:shuffle([1,2,3,4]),lamps:Array.from({length:4},()=>R(2)),signal:R(2),state:0}}
-function bombCorrect(m){if(m.type===0)return m.code==='A'?m.wires.indexOf('red'):m.code==='B'?m.wires.indexOf('blue'):m.wires.indexOf('yellow');if(m.type===1)return m.code==='A'?m.digits.indexOf(1):m.code==='B'?m.digits.indexOf(4):m.digits.indexOf(2);return m.signal===0?m.lamps.indexOf(1)>=0?m.lamps.indexOf(1):0:m.lamps.lastIndexOf(0)>=0?m.lamps.lastIndexOf(0):3}
-function initBomb(){g.operator=pick(['A','B']);g.stage=0;g.modules=shuffle([0,1,2]).map(type=>bombStep(type));g.chat=[];g.deadline=Date.now()+120000}
-function initUltimatum(){g.offer=null;g.offerCount=0;g.proposer=pick(['A','B']);g.timeline=[]}
-function initCraft(){const target=shuffle(LIVEItems.recipes).slice(0,3).map(row=>({name:row[0],materials:LIVEItems.all[row[0]].materials}));g.orders=target;g.index=0;g.tray={A:null,B:null};g.misses=0;g.inventory={A:[],B:[]};for(let i=0;i<target.length;i++){g.inventory.A.push({name:target[i].materials[0],id:`A${i}`});g.inventory.B.push({name:target[i].materials[1],id:`B${i}`})}for(const r of ['A','B']){g.inventory[r].push({name:pick(LIVEItems.baseNames),id:`${r}3`},{name:pick(LIVEItems.baseNames),id:`${r}4`});g.inventory[r]=shuffle(g.inventory[r])}g.showRecipe=false}
-function newGame(id=selected,forced=null){selected=id;seed=forced===null?(Date.now()^Math.floor(Math.random()*0x7fffffff))>>>0:forced>>>0;rng=seeded(seed);log=[];g={view:'A',finished:false,bonus:{A:0,B:0}};
-if(id==='recover')initRecover();if(id==='zones')initZone();if(id==='divide')initDivide();if(id==='bomb')initBomb();if(id==='ultimatum')initUltimatum();if(id==='craft')initCraft();note('새 QA 세션. 온라인 계정·재화에는 영향 없음.');render()}
-function roleTabs(){return `<div class="qa-role-tabs"><button data-action="view" data-role="A" aria-pressed="${g.view==='A'}">A 화면</button><button data-action="view" data-role="B" aria-pressed="${g.view==='B'}">B 화면</button></div>`}
-const btn=(text,action,val='',disabled=false,cls='qa-cta secondary')=>`<button type="button" class="${cls}" data-action="${action}" data-val="${esc(val)}" ${disabled?'disabled':''}>${text}</button>`;
-const stat=(name,v)=>`<div class="qa-statline"><span>${name}</span><strong>${v}</strong></div>`;
-function panel(inner){return `<div class="qa-console">${inner}</div>${g.finished?`<div class="qa-result"><span class="qa-kicker">QA RESULT</span><h3>${esc(g.message)}</h3><p>가상 보상 · A ${3+g.bonus.A}C / B ${3+g.bonus.B}C (각 기본 3C 포함)</p>${btn('같은 시드 재시작','replay','','', 'qa-cta')}</div>`:''}`}
-function recoverUI(){let p=g.players[g.view],active=!p.done&&!g.finished,bag=p.board;let tile=(s,i)=>{if(s===-1)return `<button type="button" class="qa-grid-cell empty" data-action="put" data-val="${i}" ${!active?'disabled':''}><span>+</span></button>`;return `<button type="button" class="qa-grid-cell filled" disabled title="${esc(p.packs[s].name)}">◆</button>`};return panel(`${roleTabs()}<div class="qa-info-row"><span>RESTRICTED ZONE / SALVAGE</span><b>과열 ${p.heat}/6 · 확보 ${p.points}점</b></div><h3 class="qa-question">물자를 가방에 직접 배치해.</h3><p class="qa-instructions">물자를 선택해 회전한 뒤 빈 칸을 눌러 배치해. 일부러 가방을 비워둘 수도 있어. 과열 6에 도달하면 자동 회수 종료. 기본 보상은 유지돼.</p><div class="qa-two"><div><div class="qa-panel-heading">회수 가방 / 4 × 4</div><div class="qa-tile-grid">${bag.map(tile).join('')}</div>${btn('선택한 물자 90° 회전','rotate','',!active||p.selection===null)}${stat('현재 선택',p.selection===null?'없음':esc(p.packs[p.selection].name))}</div><div><div class="qa-panel-heading">현장 물자 목록</div><div class="qa-stack">${p.packs.map((item,i)=>`<button type="button" class="qa-loot ${p.selection===i?'picked':''}" data-action="take" data-val="${i}" ${!active||item.used?'disabled':''}><b>${esc(item.name)}</b><small>${item.shape.length}칸 · 가치 ${item.value}점 ${item.used?'· 적재 완료':''}</small></button>`).join('')}</div></div></div><div class="qa-row">${btn('회수하고 철수','stop','',!active,'qa-cta')}${btn('가방 초기화 (회수 전용)','clear','',!active)}</div>`)}
-function regionUI(){const p=g.players[g.view];if(!p.zone){return panel(`${roleTabs()}<span class="qa-kicker">LUMIA / AREA SELECT · <span id="qaTimeLeft">90s</span></span><h3 class="qa-question">루미아 섬에서 탐색 구역 선택</h3><div class="qa-island"><div class="qa-island-caption">구역 선택용 임시 지도 · 정식 루미아 섬 이미지 별도 연결 예정</div><div class="qa-region-list">${g.options.map((z,i)=>`<button class="qa-region" data-action="zone" data-val="${i}" ${g.finished?'disabled':''}><small>AREA 0${i+1}</small><b>${esc(z)}</b><span>${['균형형 탐색','물자 밀집','위험 지역'][i]}</span></button>`).join('')}</div></div><p class="qa-instructions">두 플레이어는 같은 후보 3곳에서 각자 선택하고, 서로 다른 개인 맵을 탐험해.</p>`)}
-let visible=i=>p.visited.has(i)?({start:'●',empty:'·',supply:'▣',rare:'◈',risk:'!',scanner:'⌁',trace:'⌕'}[p.map[i]]):p.seen.has(i)?({start:'●',empty:'·',supply:'□',rare:'◇',risk:'△',scanner:'⌁',trace:'⌕'}[p.map[i]]):'?';
-return panel(`${roleTabs()}<div class="qa-info-row"><span>LUMIA / ${esc(p.zone)} · <span id="qaTimeLeft">90s</span></span><b>AP ${p.ap}/8 · 물자 ${p.points}점 · 위험 ${p.risk}/3</b></div><h3 class="qa-question">직접 이동하고, 수색하고, 철수해.</h3><div class="qa-two"><div><div class="qa-panel-heading">4 × 4 탐색 지도</div><div class="qa-tile-grid">${p.map.map((t,i)=>`<button class="qa-grid-cell ${p.pos===i?'current':p.visited.has(i)?'visited':p.seen.has(i)?'seen':'fog'} ${t==='risk'&&p.seen.has(i)?'danger-tile':''}" data-action="walk" data-val="${i}" ${g.finished||p.done||p.ap<=0?'disabled':''} title="${p.seen.has(i)?(p.visited.has(i)?t:'수상한 지형 신호'):'미탐색'}">${p.pos===i?'◆':visible(i)}</button>`).join('')}</div><p class="qa-caption">◆ 현재 위치 · □ 보급 신호 · ◇ 희귀 · △ 위험 · ⌁ 스캐너 · ? 미탐색</p></div><div><div class="qa-panel-heading">현장 제어</div>${stat('출발 지점','좌하단')}${stat('현재 타일',esc(({start:'출발 지점',empty:'일반 지형',supply:'보급 상자',rare:'희귀 상자',risk:'위험 지형',scanner:'탐지 장치',trace:'야생 흔적'})[p.map[p.pos]]))}${stat('안전한 철수', '언제든 가능')}<p class="qa-instructions">상하좌우 인접 타일 클릭으로 1 AP 이동. 처음 가는 곳의 지형은 인접 단서로 예상할 수 있어. 위험 지역은 AP 추가 소모. 상자는 도착 후 수색해야 해.</p><div class="qa-row">${btn('현재 칸 수색·작동','inspect','',g.finished||p.done||p.opened.has(p.pos)||!['supply','rare','scanner','trace'].includes(p.map[p.pos])||p.ap<1)}${btn('안전 철수','retreat','',g.finished||p.done,'qa-cta')}</div></div></div>`)}
-function divideUI(){let rounds=g.round<3;let choose=g.choices[g.view];return panel(`${roleTabs()}<span class="qa-kicker">JOINT LOOT / ROUND ${Math.min(3,g.round+1)} OF 3</span><h3 class="qa-question">같은 전리품을 노릴까, 나눠서 챙길까?</h3>${stat('현재 누적 성과',`A ${g.scores.A}점 · B ${g.scores.B}점`)}<p class="qa-instructions">각자 상자 하나를 고르고 '분배' 또는 '독식'을 비공개로 선택해. 다른 상자를 고르면 방해 없이 확보. 같은 상자라면 분배·배신 결과에 따라 보상이 갈려. 총 3차전.</p><div class="qa-crates">${g.crates.map((c,i)=>`<button class="qa-crate ${choose?.box===i?'picked':''}" data-action="crate" data-val="${i}" ${!rounds||!!choose?'disabled':''}><small>CRATE ${i+1}</small><strong>${c.value}점</strong><span>${esc(c.tag)}</span></button>`).join('')}</div><div class="qa-row">${['share','grab'].map(x=>btn(`${x==='share'?'분배':'독식'} 방식 선택`,'stance',x,!rounds||!choose||!!choose.stance,x==='share'?'qa-cta secondary':'qa-cta danger')).join('')}</div><p class="qa-hint">현재 ${choose?`상자 ${choose.box+1} / ${choose.stance==='share'?'분배':'독식'} 선택 완료. 상대 차례를 진행해.`:`상자를 먼저 고르고 그 다음 분배 방식 선택. 선택은 상대에게 비공개.`}</p>${g.history.length?`<div class="qa-divider"></div>${g.history.map(t=>`<p class="qa-caption">${esc(t)}</p>`).join('')}`:''}`)}
-function bombUI(){let m=g.modules[Math.min(g.stage,2)],op=g.view===g.operator,manual=g.view!==g.operator;
-const wireNames={red:'빨강',blue:'파랑',yellow:'노랑',green:'초록'};
-let controls=m.type===0?`<div class="qa-wire-grid">${m.wires.map((x,i)=>`<button class="qa-wire-card" data-action="defuse" data-val="${i}" ${g.finished?'disabled':''}><span class="qa-wire ${x}"></span><b>${i+1}번 ${wireNames[x]}</b><small>절단</small></button>`).join('')}</div>`:m.type===1?`<div class="qa-wire-grid">${m.digits.map((x,i)=>`<button class="qa-keypad" data-action="defuse" data-val="${i}" ${g.finished?'disabled':''}>${x}</button>`).join('')}</div>`:`<div class="qa-wire-grid">${m.lamps.map((v,i)=>`<button class="qa-lamp" data-action="defuse" data-val="${i}" ${g.finished?'disabled':''}><i class="${v?'on':''}"></i><b>스위치 ${i+1}</b></button>`).join('')}</div>`;
-const manuals=['A: 빨간 전선 / B: 파란 전선 / C: 노란 전선을 절단. 해당 색은 반드시 하나 존재해.','A: 숫자 1 / B: 숫자 4 / C: 숫자 2가 적힌 버튼을 누르기.','신호 0이면 왼쪽에서 첫 번째 켜진 램프의 스위치, 신호 1이면 오른쪽에서 첫 번째 꺼진 램프의 스위치. 해당 상태가 없으면 1번(0) / 4번(1).'];
-return panel(`${roleTabs()}<span class="qa-kicker">AGLAIA / DEFUSAL STAGE ${Math.min(g.stage+1,3)} OF 3 · <span id="qaTimeLeft">120s</span></span><h3 class="qa-question">${op?'폭발물 장치 담당':'해체 매뉴얼 담당'}</h3><div class="qa-progress">${[0,1,2].map(i=>`<span class="qa-pip ${i<g.stage?'active':''}"></span>`).join('')}</div>${op?`<div class="qa-device"><div class="qa-device-label">MODULE ${m.type+1} · CODE ${m.code} ${m.type===2?`· SIGNAL ${m.signal}`:''}</div>${controls}</div><p class="qa-instructions">매뉴얼 담당은 지금 화면을 볼 수 없어. 장치 정보를 채팅으로 전달하고 지시를 받아 직접 조작해. 고의로 다른 곳을 눌러도 돼.</p>`:`<div class="qa-manual"><b>해체 매뉴얼 / 절차 ${m.type+1}</b><p>${esc(manuals[m.type])}</p></div><p class="qa-instructions">어느 색이 몇 번인지, 장치 코드가 무엇인지 채팅으로 물어봐. 잘못 알려줘도 게임이 막지 않아.</p>`}<div class="qa-chat"><div class="qa-chat-lines">${g.chat.length?g.chat.map(v=>`<p><b>${esc(v.from)}:</b> ${esc(v.text)}</p>`).join(''):'<p>통신 대기 중. 정보를 교환해 봐.</p>'}</div><div class="qa-chat-input"><input id="qaChatText" class="qa-input" maxlength="160" placeholder="${g.view}의 메시지 입력" ${g.finished?'disabled':''}>${btn('전송','chat','',g.finished)}</div></div>`)}
-function moneyChips(offer,receiver){return `<div class="qa-coinline">${Array.from({length:10},(_,i)=>`<span class="qa-coin ${i<offer?'mine':'theirs'}">C</span>`).join('')}</div><div class="qa-info-row"><span>${receiver}: ${offer}C</span><b>상대: ${10-offer}C</b></div>`}
-function ultimatumUI(){const isPending=g.offer!==null,turn=isPending?opp(g.offer.by):g.proposer,active=turn===g.view;const amount=5;
-return panel(`${roleTabs()}<span class="qa-kicker">NEGOTIATION / ${g.offerCount} OF 3 PROPOSALS</span><h3 class="qa-question">10C를 어떻게 나눌까?</h3><p class="qa-instructions">최대 세 번의 제안. 상대가 수락하면 합의 성립. 불만이라면 거절하거나 역제안할 수 있지만, 세 번째까지 합의하지 못하면 둘 다 추가 보상 0C.</p>${g.offer?`<div class="qa-order"><small>현재 제안자 ${g.offer.by}</small><b>${g.offer.by} ${g.offer.amount}C · ${opp(g.offer.by)} ${10-g.offer.amount}C</b>${moneyChips(g.offer.amount,g.offer.by)}</div>`:`<div class="qa-hint">현재 제안 차례: ${g.proposer}. 상대는 제안을 기다려.</div>`}${!isPending&&active?`<div class="qa-field"><label>내 몫 <strong id="qaShareOut">5C</strong> / 상대 <strong id="qaOtherOut">5C</strong></label><input id="qaShare" type="range" min="0" max="10" value="5" step="1"></div>${moneyChips(amount,g.view)}${btn('분배안 제안','offer','',g.finished,'qa-cta')}`:isPending&&active?`<div class="qa-row">${btn('이 제안 수락','accept','',g.finished,'qa-cta')}${g.offerCount<3?btn('거절하고 역제안','counter','',g.finished):btn('최종 거절','reject','',g.finished,'qa-cta danger')}</div>`:`<p class="qa-hint">${turn}의 결정을 기다리고 있어. 상단에서 역할을 바꿔 테스트해.</p>`}<div class="qa-divider"></div><div class="qa-panel-heading">협상 기록</div>${g.timeline.length?g.timeline.map(x=>`<p class="qa-caption">${esc(x)}</p>`).join(''):'<p class="qa-caption">아직 제안 없음</p>'}`)}
-function craftUI(){const idx=g.index,order=g.orders[Math.min(idx,2)],mine=g.inventory[g.view];const stored=g.tray;const recipe=LIVEItems.all[order.name]?.materials||[];return panel(`${roleTabs()}<span class="qa-kicker">AGLAIA / JOINT CRAFT ${Math.min(idx+1,3)} OF 3</span><h3 class="qa-question">의뢰 장비를 직접 조합해.</h3><div class="qa-order"><small>제작 의뢰 ${idx+1}/3</small><b>${esc(order.name)}</b><p>${g.showRecipe?`레시피: ${esc(recipe.join(' + '))}`:'조합표를 열면 필요한 두 기본 재료를 확인할 수 있어.'}</p>${btn(g.showRecipe?'조합표 닫기':'이번 레시피 확인','recipe','',g.finished)}</div><div class="qa-crafting"><div><div class="qa-panel-heading">${g.view} 보유 재료</div><div class="qa-stack">${mine.map(item=>`<button class="qa-loot" data-action="load" data-val="${esc(item.id)}" ${g.finished?'disabled':''}><b>${esc(item.name)}</b><small>선택해서 내 작업대 슬롯에 올리기</small></button>`).join('')||'<div class="qa-hint">남은 재료 없음</div>'}</div></div><div><div class="qa-panel-heading">공동 작업대</div><div class="qa-belt">${['A','B'].map(r=>`<div class="qa-belt-slot"><small>${r} 슬롯</small><strong>${stored[r]?esc(stored[r].name):'재료 대기'}</strong></div>`).join('')}</div><p class="qa-instructions">두 플레이어가 재료 하나씩 올린 뒤 조합 실행. 틀리면 재료는 그대로지만 장치 과열이 쌓여. 오조합 세 번이면 제작 종료.</p>${btn('작업대 조합 실행','combine','',g.finished||!stored.A||!stored.B,'qa-cta')}${stat('과열 누적',`${g.misses} / 3`)}${btn('내 슬롯의 재료 되돌리기','unload','',g.finished||!stored[g.view])}</div></div>`)}
-function status(r){if(g.finished)return `종료 · 총 ${3+g.bonus[r]}C (가상)`;if(selected==='recover')return g.players[r].done?'철수 완료':`가방 ${g.players[r].board.filter(x=>x>=0).length}/16칸`;if(selected==='zones')return g.players[r].done?'탐색 종료':g.players[r].zone?`${g.players[r].zone} / AP ${g.players[r].ap}`:'구역 선택 대기';if(selected==='divide')return g.choices[r]?.stance?'선택 완료 · 비공개':`제 ${Math.min(3,g.round+1)}차 선택 대기`;if(selected==='bomb')return g.operator===r?'폭발물 담당':'매뉴얼 담당';if(selected==='ultimatum')return g.offer===null?`${g.proposer} 제안 차례`:`${opp(g.offer.by)}의 답변 대기`;if(selected==='craft')return g.tray[r]?'재료 투입 완료':'재료 투입 대기';return '진행 중'}
-function render(){const info=games.find(x=>x[0]===selected);$('qaGameNav').innerHTML=games.map((x,i)=>`<button type="button" class="qa-game-tab" data-select="${x[0]}" aria-current="${selected===x[0]}"><span class="qa-tab-num">0${i+1} / 06</span><b>${esc(x[1])}</b><small>${esc(x[3])}</small></button>`).join('');$('qaGameType').textContent=info[2];$('qaTitle').textContent=info[1];$('qaDescription').textContent=info[4];$('qaSeedDisplay').textContent='SEED '+seed;$('qaParticipants').innerHTML=['A','B'].map(r=>`<div class="qa-person ${g.finished?'qa-done':''}"><div class="qa-person-top"><b>플레이어 ${r}</b><small>${status(r)}</small></div><p>${selected==='zones'?'개인형 미니게임':selected==='bomb'?'협력 · 정보 비대칭':'QA 전용 · 역할 전환 가능'}</p></div>`).join('');$('qaHistory').innerHTML=log.map(s=>`<p>${esc(s)}</p>`).join('');$('qaStage').innerHTML=selected==='recover'?recoverUI():selected==='zones'?regionUI():selected==='divide'?divideUI():selected==='bomb'?bombUI():selected==='ultimatum'?ultimatumUI():craftUI()}
-function tryFinishPlayers(kind){if(g.players.A.done&&g.players.B.done){const b={};for(const r of ['A','B'])b[r]=kind==='zones'?Math.min(5,Math.floor(g.players[r].points/2)+(g.players[r].risk<3?1:0)):Math.min(5,Math.floor(g.players[r].points/5));done(kind==='zones'?'루미아 섬 탐색 종료':'보급품 회수 종료',b)}}
-function action(a,v='',role=null){if(a==='replay'){newGame(selected,seed);return}if(a==='view'){g.view=role;render();return}if(g.finished)return;const r=g.view;
-if(selected==='recover'){
- const p=g.players[r];if(p.done)return;
- if(a==='take'){const i=Number(v);if(p.packs[i]&&!p.packs[i].used){p.selection=i;p.rotation=0}}
- if(a==='rotate')p.rotation=(p.rotation+1)%4;
- if(a==='clear'){p.board.fill(-1);p.packs.forEach(i=>i.used=false);p.heat=0;p.points=0;p.selection=null}
- if(a==='put'&&p.selection!==null){const i=Number(v),item=p.packs[p.selection],rot=(x,y)=>{for(let j=0;j<p.rotation;j++)[x,y]=[-y,x];return [x,y]};let pts=item.shape.map(([x,y])=>rot(x,y));let mx=Math.min(...pts.map(x=>x[0])),my=Math.min(...pts.map(x=>x[1]));pts=pts.map(([x,y])=>[x-mx+i%4,y-my+Math.floor(i/4)]);let cells=pts.map(([x,y])=>x>=0&&x<4&&y>=0&&y<4?y*4+x:-1);
- if(!item.used&&cells.every(x=>x>=0&&p.board[x]===-1)){for(const c of cells)p.board[c]=p.selection;item.used=true;p.points+=item.value;p.heat++;note(`${r}: ${item.name} 적재 성공 (${cells.length}칸)`);p.selection=null;if(p.heat>=6){p.done=true;note(`${r}: 금지구역 경보 · 자동 철수`)}}else note('가방에 들어가지 않아. 물자를 회전하거나 다른 위치를 골라.');}
- if(a==='stop'){p.done=true;note(`${r}: 보급품 회수 종료`)}tryFinishPlayers('recover')}
-if(selected==='zones'){
- const p=g.players[r];if(p.done)return;if(a==='zone'&&!p.zone){p.zone=g.options[Number(v)];note(`${r}: ${p.zone} 탐색 진입`)}
- else if(a==='walk'&&p.zone){const n=Number(v);if(n>=0&&n<16&&dist(p.pos,n)===1&&p.ap>0){let fee=1+(p.map[n]==='risk'?1:0);if(p.ap>=fee){p.ap-=fee;p.pos=n;p.visited.add(n);reveal(p);if(p.map[n]==='risk'){p.risk++;note(`${r}: 위험 지형 진입 · AP ${fee} 소모`)}if(p.risk>=3){p.done=true;note(`${r}: 위험 누적으로 긴급 철수`)}}else note(`${r}: 이 경로는 행동력이 부족해.`)}else note('상하좌우 인접 칸으로만 이동할 수 있어.')}
- else if(a==='inspect'&&p.zone&&!p.opened.has(p.pos)&&p.ap>0){const t=p.map[p.pos];if(['supply','rare','scanner','trace'].includes(t)){p.ap--;p.opened.add(p.pos);if(t==='supply')p.points+=2;if(t==='rare'){p.points+=5;p.risk++}if(t==='trace'){p.points++;for(let i=0;i<16;i++)if(dist(i,p.pos)<=2)p.seen.add(i)}if(t==='scanner')for(let i=0;i<16;i++)p.seen.add(i);note(`${r}: ${t} 조사 · 현재 물자 ${p.points}`)}}
- if(a==='retreat'){p.done=true;note(`${r}: ${p.zone||'미선택'} 탐색 종료`)}if(p.ap===0||p.risk>=3)p.done=true;tryFinishPlayers('zones')}
-if(selected==='divide'){
- if(a==='crate'&&!g.choices[r]?.stance){g.choices[r]={box:Number(v),stance:null}}
- if(a==='stance'&&g.choices[r]&&!g.choices[r].stance){g.choices[r].stance=v;note(`${r}: 선택 제출 (비공개)`)}
- if(g.choices.A?.stance&&g.choices.B?.stance){const A=g.choices.A,B=g.choices.B;let b={A:0,B:0};if(A.box!==B.box){b.A=g.crates[A.box].value;b.B=g.crates[B.box].value}else{let value=g.crates[A.box].value;if(A.stance==='share'&&B.stance==='share'){b.A=Math.ceil(value/2);b.B=Math.ceil(value/2)}else if(A.stance==='grab'&&B.stance==='grab'){}else{b[A.stance==='grab'?'A':'B']=value}}g.scores.A+=b.A;g.scores.B+=b.B;g.history.push(`제 ${g.round+1}차 / A ${A.box+1}번-${A.stance==='share'?'분배':'독식'} · B ${B.box+1}번-${B.stance==='share'?'분배':'독식'} / +${b.A}, +${b.B}`);g.round++;g.choices={};g.crates=Array.from({length:3},()=>({value:2+R(4),tag:pick(['보급 상자','희귀 물자','연구소 물품','의약품'])}));if(g.round>=3)done('전리품 분배 종료',{A:Math.min(5,Math.floor(g.scores.A/2)),B:Math.min(5,Math.floor(g.scores.B/2))})}}
-if(selected==='bomb'){
- if(a==='chat'){const t=$('qaChatText')?.value.trim();if(t){g.chat.push({from:r,text:t.slice(0,160)});note(`${r}: 채팅 전송`)}}
- if(a==='defuse'&&r===g.operator){const m=g.modules[g.stage],correct=bombCorrect(m),chosen=Number(v);if(chosen===correct){g.stage++;note(`${r}: 장치 ${g.stage}/3 해체 성공`);if(g.stage>=3)done('폭발물 해체 성공 · 공동 보상 획득',{A:6,B:6})}else{note(`${r}: 장치 오작동! 정답은 ${correct+1}번째 조작이었어.`);done('폭발물 해체 실패 · 기본 보상 유지',{A:0,B:0})}}}
-if(selected==='ultimatum'){
- if(a==='offer'&&g.offer===null&&r===g.proposer){const amount=Math.max(0,Math.min(10,Number($('qaShare')?.value??5)));g.offer={by:r,amount};g.offerCount++;g.timeline.push(`${r}: 본인 ${amount}C / 상대 ${10-amount}C 제안`);note(`${r}: 분배안을 제안했어.`)}
- if(g.offer&&r===opp(g.offer.by)){
- if(a==='accept'){const pay={A:0,B:0};pay[g.offer.by]=g.offer.amount;pay[r]=10-g.offer.amount;done('크레딧 협상 합의',{A:pay.A,B:pay.B})}
- if(a==='reject'){done('협상 결렬 · 추가 보상 없음',{A:0,B:0})}
- if(a==='counter'&&g.offerCount<3){g.timeline.push(`${r}: 이전 제안 거절 · 역제안 차례`);g.proposer=r;g.offer=null}}
+function zoneMap(variant=0){
+ const profiles=[
+  ['supply','supply','rare','scanner','scanner','risk','trace','trace'],
+  ['supply','supply','supply','rare','rare','risk','risk','scanner'],
+  ['supply','rare','rare','rare','risk','risk','risk','trace']
+ ];
+ const tiles=shuffle([...profiles[variant%3],...Array(7).fill('empty')]);tiles.splice(12,0,'start');return tiles
+}
+function reveal(p){for(let i=0;i<16;i++)if(dist(p.pos,i)<=1)p.seen.add(i)}
+function initZones(){game.options=shuffle(ZONES).slice(0,3);game.players={};for(const r of roles)game.players[r]={zone:null,map:null,pos:12,ap:8,points:0,risk:0,opened:new Set(),seen:new Set([12,8,13]),visited:new Set([12]),done:false}}
+function zoneReward(p){return addReward(nonBase(p.points),p.points>=4&&p.risk<3?{credits:2}:p.points<1?{exp:2}:{})}
+function finishIndividuals(name,rewardFn){if(roles.every(r=>game.players[r].done))finish(name,{A:rewardFn(game.players.A),B:rewardFn(game.players.B)})}
+function zonesUI(){const p=target();if(!p.zone)return panel(`${roleTabs()}<span class="qa-kicker">LUMIA / AREA SELECT</span><h3 class="qa-question">탐색할 지역을 선택해.</h3><div class="qa-island"><div class="qa-island-caption">지형별 보드 생성용 임시 레이어 · 공식 맵 원본은 아직 미포함</div><div class="qa-region-list">${game.options.map((z,i)=>`<button class="qa-region" data-action="zone" data-val="${i}"><small>AREA 0${i+1}</small><b>${esc(z)}</b><span>${['균형형 탐색','보급품 신호','위험 구역'][i]}</span></button>`).join('')}</div></div>`);
+const icons={start:'●',empty:'·',supply:'□',rare:'◇',risk:'△',scanner:'⌁',trace:'⌕'};
+return panel(`${roleTabs()}<div class="qa-info-row"><span>LUMIA / ${esc(p.zone)}</span><b>행동력 ${p.ap}/8 · 확보 물자 ${p.points} · 위험 ${p.risk}/3</b></div><div class="qa-two"><div><h3 class="qa-question">탐색 지도 / 4×4</h3><div class="qa-tile-grid">${p.map.map((t,i)=>`<button class="qa-grid-cell ${i===p.pos?'current':p.visited.has(i)?'visited':p.seen.has(i)?'seen':'fog'}" data-action="walk" data-val="${i}" ${p.done?'disabled':''}>${i===p.pos?'◆':p.seen.has(i)?icons[t]:'?'}</button>`).join('')}</div><p class="qa-caption">인접한 칸만 이동할 수 있어. 수색은 현재 칸에서 별도 행동력이 필요해.</p></div><div>${stat('현재 타일',({start:'출발',empty:'일반',supply:'보급 상자',rare:'희귀 상자',risk:'위험',scanner:'탐지 장치',trace:'흔적'})[p.map[p.pos]])}<p class="qa-instructions">□ 일반 보급 / ◇ 희귀 / △ 위험 / ⌁ 지도 개방 / ⌕ 흔적</p><div class="qa-row">${btn('현재 타일 수색·조사','inspect','',p.done||p.ap<=0||p.opened.has(p.pos)||!['supply','rare','trace','scanner'].includes(p.map[p.pos]),'qa-cta')}${btn('탐색 종료','retreat','',p.done)}</div></div></div>`)}
+function initDivide(){game.owner=pick(roles);game.receiver=game.owner==='A'?'B':'A';game.pool={credits:6+R(9),exp:4+R(9),items:[basic(),...(R(100)<45?[basic()]:[])]};game.offer=null;game.rejections=0;game.chat=[]}
+function divideUI(){
+ const owner=game.owner,r=game.view,hasOffer=!!game.offer;
+ let controls='';
+ if(r===owner&&!hasOffer){
+  controls=`<div class="qa-split-panel"><label>상대에게 줄 크레딧: <b id="qaShareOut">0C</b><input type="range" class="qa-input" id="qaShare" min="0" max="${game.pool.credits}" value="0"></label><label>상대에게 줄 EXP: <b id="qaExpOut">0 EXP</b><input type="range" class="qa-input" id="qaExp" min="0" max="${game.pool.exp}" value="0"></label><div><b>상대에게 줄 아이템</b>${game.pool.items.map((item,i)=>`<label class="qa-check-item"><input type="checkbox" name="qaGiveItem" value="${i}">${esc(item)}</label>`).join('')}</div>${btn('분배안 제시','offer','',false,'qa-cta')}</div>`;
+ }else if(hasOffer){
+  controls=`<div class="qa-offer"><b>${owner}의 분배안</b><p>${owner}: ${esc(rewardText(game.offer[owner]))}</p><p>${game.receiver}: ${esc(rewardText(game.offer[game.receiver]))}</p></div>`;
+  controls+=r===game.receiver?`<div class="qa-row">${btn('수락','accept','',false,'qa-cta')}${btn('거절 · 재협상','reject')}</div>`:'<p class="qa-instructions">상대가 응답할 때까지 기다리는 중. A/B 화면을 바꿔봐.</p>';
+ }else controls='<p class="qa-hint">전리품 보유자가 먼저 분배안을 제시해야 해.</p>';
+ return panel(`${roleTabs()}<div class="qa-info-row"><span>SHARED LOOT / DISTRIBUTION</span><b>전리품 보유자 ${owner} · 제안 ${game.rejections+1}/3</b></div><h3 class="qa-question">전리품을 어떻게 나눌까?</h3><p class="qa-instructions">시스템이 ${owner}에게 전리품을 몰아줬어. ${owner}가 분배안을 제출하면 ${game.receiver}가 수락하거나 거절해. 채팅으로 협상 가능하며, 끝내 합의하지 못하면 추가 전리품은 회수돼.</p><div class="qa-loot-pool">${stat('크레딧',`${game.pool.credits}C`)}${stat('숙련도',`+${game.pool.exp} EXP`)}${stat('기본 아이템',game.pool.items.join(', '))}</div>${controls}${chatUI()}`)
+}
+
+const PRIORITY_ODD=['Ψ','☾','◇','⌬','△','✦','⊕','⌘','☷','⊗'];
+const PRIORITY_EVEN=['⊗','⊕','☷','✦','⌘','△','⌬','◇','☾','Ψ'];
+function initBomb(){game.operator=pick(roles);game.expert=game.operator==='A'?'B':'A';game.serial=10+R(90);game.lamp=R(2);game.wavelength=pick(['▲','▽']);game.module=0;game.strikes=0;game.chat=[];game.deadline=Date.now()+210000;
+ const wires=shuffle(GLYPHS).slice(0,5),which=R(3),keys=shuffle(KEYPAD_COLUMNS[which]).slice(0,4);
+ const switches=shuffle(['◇','⌬','✦','Ψ']);
+ game.modules=[{type:'wires',glyphs:wires,cleared:[],answer:wireAnswer(wires,game.serial,game.lamp)},
+ {type:'keypad',glyphs:shuffle(keys),column:which,pressed:[],answer:KEYPAD_COLUMNS[which].filter(s=>keys.includes(s))},
+ {type:'switch',glyphs:switches,states:[0,0,0,0],answer:switchAnswer(switches,game.serial,game.wavelength,game.lamp)}];}
+function wireAnswer(glyphs,serial,lamp){const pri=serial%2===0?PRIORITY_EVEN:PRIORITY_ODD;const filtered=pri.filter(s=>glyphs.includes(s));return lamp?filtered.slice(0,2).reverse():filtered.slice(0,2)}
+function switchAnswer(glyphs,serial,wavelength,lamp){const primary=serial%2===0?['◇','Ψ']:['⌬','✦'];return glyphs.map((glyph,i)=>Number(Boolean(primary.includes(glyph))!==Boolean(wavelength==='▲'&&i===1)!==Boolean(lamp&&i===3)))}
+function chatUI(){return `<div class="qa-chat"><div class="qa-panel-heading">테스트 채팅 · 역할별 전송</div><div class="qa-chat-lines">${game.chat.map(x=>`<p><b>${esc(x.from)}:</b> ${esc(x.text)}</p>`).join('')||'<p>서로 정보를 전달해 봐. 실제 멀티채팅은 QA 밖의 별도 기능이야.</p>'}</div><div class="qa-chat-input"><input class="qa-input" id="qaChatText" maxlength="160" autocomplete="off" placeholder="설명·질문·협상 입력">${btn('전송','chat','',false,'qa-cta')}</div></div>`}
+function bombManual(m){if(m.type==='wires')return `<div class="qa-manual"><strong>MODULE 01 / 문양 전선 규칙</strong><div>1. 조작자에게 일련번호 끝자리의 홀짝과 표시등 점등 여부, 전선 5개의 문양을 물어봐.</div><div>2. 홀수일 때 우선순위: ${PRIORITY_ODD.join(' › ')}</div><div>3. 짝수일 때 우선순위: ${PRIORITY_EVEN.join(' › ')}</div><div>4. 실제 장치에 존재하는 문양만 남겨서 우선순위 앞의 2개를 선택한다. 표시등이 켜져 있으면 <b>자르는 순서를 뒤집어</b>.</div></div>`;
+if(m.type==='keypad')return `<div class="qa-manual"><strong>MODULE 02 / 상형 키패드 규칙</strong><div>조작자에게 보이는 문양 네 개를 확인해. <b>네 문양을 모두 포함하는 열</b> 하나를 찾아 그 열에 적힌 순서대로 4개를 눌러야 해.</div><div class="qa-manual-cols">${KEYPAD_COLUMNS.map((col,i)=>`<div><b>기록 ${i+1}</b>${col.map(s=>`<span>${s}</span>`).join('')}</div>`).join('')}</div></div>`;
+return `<div class="qa-manual"><strong>MODULE 03 / 반응기 스위치 규칙</strong><div>조작자에게 일련번호 홀짝, 파장 기호(▲/▽), 표시등 상태와 스위치 문양의 왼쪽부터 순서를 질문해.</div><div>① 일련번호 <b>짝수</b>: ◇, Ψ만 켬. <b>홀수</b>: ⌬, ✦만 켬.</div><div>② 파장이 ▲면 두 번째 스위치 상태를 반전한다.</div><div>③ 표시등이 켜졌으면 네 번째 스위치 상태를 반전한다.</div><div>④ 네 스위치를 모두 맞춘 뒤 **회로 인가** 버튼으로 확인한다.</div></div>`}
+function bombUI(){const r=game.view,m=game.modules[game.module]||game.modules[2],op=r===game.operator;let inner='';
+if(op){if(m.type==='wires')inner=`<div class="qa-wire-grid">${m.glyphs.map((s,i)=>`<button class="qa-keypad ${m.cleared.includes(s)?'qa-chosen':''}" data-action="defuse" data-val="${i}" ${m.cleared.includes(s)?'disabled':''}><small>${i+1}번 · 전선</small><strong>${s}</strong></button>`).join('')}</div><p class="qa-caption">올바른 전선 2개를 순서대로 절단해야 해.</p>`;
+if(m.type==='keypad')inner=`<div class="qa-wire-grid">${m.glyphs.map((s,i)=>`<button class="qa-keypad ${m.pressed.includes(s)?'qa-chosen':''}" data-action="defuse" data-val="${i}" ${m.pressed.includes(s)?'disabled':''}>${s}</button>`).join('')}</div><p class="qa-caption">문양 4개를 특정 순서대로 눌러야 해.</p>`;
+if(m.type==='switch')inner=`<div class="qa-wire-grid">${m.glyphs.map((s,i)=>`<button class="qa-lamp" data-action="toggle" data-val="${i}"><b>${s}</b><i class="${m.states[i]?'on':''}"></i><small>${m.states[i]?'ON':'OFF'}</small></button>`).join('')}</div><div class="qa-row">${btn('회로 인가','submitSwitch','',false,'qa-cta')}</div>`;
+}else inner=bombManual(m);
+return panel(`${roleTabs()}<div class="qa-info-row"><span>AGLAIA / BOMB MODULE ${game.module+1} OF 3</span><b>오작동 ${game.strikes}/3 · <span id="qaTimeLeft">210s</span></b></div><h3 class="qa-question">${op?'조작 장치를 확인해.':'해체 매뉴얼을 해석해.'}</h3><p class="qa-instructions">조작자 ${game.operator}는 장치만, 매뉴얼 담당 ${game.expert}는 규칙만 확인 가능. 채팅으로 서로 설명해야 해. 오조작 3회 또는 시간 초과 시 실패.</p>${op?`<div class="qa-device"><div class="qa-device-label">SERIAL ${game.serial} · 전원등 ${game.lamp?'ON':'OFF'} · 파장 ${game.wavelength}</div>${inner}</div>`:`${inner}<div class="qa-hint">현재 장치의 정답이나 실제 배치는 매뉴얼 담당에게 직접 보이지 않아.</div>`}${chatUI()}`)}
+function bombCorrectChoice(m){return m.answer[m.type==='switch'?0:m.type==='wires'?m.cleared.length:m.pressed.length]}
+function strike(){game.strikes++;note(`회로 오작동 (${game.strikes}/3)`);if(game.strikes>=3)finish('폭탄 해체 실패 · 오조작 3회',{})}
+function advanceBomb(){game.module++;if(game.module>=3){const item=basic();finish('폭발물 해체 성공 · 공동 보상',{A:{credits:3,exp:8,items:[item]},B:{credits:3,exp:8,items:[item]}})}else note(`장치 ${game.module}/3 해체. 다음 모듈로 진행`)}
+const roster=typeof ERRoster!=='undefined'?ERRoster.roster.filter(x=>!x.pveOnly&&x.cost>0):[];
+function initQuiz(){const qs=[];const rec=shuffle(LIVEItems.recipes).slice(0,3);const chars=shuffle(roster).slice(0,3);for(let i=0;i<5;i++){
+ if(i===0){const x=rec[0],materials=LIVEItems.all[x[0]].materials;qs.push({type:'combine',prompt:`${materials[0]} + ${materials[1]} = ?`,answer:x[0],meta:'조합식의 결과 아이템 이름'})}
+ if(i===1){const x=rec[1],materials=LIVEItems.all[x[0]].materials;qs.push({type:'reverse',prompt:`${x[0]}의 두 기본 재료를 '+'로 구분해서 입력해.`,answer:materials.join('+'),meta:'재료 순서는 무관'})}
+ if(i===2&&chars[0])qs.push({type:'synergy',prompt:`실험체 「${chars[0].name}」의 시너지 중 하나를 입력해.`,answer:chars[0].affiliations,meta:'소속 시너지 1개만 적어도 정답'})
+ if(i===3&&chars[1])qs.push({type:'cost',prompt:`실험체 「${chars[1].name}」의 상점 코스트는 몇이야? 숫자로 입력해.`,answer:String(chars[1].cost),meta:'1·2·3 중 하나'})
+ if(i===4){const x=rec[2],materials=LIVEItems.all[x[0]].materials;qs.push({type:'combine',prompt:`${materials[0]} + ${materials[1]} = ?`,answer:x[0],meta:'아이템 도감에서 검색할 수 있어'})}
+ }game.players={};for(const r of roles)game.players[r]={questions:shuffle(qs),index:0,correct:0,attempts:0,done:false,answers:[],search:'',lookup:'items'};game.quizQuestions=qs}
+function normalize(v){return String(v||'').normalize('NFKC').replace(/[\s·\-]+/g,'').toLowerCase()}
+function isCorrect(q,answer){if(q.type==='reverse'){const x=answer.split('+').map(normalize).sort().join('|');return x===q.answer.split('+').map(normalize).sort().join('|')}if(Array.isArray(q.answer))return q.answer.some(s=>normalize(s)===normalize(answer));return normalize(q.answer)===normalize(answer)}
+function codexUI(p){const query=normalize(p.search);const items=Object.entries(LIVEItems.all).filter(([name,entry])=>!query||normalize(name).includes(query)||entry.materials?.some(s=>normalize(s).includes(query)));
+ const chars=roster.filter(x=>!query||normalize(x.name).includes(query)||x.affiliations.some(s=>normalize(s).includes(query)));
+return `<div class="qa-codex"><div class="qa-info-row"><b>이리체스 도감 / 실제 데이터</b><span>답은 직접 입력해야 해.</span></div><div class="qa-row">${btn('아이템·조합','codexTab','items',false,p.lookup==='items'?'qa-cta':'qa-cta secondary')}${btn('실험체·시너지','codexTab','chars',false,p.lookup==='chars'?'qa-cta':'qa-cta secondary')}</div><input class="qa-input qa-search" id="qaCodexSearch" placeholder="이름, 재료, 시너지 검색" value="${esc(p.search)}"><div class="qa-codex-results">${p.lookup==='items'?items.map(([name,item])=>`<div class="qa-codex-record"><b>${esc(name)}</b><small>${item.basic?'기본 아이템':`조합: ${esc(item.materials.join(' + '))}`} · ${esc(Object.entries(item.stats||{}).map(([k,v])=>k+' '+v).join(' / '))}</small></div>`).join(''):chars.map(x=>`<div class="qa-codex-record"><b>${esc(x.name)}</b><small>${x.cost}코스트 · ${esc(x.role)} · ${esc(x.affiliations.join(' / '))}</small></div>`).join('')}</div></div>`}
+function quizReward(p){return p.correct>=4?{credits:2,exp:8,items:[basic()]}:p.correct>=3?{exp:7,items:[basic()]}:p.correct>=1?{exp:5}: {exp:2}}
+function quizUI(){const p=target(),q=p.questions[Math.min(p.index,p.questions.length-1)];return panel(`${roleTabs()}<div class="qa-info-row"><span>CODEX / EXPERIMENT QUIZ</span><b>문제 ${Math.min(p.index+1,p.questions.length)} / ${p.questions.length} · 정답 ${p.correct}</b></div>${p.done?'<h3 class="qa-question">퀴즈 완료. 다른 플레이어의 종료를 기다리는 중.</h3>':`<h3 class="qa-question">${esc(q.prompt)}</h3><p class="qa-instructions">${esc(q.meta)} · 아래 도감은 항상 열려 있어. 미니게임은 개인전이며 답은 상대에게 공개되지 않아.</p><div class="qa-chat-input"><input class="qa-input" id="qaQuizAnswer" autocomplete="off" placeholder="정답 입력">${btn('제출','quizAnswer','',false,'qa-cta')}</div>`}<div class="qa-hint">QA 정답 기록: ${p.answers.map((x,i)=>`#${i+1} ${x?'정답':'오답'}`).join(' · ')||'아직 없음'}</div>${codexUI(p)}`)}
+function status(r){if(game.finished)return rewardText(game.rewards[r]);if(selected==='stack')return game.players[r].done?'적재 완료':`${game.players[r].lines}줄 정리`;if(selected==='zones')return game.players[r].done?'탐색 종료':game.players[r].zone?`${game.players[r].zone} / AP ${game.players[r].ap}`:'구역 선택';if(selected==='divide')return r===game.owner?'전리품 보유자':'분배 수령자';if(selected==='bomb')return r===game.operator?'장치 조작자':'매뉴얼 담당';if(selected==='quiz')return game.players[r].done?'퀴즈 종료':`${game.players[r].correct}개 정답`;return '진행 중'}
+function render(){const cfg=games.find(x=>x[0]===selected);$('qaGameNav').innerHTML=games.map((x,i)=>`<button type="button" class="qa-game-tab" data-select="${x[0]}" aria-current="${selected===x[0]}"><span class="qa-tab-num">0${i+1} / 05</span><b>${esc(x[1])}</b><small>${esc(x[3])}</small></button>`).join('');$('qaGameType').textContent=cfg[2];$('qaTitle').textContent=cfg[1];$('qaDescription').textContent=cfg[4];$('qaSeedDisplay').textContent='SEED '+seed;$('qaParticipants').innerHTML=roles.map(r=>`<div class="qa-person ${game.finished?'qa-done':''}"><div class="qa-person-top"><b>플레이어 ${r}</b><small>${esc(status(r))}</small></div><p>${['stack','zones','quiz'].includes(selected)?'개인형 · 결과 비교 없음':'정보 분리 · 역할 전환형 QA'}</p></div>`).join('');$('qaHistory').innerHTML=history.map(s=>`<p>${esc(s)}</p>`).join('');$('qaStage').innerHTML=selected==='stack'?stackUI():selected==='zones'?zonesUI():selected==='divide'?divideUI():selected==='bomb'?bombUI():quizUI()}
+function newGame(id=selected,forced){selected=id;seed=forced==null?(Date.now()^Math.floor(Math.random()*0x7fffffff))>>>0:forced>>>0;rng=seeded(seed);history=[];game={view:'A',finished:false,rewards:{A:emptyReward(),B:emptyReward()}};if(id==='stack')initStack();if(id==='zones')initZones();if(id==='divide')initDivide();if(id==='bomb')initBomb();if(id==='quiz')initQuiz();note('새 QA 세션 · 실제 계정·재화에 영향 없음');render()}
+function action(a,v='',role=null){
+ if(a==='replay'){newGame(selected,seed);return}
+ if(a==='view'){if(roles.includes(role)){game.view=role;render()}return}
+ if(game.finished)return;
+ const r=game.view,p=target();
+ if(selected==='stack'){
+  if(p.done)return;
+  if(a==='left')movePiece(p,-1,0);
+  if(a==='right')movePiece(p,1,0);
+  if(a==='down')dropPiece(p);
+  if(a==='rotate')rotatePiece(p);
+  if(a==='drop')hardDrop(p);
+  if(a==='stackStop')stopStack();
+  if(!game.finished&&roles.every(k=>game.players[k].done))finish('보급 적재 결과',{A:stackReward(game.players.A),B:stackReward(game.players.B)});
  }
-if(selected==='craft'){
- if(a==='recipe')g.showRecipe=!g.showRecipe;
- if(a==='load'){const i=g.inventory[r].findIndex(x=>x.id===v);if(i>=0){if(g.tray[r])g.inventory[r].push(g.tray[r]);g.tray[r]=g.inventory[r].splice(i,1)[0];note(`${r}: 작업대에 재료 올림`)}}
- if(a==='unload'&&g.tray[r]){g.inventory[r].push(g.tray[r]);g.tray[r]=null}
- if(a==='combine'&&g.tray.A&&g.tray.B){const result=LIVEItems.craft(g.tray.A.name,g.tray.B.name);if(result===g.orders[g.index].name){g.index++;g.tray={A:null,B:null};g.showRecipe=false;note(`장비 제작 성공: ${result} (${g.index}/3)`);if(g.index===3)done('긴급 제작 작전 성공 · 공동 제작 3개 완료',{A:6,B:6})}else{g.misses++;note(`오조합! 제작 결과 ${result||'실패'} / 과열 ${g.misses}/3`);if(g.misses>=3)done('제작 장치 과열 · 작업 종료',{A:g.index*2,B:g.index*2})}}}
-render()}
+ if(selected==='zones'){
+  if(p.done)return;
+  if(a==='zone'&&!p.zone){const option=game.options[Number(v)];if(option){p.zone=option;p.map=zoneMap(game.options.indexOf(option));note(`${r}: ${p.zone} 탐색 시작`)}}
+  if(a==='walk'&&p.zone){const n=Number(v);if(n>=0&&n<16&&dist(p.pos,n)===1&&p.ap>0){const cost=1+(p.map[n]==='risk'?1:0);if(p.ap>=cost){p.ap-=cost;p.pos=n;p.visited.add(n);reveal(p);if(p.map[n]==='risk'){p.risk++;note(`${r}: 위험 지형 진입`)}if(p.risk>=3)p.done=true}else note('이동에 필요한 행동력이 부족해')}else note('상하좌우 인접 타일만 이동할 수 있어')}
+  if(a==='inspect'&&p.zone&&!p.opened.has(p.pos)&&p.ap>0){const t=p.map[p.pos];if(['supply','rare','trace','scanner'].includes(t)){p.ap--;p.opened.add(p.pos);if(t==='supply')p.points+=2;if(t==='rare'){p.points+=5;p.risk++}if(t==='trace'){p.points++;for(let i=0;i<16;i++)if(dist(p.pos,i)<=2)p.seen.add(i)}if(t==='scanner')for(let i=0;i<16;i++)p.seen.add(i);note(`${r}: ${t} 조사 · 물자 ${p.points}점`)}}
+  if(a==='retreat'){p.done=true;note(`${r}: 탐색 종료`)}
+  if(p.ap===0||p.risk>=3)p.done=true;
+  finishIndividuals('루미아 섬 탐색 종료',zoneReward);
+ }
+ if(selected==='divide'){
+  if(a==='chat'){const t=$('qaChatText')?.value?.trim();if(t){game.chat.push({from:r,text:t.slice(0,160)});note(`${r}: 채팅 전송`)}}
+  if(a==='offer'&&r===game.owner&&!game.offer){
+   const credits=Math.max(0,Math.min(game.pool.credits,Number($('qaShare')?.value)||0));
+   const exp=Math.max(0,Math.min(game.pool.exp,Number($('qaExp')?.value)||0));
+   const items=Array.from(document.querySelectorAll?.('input[name="qaGiveItem"]:checked')||[]).map(x=>Number(x.value)).filter(i=>i>=0&&i<game.pool.items.length);
+   const receiver={credits,exp,items:game.pool.items.filter((_,i)=>items.includes(i))};
+   const owner={credits:game.pool.credits-credits,exp:game.pool.exp-exp,items:game.pool.items.filter((_,i)=>!items.includes(i))};
+   game.offer={[game.owner]:owner,[game.receiver]:receiver};note(`${r}: 전리품 분배 제안`);
+  }
+  if(a==='accept'&&r===game.receiver&&game.offer){finish('전리품 분배 합의',{A:game.offer.A,B:game.offer.B})}
+  if(a==='reject'&&r===game.receiver&&game.offer){game.rejections++;game.offer=null;note(`${r}: 분배 거절 (${game.rejections}/3)`);if(game.rejections>=3)finish('합의 실패 · 추가 전리품 회수',{})}
+ }
+ if(selected==='bomb'){
+  if(a==='chat'){const t=$('qaChatText')?.value?.trim();if(t){game.chat.push({from:r,text:t.slice(0,160)});note(`${r}: 채팅 전송`)}}
+  if(r===game.operator){const m=game.modules[game.module];if(a==='defuse'&&['wires','keypad'].includes(m.type)){
+    const symbol=m.glyphs[Number(v)],expected=bombCorrectChoice(m);
+    if(symbol===expected){if(m.type==='wires')m.cleared.push(symbol);else m.pressed.push(symbol);note(`${r}: ${symbol} 조작 성공`);if((m.type==='wires'?m.cleared:m.pressed).length===m.answer.length)advanceBomb()}
+    else strike();
+   }
+   if(a==='toggle'&&m.type==='switch'){const n=Number(v);if(n>=0&&n<4)m.states[n]^=1}
+   if(a==='submitSwitch'&&m.type==='switch'){if(m.states.every((x,i)=>x===m.answer[i]))advanceBomb();else strike()}
+  }
+ }
+ if(selected==='quiz'){
+  if(a==='codexTab'){p.lookup=v==='chars'?'chars':'items'}
+  if(a==='quizAnswer'&&!p.done){const answer=$('qaQuizAnswer')?.value?.trim()||'';if(answer){const q=p.questions[p.index],correct=isCorrect(q,answer);p.answers.push(correct);if(correct)p.correct++;note(`${r}: ${p.index+1}번 문제 ${correct?'정답':'오답'}`);p.index++;if(p.index>=p.questions.length){p.done=true;note(`${r}: 도감 퀴즈 완료 (${p.correct}/${p.questions.length})`)}finishIndividuals('이리체스 도감 퀴즈 종료',quizReward)}}
+ }
+ render();
+}
 $('qaGameNav').addEventListener('click',e=>{const b=e.target.closest('[data-select]');if(b)newGame(b.dataset.select)});
 $('qaStage').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b&&!b.disabled)action(b.dataset.action,b.dataset.val,b.dataset.role)});
-$('qaStage').addEventListener('input',e=>{if(e.target.id==='qaShare'){$('qaShareOut').textContent=e.target.value+'C';$('qaOtherOut').textContent=(10-Number(e.target.value))+'C'}});
-$('qaStage').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='qaChatText')action('chat')});
-$('qaRestart').addEventListener('click',()=>newGame(selected));$('qaReplay').addEventListener('click',()=>newGame(selected,seed));
-if(typeof setInterval==='function')setInterval(()=>{const timer=$('qaTimeLeft');if(timer&&g?.deadline)timer.textContent=Math.max(0,Math.ceil((g.deadline-Date.now())/1000))+'s';if(!g?.finished&&g.deadline&&Date.now()>=g.deadline){if(selected==='zones'){for(const r of ['A','B'])g.players[r].done=true;tryFinishPlayers('zones')}else if(selected==='bomb')done('해체 시간 초과',{A:0,B:0});render()}},1000);
-window.LIVEQA={select:id=>newGame(id),restart:()=>newGame(selected,seed),snapshot:()=>({selected,seed,game:g,history:log}),act:action};newGame();
+$('qaStage').addEventListener('input',e=>{
+ if(e.target.id==='qaShare'&&$('qaShareOut'))$('qaShareOut').textContent=e.target.value+'C';
+ if(e.target.id==='qaExp'&&$('qaExpOut'))$('qaExpOut').textContent=e.target.value+' EXP';
+ if(e.target.id==='qaCodexSearch'&&selected==='quiz'){
+  const value=e.target.value,caret=e.target.selectionStart;target().search=value;render();
+  const el=$('qaCodexSearch');if(el){el.focus?.();if(typeof el.setSelectionRange==='function'&&typeof caret==='number')el.setSelectionRange(caret,caret)}
+ }
+});
+$('qaStage').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='qaChatText')action('chat');if(e.key==='Enter'&&e.target.id==='qaQuizAnswer')action('quizAnswer')});
+document.addEventListener('keydown',e=>{
+ if(selected!=='stack'||game.finished||target().done||e.target?.matches?.('input, textarea, select'))return;
+ const map={'ArrowLeft':'left','ArrowRight':'right','ArrowUp':'rotate','ArrowDown':'down',' ':'drop'};
+ if(map[e.key]){e.preventDefault?.();action(map[e.key])}
+});
+$('qaRestart').addEventListener('click',()=>newGame(selected));
+$('qaReplay').addEventListener('click',()=>newGame(selected,seed));
+if(typeof setInterval==='function')setInterval(()=>{
+ if(!game||game.finished)return;
+ if(selected==='bomb'){
+  const t=$('qaTimeLeft');if(t)t.textContent=Math.max(0,Math.ceil((game.deadline-Date.now())/1000))+'s';
+  if(Date.now()>=game.deadline){finish('폭발물 해체 시간 초과',{});render()}
+ }
+ if(selected==='stack'){
+  const p=target();if(!p.done&&p.piece&&Date.now()-p.lastDrop>=1150){dropPiece(p);p.lastDrop=Date.now();render()}
+ }
+},250);
+window.LIVEQA={select:id=>newGame(id),restart:()=>newGame(selected,seed),snapshot:()=>({selected,seed,game,history}),act:action,internals:{wireAnswer,switchAnswer,isCorrect,movePiece,hardDrop,dropPiece}};
+newGame();
 })();
