@@ -1,8 +1,1 @@
-{
-  "name": "er-autochess",
-  "version": "0.4.2",
-  "private": true,
-  "scripts": {
-    "start": "node server.cjs"
-  }
-}
+{"name":"er-autochess","version":"0.4.3","private":true,"scripts":{"start":"node server.cjs"}}

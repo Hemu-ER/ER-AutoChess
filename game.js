@@ -472,8 +472,8 @@ function renderRoundUI(){
  const p=$('#roundModePanel');if(!p)return;const r1Prep=roundState.round===1&&roundState.phase==='prep',opp=r1Prep?'파밍 대기':roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
  const seconds=(roundState.phase==='prep'||roundState.phase==='result')?Math.max(0,Math.ceil(roundState.remaining)):null;
  const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:phaseLabel();
- p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>':''}</div>`;
- p.querySelector('#roundSkip')?.addEventListener('click',beginRoundCombat)
+ p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'&&!window.LIVEMultiplayer?.getRoom()?.started?'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>':''}</div>`;
+ p.querySelector('#roundSkip')?.addEventListener('click',()=>{if(window.LIVEMultiplayer?.getRoom()?.started){$('#status').textContent='온라인 준비 · 서버가 동시에 전투를 시작해.';return}beginRoundCombat()})
 }
 function creditHtml(amount,cls='credit-price'){
  return `<span class="${cls}"><img src="assets/ui/credit.png?v=20261010-1" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
@@ -613,10 +613,47 @@ function startRoundMode(){
  $('#status').textContent='ROUND 1 · 파밍 준비';
  renderRoundUI();renderGameEconomy();startPrepTimer();
 }
+
+let livePhaseVersion=0,liveCompletedRound=0,liveCombatActive=false;
+window.LIVEApplyGame=function(net,slot,players){
+ if(!roundState.active||!net)return;
+ const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+ // Server owns phase, timer and total health. Team side is player-relative.
+ roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[1-slot]??100;
+ if(net.version!==livePhaseVersion){
+  livePhaseVersion=net.version;
+  clearRoundTimer();
+  if(net.phase==='prep'){
+   if(running||battle)reset();teams.B=[];roundState.phase='prep';
+   if(net.round>1&&liveCompletedRound!==net.round){liveCompletedRound=net.round;if(!gameState.shopLocked)rollShop();addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');gameState.credits+=roundCreditIncome().total;}
+   $('#status').textContent=`ROUND ${net.round} · 온라인 준비`;renderGameEconomy();
+  }else if(net.phase==='combat'){
+   roundState.phase='combat';liveCombatActive=true;
+   if(!net.pve){
+    const other=players.find(p=>p.slot!==slot);
+    teams.B=(other?.team||[]).map(u=>({...u}));
+   }else setupWildRound(net.round);
+   const original=window.LIVENetReplaySeed;window.LIVENetReplaySeed=net.seed;
+   if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
+   window.LIVENetReplaySeed=original;
+  }else if(net.phase==='result'){
+   if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
+   if(net.pve){const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));for(const animal of defeated){const count=1+(Math.random()<.05?1:0);for(let k=0;k<count;k++)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}}
+   roundState.phase='result';liveCombatActive=false;
+   const result=net.pve?'파밍 종료':net.battle?.outcome==='무승부'?'무승부':net.battle?.outcome===(slot===0?'A팀 승리':'B팀 승리')?'승리':'패배';
+   $('#status').textContent=`ROUND ${net.round} · ${result} · 서버 판정`;renderGameEconomy();
+  }else if(net.phase==='finished'){
+   roundState.phase='finished';roundState.active=false;clearRoundTimer();running=false;
+   $('#status').textContent=net.hp[slot]<=0?'게임 종료 · 패배':'게임 종료 · 승리';
+  }
+ }
+ roundState.remaining=rem;renderRoundUI();
+};
+
 function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
-function startPrepTimer(){clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining=Math.max(0,roundState.remaining-1);renderRoundUI();if(roundState.remaining===0)beginRoundCombat()},1000)}
-function beginRoundCombat(){if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
-function finishRound(outcome){if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;const itemKillReward=Number(battle?.getResult()?.itemKillCredits?.A||0);if(itemKillReward>0)gameState.credits+=itemKillReward;let resultText=outcome;if(roundState.round===1){{const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));const rewards=[];for(const animal of defeated){const count=1+(Math.random()<0.05?1:0);for(let i=0;i<count;i++){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];pushItem(item);rewards.push(item)}}gameState.message=rewards.length?`야생동물 ${defeated.length}마리 처치 · ${rewards.join(' / ')} 획득`:'처치한 야생동물이 없어 아이템 보상 없음';}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');if(itemKillReward>0)resultText+=` · 프시케의 칼날 +${itemKillReward}C`;$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
+function startPrepTimer(){if(window.LIVEMultiplayer?.getRoom()?.started){clearRoundTimer();return}clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining=Math.max(0,roundState.remaining-1);renderRoundUI();if(roundState.remaining===0)beginRoundCombat()},1000)}
+function beginRoundCombat(){if(window.LIVEMultiplayer?.getRoom()?.started)return;if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
+function finishRound(outcome){if(window.LIVEMultiplayer?.getRoom()?.started){running=false;return}if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;const itemKillReward=Number(battle?.getResult()?.itemKillCredits?.A||0);if(itemKillReward>0)gameState.credits+=itemKillReward;let resultText=outcome;if(roundState.round===1){{const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));const rewards=[];for(const animal of defeated){const count=1+(Math.random()<0.05?1:0);for(let i=0;i<count;i++){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];pushItem(item);rewards.push(item)}}gameState.message=rewards.length?`야생동물 ${defeated.length}마리 처치 · ${rewards.join(' / ')} 획득`:'처치한 야생동물이 없어 아이템 보상 없음';}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');if(itemKillReward>0)resultText+=` · 프시케의 칼날 +${itemKillReward}C`;$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
 function reset(){
  clearOwnedDrag();document.querySelectorAll('.drag-ghost').forEach(e=>e.remove());
@@ -822,7 +859,7 @@ function sync(){
 }
 function start(){
  if(running)return true;
- try{reset();const seed=$("#fixedSeed").checked?+$("#seed").value:Math.floor(Math.random()*2147483647);battle=new CombatEngine(config(seed));battle.start();running=true;paused=false;$("#status").textContent=`전투 중 · seed ${seed}`;renderTeams();sync();last=performance.now();frame=requestAnimationFrame(loop);return true}catch(e){battle=null;showError(e);return false}
+ try{reset();const seed=window.LIVENetReplaySeed??($("#fixedSeed").checked?+$("#seed").value:Math.floor(Math.random()*2147483647));battle=new CombatEngine(config(seed));battle.start();running=true;paused=false;$("#status").textContent=`전투 중 · seed ${seed}`;renderTeams();sync();last=performance.now();frame=requestAnimationFrame(loop);return true}catch(e){battle=null;showError(e);return false}
 }
 function loop(now){
  if(!running){frame=null;return}
