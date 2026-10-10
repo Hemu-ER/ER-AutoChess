@@ -58,7 +58,7 @@
   const spans=[...root.querySelectorAll(".live-full .ch")];
   const initials=spans.filter(s=>s.classList.contains("initial"));
   const targets=[...root.querySelectorAll(".live-final-target span")];
-  let ready=false, closing=false;
+  let ready=false, closing=false, skipped=false;
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
   function moveInitialsToLogo(){
@@ -79,22 +79,22 @@
   }
 
   async function play(){
-    await sleep(420);
+    await sleep(420);if(skipped)return;
     for(const s of spans){
       s.classList.add("typed");
-      await sleep(s.textContent.trim()?46:24);
+      await sleep(s.textContent.trim()?46:24);if(skipped)return;
     }
-    await sleep(620);
+    await sleep(620);if(skipped)return;
 
     // L/I/V/E만 남기고 나머지는 제자리에서 사라진다.
     for(const s of spans) if(!s.classList.contains("initial")) s.classList.add("fade");
-    await sleep(480);
+    await sleep(480);if(skipped)return;
 
     // 남아 있던 네 글자 자체가 중앙으로 모이며 확대된다.
     moveInitialsToLogo();
-    await sleep(1080);
+    await sleep(1080);if(skipped)return;
     root.classList.add("show-subtitle");
-    await sleep(420);
+    await sleep(420);if(skipped)return;
 
     ready=true;
     root.classList.add("live-ready");
@@ -102,7 +102,7 @@
   }
 
   function finish(ev){
-    if(!ready||closing)return;
+    if(closing)return;skipped=true;
     closing=true;
     ev?.preventDefault?.();
     ev?.stopPropagation?.();
@@ -111,6 +111,6 @@
   }
 
   root.addEventListener("pointerup",finish);
-  root.addEventListener("keydown",ev=>{if((ev.key==="Enter"||ev.key===" ")&&ready)finish(ev)});
+  root.addEventListener("keydown",ev=>{if((ev.key==="Enter"||ev.key===" "))finish(ev)});
   play();
 })();

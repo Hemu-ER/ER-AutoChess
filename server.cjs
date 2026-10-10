@@ -15,7 +15,14 @@ const accountFile = path.join(DATA_DIR, '.live-users.json');
 let accounts = {};
 try { accounts = JSON.parse(fs.readFileSync(accountFile, 'utf8')); } catch {}
 const sessions = new Map();
-const saveAccounts = () => { fs.writeFileSync(accountFile, JSON.stringify(accounts, null, 2), {mode:0o600}); };
+// Optional durable account store (Upstash Redis REST). Free Render instances have ephemeral disks.
+const remoteUrl=(process.env.UPSTASH_REDIS_REST_URL||'').replace(/\/$/,'');
+const remoteToken=process.env.UPSTASH_REDIS_REST_TOKEN||'';
+const durable=Boolean(remoteUrl&&remoteToken);
+async function remote(command){const response=await fetch(remoteUrl,{method:'POST',headers:{authorization:`Bearer ${remoteToken}`,'content-type':'application/json'},body:JSON.stringify(command)});if(!response.ok)throw Error('계정 저장소 요청 실패: '+response.status);const json=await response.json();if(json.error)throw Error('계정 저장소 오류: '+json.error);return json.result}
+async function loadAccounts(){if(!durable){console.warn('WARNING: NO DURABLE ACCOUNT STORAGE CONFIGURED. Render deployments may erase users.');return;}const raw=await remote(['GET','live:accounts:v1']);accounts=raw?JSON.parse(raw):{};console.log('Loaded persistent accounts:',Object.keys(accounts).length)}
+async function saveAccounts(){if(durable){await remote(['SET','live:accounts:v1',JSON.stringify(accounts)])}else fs.writeFileSync(accountFile, JSON.stringify(accounts,null,2),{mode:0o600})}
+
 const passwordHash = (password, salt) => crypto.scryptSync(password, salt, 64).toString('hex');
 const authAccount = (req, body) => sessions.get(String(req.headers['x-live-session'] || body?.session || ''));
 
@@ -31,18 +38,18 @@ function cleanupRoom(r){if(r.players.size===0)rooms.delete(r.code)}
 function removePlayer(p){const r=rooms.get(p.room);if(!r)return;r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});broadcast(r);cleanupRoom(r)}
 const getPlayer=(req,body)=>{const token=String(req.headers['x-live-token']||body?.token||'');for(const r of rooms.values())for(const p of r.players.values())if(p.token===token)return {p,r};return null};
 const readBody=req=>new Promise((resolve,reject)=>{let size=0,buf='';req.on('data',c=>{size+=c.length;if(size>16384){reject(new Error('요청 크기 초과'));req.destroy();return}buf+=c});req.on('end',()=>{try{resolve(JSON.parse(buf||'{}'))}catch{reject(new Error('잘못된 JSON'))}});req.on('error',reject)});
-function handleAction(req,res,body){const url=new URL(req.url,'http://localhost');if(url.pathname==='/api/register' || url.pathname==='/api/login'){
+async function handleAction(req,res,body){const url=new URL(req.url,'http://localhost');if(url.pathname==='/api/register' || url.pathname==='/api/login'){
 const username = String(body.username||'').trim().toLowerCase(), password=String(body.password||'');
 if(!/^[a-z0-9_]{3,20}$/.test(username) || password.length<8 || password.length>128)return reply(res,400,{error:'아이디는 영문·숫자·_ 3~20자, 비밀번호는 8~128자로 입력해.'});
 if(url.pathname==='/api/register'){
  const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});
  if(accounts[username])return reply(res,409,{error:'이미 사용 중인 아이디야.'});
- const salt=crypto.randomBytes(16).toString('hex');accounts[username]={salt,hash:passwordHash(password,salt),nickname};saveAccounts();
+ const salt=crypto.randomBytes(16).toString('hex');accounts[username]={salt,hash:passwordHash(password,salt),nickname};await saveAccounts();
 }else{const acc=accounts[username];if(!acc)return reply(res,401,{error:'아이디 또는 비밀번호를 확인해.'});const expected=Buffer.from(acc.hash,'hex'),actual=Buffer.from(passwordHash(password,acc.salt),'hex');if(expected.length!==actual.length||!crypto.timingSafeEqual(expected,actual))return reply(res,401,{error:'아이디 또는 비밀번호를 확인해.'})}
 const session=id();sessions.set(session,username);return reply(res,200,{session,username,nickname:nickOf(username)});
 }
 if(url.pathname==='/api/me'){const username=authAccount(req,body);return username?reply(res,200,{username,nickname:nickOf(username)}):reply(res,401,{error:'로그인이 필요해.'})}
-if(url.pathname==='/api/nickname'){const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요해.'});const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});accounts[username].nickname=nickname;saveAccounts();for(const r of rooms.values()){let modified=false;for(const p of r.players.values())if(p.username===username){p.name=nickname;modified=true}if(modified)broadcast(r)}return reply(res,200,{nickname})}
+if(url.pathname==='/api/nickname'){const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요해.'});const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});accounts[username].nickname=nickname;await saveAccounts();for(const r of rooms.values()){let modified=false;for(const p of r.players.values())if(p.username===username){p.name=nickname;modified=true}if(modified)broadcast(r)}return reply(res,200,{nickname})}
 if(url.pathname==='/api/logout'){sessions.delete(String(req.headers['x-live-session']||body.session||''));return reply(res,200,{ok:true})}
 if(url.pathname==='/api/create'){if(!authAccount(req,body))return reply(res,401,{error:'먼저 로그인해.'});const code=crypto.randomBytes(3).toString('hex').toUpperCase();const r={code,maxPlayers:Math.min(8,Math.max(2,Number(body.maxPlayers)||2)),players:new Map(),messages:[],revision:0};rooms.set(code,r);return join(r,res,body)}
 if(url.pathname==='/api/join'){if(!authAccount(req,body))return reply(res,401,{error:'먼저 로그인해.'});const r=rooms.get(String(body.code||'').trim().toUpperCase());if(!r)return reply(res,404,{error:'방을 찾을 수 없어.'});if(r.started)return reply(res,409,{error:'이미 시작한 방이야.'});if(r.players.size>=r.maxPlayers)return reply(res,409,{error:'방이 가득 찼어.'});return join(r,res,body)}
@@ -50,6 +57,13 @@ const auth=getPlayer(req,body);if(!auth)return reply(res,401,{error:'인증되�
 if(url.pathname==='/api/leave'){removePlayer(p);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/ready'){if(r.started)return reply(res,409,{error:'이미 게임이 시작됐어.'});p.ready=!!body.ready;broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/round-ready'){if(!r.game||r.game.phase!=='prep')return reply(res,409,{error:'준비 단계가 아니야.'});p.roundReady=!!body.ready;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/supply-pick'){
+ if(!r.game||r.game.round!==5||!['supply','result'].includes(r.game.phase))return reply(res,409,{error:'보급 선택 시간이 아니야.'});
+ const slot=p.slot, choice=Number(body.choice), options=r.game.supplyOptions?.[slot];
+ if(r.game.supplyResolved?.[slot])return reply(res,409,{error:'보상을 이미 선택했어.'});
+ if(!options||!Number.isInteger(choice)||choice<0||choice>=3)return reply(res,400,{error:'잘못된 보상 선택'});
+ r.game.supplyResolved[slot]=options[choice];refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
 if(url.pathname==='/api/farm-done'){if(!r.game||r.game.phase!=='combat'||!r.game.pve)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;r.game={round:1,phase:"prep",endsAt:Date.now()+60000,hp:[100,100],version:1,seed:0,battle:null,earlyEndsAt:null};for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
@@ -62,10 +76,10 @@ function join(r,res,body){const slot=Array.from({length:r.maxPlayers},(_,i)=>i).
 // Early transition only when EVERY connected participant has completed this phase.
 // The 60s deadline stays authoritative; a five-second early countdown never extends it.
 function refreshEarlyFinish(r){
- const g=r.game;if(!g||!['prep','combat'].includes(g.phase))return;
+ const g=r.game;if(!g||!['prep','combat','supply'].includes(g.phase))return;
  const players=[...r.players.values()];
- const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?p.roundReady:(g.pve&&p.farmDone)));
- if(eligible){if(!g.earlyEndsAt)g.earlyEndsAt=Date.now()+5000;}
+ const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?p.roundReady:g.phase==='supply'?!!g.supplyResolved?.[p.slot]:(g.pve&&p.farmDone)));
+ if(eligible){if(!g.earlyEndsAt)g.earlyEndsAt=Date.now()+(g.phase==='supply'?250:5000);}
  else g.earlyEndsAt=null;
 }
 // Single-process, room-authoritative clock and deterministic PvP result.
@@ -73,24 +87,30 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
  if(g.phase==='prep'){
   const players=[...r.players.values()].sort((a,b)=>a.slot-b.slot);
   if(players.length!==2){g.phase='finished';g.endsAt=Date.now();broadcast(r);return}
-  const seed=crypto.randomInt(1,2147483647),pve=g.round===1;
+  if(g.round===5){
+   const kinds=[{type:'basic',weight:35},{type:'complete',weight:5},{type:'credits',weight:35},{type:'exp',weight:25}];
+   const roll=()=>{const n=crypto.randomInt(100);let sum=0;const type=kinds.find(k=>(sum+=k.weight)>n).type;return {type, value:type==='credits'||type==='exp'?10:crypto.randomInt(type==='basic'?7:28)};};
+   g.supplyOptions=players.map(()=>[roll(),roll(),roll()]);g.supplyResolved=[null,null];g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
+  }
+  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;
   const a=players[0],b=players[1];let battle=null,duration=3;
   if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
   g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
  }
+ if(g.phase==='supply'){for(const p of r.players.values())if(!g.supplyResolved[p.slot])g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;}
  if(g.phase==='combat'){
   if(!g.pve){const damage=Math.min(25,5+Math.floor((g.round-1)/3)*2);if(g.battle?.outcome==='A팀 승리')g.hp[1]=Math.max(0,g.hp[1]-damage);else if(g.battle?.outcome==='B팀 승리')g.hp[0]=Math.max(0,g.hp[0]-damage)}
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='result'){
-  if(g.hp.some(x=>x<=0)){g.phase='finished';g.endsAt=Date.now();}else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
+  if(g.hp.some(x=>x<=0)){g.phase='finished';g.endsAt=Date.now();}else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
   g.version++;broadcast(r);
  }
 }
 const gameClock=setInterval(()=>{for(const r of rooms.values())try{advanceRoom(r)}catch(e){console.error('room timer:',e)}},250);
 const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;refreshEarlyFinish(r);broadcast(r)}});return}
-if(u.pathname==='/health')return reply(res,200,{ok:true});
-if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
+if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable});
+if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
 if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-cache'});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
-server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`));
+loadAccounts().then(()=>server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
 module.exports={server,rooms};

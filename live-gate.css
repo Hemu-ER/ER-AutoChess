@@ -11,3 +11,24 @@ body.live-gated .app,body.live-gated #roundModePanel,body.live-gated #gameBottom
 @media(max-width:800px){#liveGameChat{width:170px;top:65px;bottom:230px}.live-gate-card{padding:20px}}
 body.live-gated #appModeStart{visibility:hidden!important;pointer-events:none!important}
 body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!important}
+
+/* M4-05 dedicated signup and visible gameplay combat feed */
+#registerFields[hidden],#authBack[hidden],#authLogin[hidden]{display:none!important}
+#registerFields input{width:100%}
+#liveCombatLogPanel[hidden]{display:none!important}
+#liveCombatLogPanel{position:fixed;right:10px;top:292px;bottom:225px;width:min(250px,24vw);z-index:8300;background:#0e141bdc;border:1px solid #364550;border-radius:9px;color:#dce8ed;font:11px/1.5 sans-serif;display:flex;flex-direction:column;overflow:hidden}
+.live-combat-head{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;font-weight:700;border-bottom:1px solid #34444b}
+.live-combat-head button{font:10px sans-serif;color:#b5c9d0;border:1px solid #40505a;border-radius:4px;background:transparent;cursor:pointer}
+#liveCombatLines{padding:10px;overflow-y:auto;flex:1;overflow-wrap:anywhere}
+#liveCombatLines>div{padding:5px 0;border-bottom:1px solid #ffffff12}
+@media(max-width:850px){#liveCombatLogPanel{width:165px;top:245px;bottom:235px}}
+
+/* M4-06: lightweight combat feedback and R5 supply */
+.live-hit-spark{position:absolute;left:48%;top:22%;z-index:25;color:#fff2d4;font-size:27px;pointer-events:none;text-shadow:0 0 6px #ff9b66;animation:live-hit-pop .38s ease-out forwards}
+.live-hit-flash .sd-slot{filter:brightness(1.75) contrast(1.25)}
+@keyframes live-hit-pop{0%{opacity:1;transform:scale(.3) rotate(-25deg)}100%{opacity:0;transform:scale(1.65) translateY(-22px) rotate(25deg)}}
+#liveSupplyPanel[hidden]{display:none!important}
+#liveSupplyPanel{position:fixed;inset:0;z-index:9000;background:#070b11b8;display:flex;align-items:center;justify-content:center;color:#e9f0f4}
+.supply-card{background:#111923;border:1px solid #657581;border-radius:12px;max-width:620px;width:calc(100% - 40px);padding:26px;text-align:center;box-shadow:0 20px 80px #000a}
+.supply-choices{display:flex;gap:12px;margin:22px 0}.supply-choices button{flex:1;min-height:100px;background:#233040;border:1px solid #506477;color:white;border-radius:8px;cursor:pointer;font-size:15px}.supply-choices button:hover:not(:disabled){background:#354d63}.supply-choices button:disabled{opacity:.55}
+@media(max-width:600px){.supply-choices{flex-direction:column}.supply-choices button{min-height:58px}}
