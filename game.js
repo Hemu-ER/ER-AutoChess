@@ -470,9 +470,10 @@ function syncBoardPresentation(){
 function renderRoundUI(){
  syncBoardPresentation();
  const p=$('#roundModePanel');if(!p)return;const r1Prep=roundState.round===1&&roundState.phase==='prep',opp=r1Prep?'파밍 대기':roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
- const seconds=(roundState.phase==='prep'||roundState.phase==='result')?Math.max(0,Math.ceil(roundState.remaining)):null;
- const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:phaseLabel();
- p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'&&!window.LIVEMultiplayer?.getRoom()?.started?'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>':''}</div>`;
+ const seconds=['prep','result','combat'].includes(roundState.phase)?Math.max(0,Math.ceil(roundState.remaining)):null;
+ const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:phaseLabel());
+ p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
+ p.querySelector('#roundOnlineReady')?.addEventListener('click',async()=>{const net=window.LIVEMultiplayer?.getRoom();const me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());try{await window.LIVEMultiplayer.setRoundReady(!me?.roundReady)}catch(e){$('#status').textContent=e.message}});
  p.querySelector('#roundSkip')?.addEventListener('click',()=>{if(window.LIVEMultiplayer?.getRoom()?.started){$('#status').textContent='온라인 준비 · 서버가 동시에 전투를 시작해.';return}beginRoundCombat()})
 }
 function creditHtml(amount,cls='credit-price'){
@@ -854,7 +855,7 @@ function sync(){
  const result=battle.getResult();units=result.units;time=result.time;
  for(const event of battle.drainEvents())if(event.type==="log"){const line=document.createElement("div");line.innerHTML=`[${event.time.toFixed(1)}] ${event.message}`;$("#log").prepend(line)}
  $("#clock").textContent=time.toFixed(1)+"s";
- if(result.battleOver){running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
+ if(result.battleOver){if(window.LIVEMultiplayer?.getRoom()?.game?.pve&&roundState.phase==='combat'){const room=window.LIVEMultiplayer.getRoom();const allWildDead=units.filter(u=>u.team==='B'&&(byId[u.characterId]?.pveOnly||u.role==='야생동물')).every(u=>u.dead);if(allWildDead)window.LIVEMultiplayer.reportFarmDone(room.game.round)}running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
  render();meters();
 }
 function start(){

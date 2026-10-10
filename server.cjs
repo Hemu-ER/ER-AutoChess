@@ -25,7 +25,7 @@ const id=()=>crypto.randomBytes(18).toString('hex');
 const cleanName=v=>String(v||'').trim().normalize('NFC');
 const validNickname=v=>{const n=cleanName(v);return n.length>=2&&n.length<=16&&!/[\x00-\x1f\x7f<>]/.test(n)?n:null};
 const nickOf=username=>accounts[username]?.nickname||username;
-const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected,team:p.team})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{...r.game,remaining:Math.max(0,Math.ceil((r.game.endsAt-Date.now())/1000))}:null});
+const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,roundReady:!!p.roundReady,farmDone:!!p.farmDone,connected:p.connected,team:p.team})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{...r.game,remaining:Math.max(0,Math.ceil(((r.game.earlyEndsAt&&r.game.earlyEndsAt<r.game.endsAt?r.game.earlyEndsAt:r.game.endsAt)-Date.now())/1000))}:null});
 function broadcast(r){r.revision++;const msg=`event: state\ndata: ${JSON.stringify(publicRoom(r))}\n\n`;for(const p of r.players.values()){const s=clients.get(p.id);if(s&&!s.destroyed)try{s.write(msg)}catch{}}}
 function cleanupRoom(r){if(r.players.size===0)rooms.delete(r.code)}
 function removePlayer(p){const r=rooms.get(p.room);if(!r)return;r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});broadcast(r);cleanupRoom(r)}
@@ -49,35 +49,46 @@ if(url.pathname==='/api/join'){if(!authAccount(req,body))return reply(res,401,{e
 const auth=getPlayer(req,body);if(!auth)return reply(res,401,{error:'인증되지 않은 참가자야.'});const {r,p}=auth;
 if(url.pathname==='/api/leave'){removePlayer(p);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/ready'){if(r.started)return reply(res,409,{error:'이미 게임이 시작됐어.'});p.ready=!!body.ready;broadcast(r);return reply(res,200,{ok:true})}
-if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;r.game={round:1,phase:"prep",endsAt:Date.now()+60000,hp:[100,100],version:1,seed:0,battle:null};broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/round-ready'){if(!r.game||r.game.phase!=='prep')return reply(res,409,{error:'준비 단계가 아니야.'});p.roundReady=!!body.ready;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/farm-done'){if(!r.game||r.game.phase!=='combat'||!r.game.pve)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;r.game={round:1,phase:"prep",endsAt:Date.now()+60000,hp:[100,100],version:1,seed:0,battle:null,earlyEndsAt:null};for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/advance'){return reply(res,403,{error:'라운드 변경은 서버가 관리해.'})}
-if(url.pathname==='/api/team'){const rows=body.team;if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});const used=new Set();for(const u of rows){if(typeof u.characterId!=='string'||!/^[a-z-]{1,32}$/.test(u.characterId)||!Number.isInteger(u.x)||u.x<0||u.x>2||!Number.isInteger(u.y)||u.y<0||u.y>2||!Number.isInteger(u.star)||u.star<1||u.star>3)return reply(res,400,{error:'잘못된 배치'});const key=`${u.x},${u.y}`;if(used.has(key))return reply(res,400,{error:'중복 배치'});used.add(key);if(u.items!==undefined&&(!Array.isArray(u.items)||u.items.length>3))return reply(res,400,{error:'장비 초과'})}if(r.game&&r.game.phase!=='prep')return reply(res,409,{error:'준비 시간에만 배치 변경 가능'});p.team=rows.map(({characterId,x,y,star,items})=>({characterId,x,y,star,items:Array.isArray(items)?items.slice(0,3):[]}));p.mastery=Number.isInteger(body.mastery)?Math.min(20,Math.max(1,body.mastery)):1;p.ready=false;broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/team'){const rows=body.team;if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});const used=new Set();for(const u of rows){if(typeof u.characterId!=='string'||!/^[a-z-]{1,32}$/.test(u.characterId)||!Number.isInteger(u.x)||u.x<0||u.x>2||!Number.isInteger(u.y)||u.y<0||u.y>2||!Number.isInteger(u.star)||u.star<1||u.star>3)return reply(res,400,{error:'잘못된 배치'});const key=`${u.x},${u.y}`;if(used.has(key))return reply(res,400,{error:'중복 배치'});used.add(key);if(u.items!==undefined&&(!Array.isArray(u.items)||u.items.length>3))return reply(res,400,{error:'장비 초과'})}if(r.game&&r.game.phase!=='prep')return reply(res,409,{error:'준비 시간에만 배치 변경 가능'});p.team=rows.map(({characterId,x,y,star,items})=>({characterId,x,y,star,items:Array.isArray(items)?items.slice(0,3):[]}));p.mastery=Number.isInteger(body.mastery)?Math.min(20,Math.max(1,body.mastery)):1;p.ready=false;if(r.game?.phase==='prep'){p.roundReady=false;refreshEarlyFinish(r)}broadcast(r);return reply(res,200,{ok:true})}
 return reply(res,404,{error:'요청 없음'});
 }
 function join(r,res,body){const slot=Array.from({length:r.maxPlayers},(_,i)=>i).find(i=>![...r.players.values()].some(p=>p.slot===i));const username=authAccount({headers:{'x-live-session':body.session}},body);const p={id:id(),token:id(),room:r.code,username,name:nickOf(username),slot,ready:false,connected:false,team:[]};r.players.set(p.id,p);r.messages.push({system:true,text:`${p.name} 입장`,at:Date.now()});broadcast(r);reply(res,200,{token:p.token,playerId:p.id,room:publicRoom(r)})}
 
+// Early transition only when EVERY connected participant has completed this phase.
+// The 60s deadline stays authoritative; a five-second early countdown never extends it.
+function refreshEarlyFinish(r){
+ const g=r.game;if(!g||!['prep','combat'].includes(g.phase))return;
+ const players=[...r.players.values()];
+ const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?p.roundReady:(g.pve&&p.farmDone)));
+ if(eligible){if(!g.earlyEndsAt)g.earlyEndsAt=Date.now()+5000;}
+ else g.earlyEndsAt=null;
+}
 // Single-process, room-authoritative clock and deterministic PvP result.
-function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<g.endsAt)return;
+function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<Math.min(g.endsAt,g.earlyEndsAt||Infinity))return;
  if(g.phase==='prep'){
   const players=[...r.players.values()].sort((a,b)=>a.slot-b.slot);
   if(players.length!==2){g.phase='finished';g.endsAt=Date.now();broadcast(r);return}
   const seed=crypto.randomInt(1,2147483647),pve=g.round===1;
   const a=players[0],b=players[1];let battle=null,duration=3;
   if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
-  g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.endsAt=Date.now()+duration*1000;g.version++;broadcast(r);return;
+  g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
  }
  if(g.phase==='combat'){
   if(!g.pve){const damage=Math.min(25,5+Math.floor((g.round-1)/3)*2);if(g.battle?.outcome==='A팀 승리')g.hp[1]=Math.max(0,g.hp[1]-damage);else if(g.battle?.outcome==='B팀 승리')g.hp[0]=Math.max(0,g.hp[0]-damage)}
-  g.phase='result';g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
+  g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='result'){
-  if(g.hp.some(x=>x<=0)){g.phase='finished';g.endsAt=Date.now();}else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false}
+  if(g.hp.some(x=>x<=0)){g.phase='finished';g.endsAt=Date.now();}else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
   g.version++;broadcast(r);
  }
 }
 const gameClock=setInterval(()=>{for(const r of rooms.values())try{advanceRoom(r)}catch(e){console.error('room timer:',e)}},250);
-const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;broadcast(r)}});return}
+const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;refreshEarlyFinish(r);broadcast(r)}});return}
 if(u.pathname==='/health')return reply(res,200,{ok:true});
 if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
 if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-cache'});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});

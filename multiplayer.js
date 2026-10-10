@@ -1,6 +1,7 @@
 'use strict';
 // M4-02: account -> room -> ready -> local gameplay. True PvP synchronization is NOT implemented here.
 (()=>{
+  let lastFarmReportRound=0;
   let session=sessionStorage.getItem('live_session')||'',username='',nickname='',token='',playerId='',room=null,events=null,poller=null,lastTeam='',openedGame=false,clock=null,lastGameVersion=0;
   const $=s=>document.querySelector(s), safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   document.body.classList.add('live-gated');
@@ -32,5 +33,5 @@
   $('#liveSend').onclick=async()=>{const text=$('#liveChatInput').value.trim();if(!text)return;try{await api('chat',{text});$('#liveChatInput').value=''}catch(e){console.warn(e.message)}};$('#liveChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveSend').click()});
   const code=new URLSearchParams(location.search).get('room');if(code)$('#liveCode').value=code.toUpperCase();
   if(session)api('me').then(j=>{setIdentity(j);display('rooms')}).catch(()=>{session='';sessionStorage.removeItem('live_session');display('auth')});else display('auth');
-  window.LIVEMultiplayer={getRoom:()=>room,getPlayerId:()=>playerId};
+  window.LIVEMultiplayer={getRoom:()=>room,getPlayerId:()=>playerId, setRoundReady:async ready=>api('round-ready',{ready}), reportFarmDone:async round=>{if(lastFarmReportRound===round)return;lastFarmReportRound=round;try{await api('farm-done',{round})}catch(e){lastFarmReportRound=0;console.warn('파밍 완료 보고 실패:',e)}}};
 })();
