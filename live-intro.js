@@ -1,5 +1,6 @@
 "use strict";
 (() => {
+  if(["combat","round"].includes(new URLSearchParams(location.search).get("qa")))return;
   const STYLE_ID="live-intro-style", ROOT_ID="live-intro";
   if(document.getElementById(ROOT_ID))return;
 

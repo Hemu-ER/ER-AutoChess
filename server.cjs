@@ -51,7 +51,30 @@ const nickOf=username=>accounts[username]?.nickname||username;
 const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,roundReady:!!p.roundReady,farmDone:!!p.farmDone,connected:p.connected,team:p.team})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{...r.game,remaining:Math.max(0,Math.ceil(((r.game.earlyEndsAt&&r.game.earlyEndsAt<r.game.endsAt?r.game.earlyEndsAt:r.game.endsAt)-Date.now())/1000))}:null});
 function broadcast(r){r.revision++;const msg=`event: state\ndata: ${JSON.stringify(publicRoom(r))}\n\n`;for(const p of r.players.values()){const s=clients.get(p.id);if(s&&!s.destroyed)try{s.write(msg)}catch{}}}
 function cleanupRoom(r){if(r.players.size===0)rooms.delete(r.code)}
-function removePlayer(p){const r=rooms.get(p.room);if(!r)return;r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});broadcast(r);cleanupRoom(r)}
+// A match finishes when one player remains; explicit leave is immediate, connection
+// loss allows a short reconnection grace period before a forfeit.
+function finishAbandonedMatch(r,reason='opponent_left',explicitWinnerSlot=null){
+ const g=r.game;if(!r.started||!g||g.phase==='finished')return;
+ const remaining=[...r.players.values()].filter(p=>p.connected);
+ if(remaining.length!==1&&explicitWinnerSlot===null)return;
+ g.winnerSlot=explicitWinnerSlot===null?remaining[0].slot:explicitWinnerSlot;g.endReason=reason;g.phase='finished';
+ g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;
+ r.messages.push({system:true,text:'상대 플레이어의 이탈로 게임이 종료되었습니다.',at:Date.now()});
+ broadcast(r);
+}
+
+function removePlayer(p){
+ const r=rooms.get(p.room);if(!r)return;
+ r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);
+ if(s&&!s.destroyed)s.end();
+ r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});
+ // An intentional leave is a forfeit during a live match.
+ if(r.started&&r.game?.phase!=='finished'){
+  const others=[...r.players.values()];
+  if(others.length===1)finishAbandonedMatch(r,'opponent_left',others[0].slot)
+ }
+ broadcast(r);cleanupRoom(r);
+}
 const getPlayer=(req,body)=>{const token=String(req.headers['x-live-token']||body?.token||'');for(const r of rooms.values())for(const p of r.players.values())if(p.token===token)return {p,r};return null};
 const readBody=req=>new Promise((resolve,reject)=>{let size=0,buf='';req.on('data',c=>{size+=c.length;if(size>16384){reject(new Error('요청 크기 초과'));req.destroy();return}buf+=c});req.on('end',()=>{try{resolve(JSON.parse(buf||'{}'))}catch{reject(new Error('잘못된 JSON'))}});req.on('error',reject)});
 async function handleAction(req,res,body){const url=new URL(req.url,'http://localhost');if(url.pathname==='/api/register' || url.pathname==='/api/login'){
@@ -117,12 +140,21 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='result'){
-  if(g.hp.some(x=>x<=0)){g.phase='finished';g.endsAt=Date.now();}else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
+  if(g.hp.some(x=>x<=0)){
+   g.phase='finished';g.endsAt=Date.now();g.endReason='elimination';
+   g.winnerSlot=g.hp[0]<=0&&g.hp[1]<=0?null:(g.hp[0]<=0?1:0);
+  }else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
   g.version++;broadcast(r);
  }
 }
-const gameClock=setInterval(()=>{for(const r of rooms.values())try{advanceRoom(r)}catch(e){console.error('room timer:',e)}},250);
-const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;refreshEarlyFinish(r);broadcast(r)}});return}
+const gameClock=setInterval(()=>{for(const r of rooms.values())try{
+ if(r.started&&r.game?.phase!=='finished'&&r.players.size===2){
+  const players=[...r.players.values()];
+  if(players.some(p=>p.connected)&&players.some(p=>!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000))finishAbandonedMatch(r);
+ }
+ advanceRoom(r)
+}catch(e){console.error('room timer:',e)}},250);
+const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;p.disconnectedAt=null;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;p.disconnectedAt=Date.now();refreshEarlyFinish(r);broadcast(r)}});return}
 if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable});
 if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
 if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-cache'});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});

@@ -313,8 +313,7 @@ function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
  if(!panel){panel=document.createElement('section');panel.id='liveItemsPanel';document.body.appendChild(panel)}
  itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(name)}</span></button>`).join('');
- const equipment=gameState.owned.map(o=>`<div class="live-equipped" data-equip-uid="${o.uid}"><b>${displayName(byId[o.characterId])} ${'★'.repeat(o.star)}</b>${equippedSlots(o)}</div>`).join('');
- panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12</b><button type="button" id="liveCodexOpen">도감 📖</button></div><small>PREP 전용 · 드래그해서 조합/장착 · 상점으로 드래그해 판매</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div><div class="live-equipped-list">${equipment}</div>`;
+ panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12</b><button type="button" id="liveCodexOpen">도감 📖</button></div><small>PREP 전용 · 조합 / 실험체에 장착 / 상점에 판매</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div>`;
 
  panel.querySelectorAll('[data-item-index]').forEach(b=>b.onclick=e=>{e.preventDefault()});
 panel.querySelectorAll('[data-item-index]').forEach(b=>{b.addEventListener('pointerdown',e=>beginItemPointerDrag(e,+b.dataset.itemIndex,b));b.addEventListener('pointermove',moveItemPointerDrag);b.addEventListener('pointerup',endItemPointerDrag);b.addEventListener('pointercancel',cancelItemPointerDrag)});
@@ -458,6 +457,12 @@ function ensureRoundUI(){
  `;document.head.appendChild(style);
  const panel=document.createElement('section');panel.id='roundModePanel';const eco=document.createElement('section');eco.id='gameEconomyPanel';const anchor=board?.parentElement||document.body;anchor.insertBefore(panel,board||anchor.firstChild);panel.insertAdjacentElement('afterend',eco);renderRoundUI();renderGameEconomy();
 }
+// R1~R6 are fully scheduled. R7+ currently use a temporary duel fallback,
+// not the future weighted special-round scheduler.
+function liveRoundKind(round){
+ const kinds={1:'파밍',2:'결투',3:'파밍',4:'결투',5:'보급',6:'결투'};
+ return kinds[round]||'결투 · 임시';
+}
 function phaseLabel(){if([1,3].includes(roundState.round)&&roundState.phase==='combat')return '파밍 전투';return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
 function syncBoardPresentation(){
  if(!board)return;
@@ -471,11 +476,13 @@ function syncBoardPresentation(){
 }
 function renderRoundUI(){
  syncBoardPresentation();
- const p=$('#roundModePanel');if(!p)return;const r1Prep=roundState.round===1&&roundState.phase==='prep',opp=r1Prep?'파밍 대기':roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
+ const p=$('#roundModePanel');if(!p)return;const pveRound=[1,3].includes(roundState.round),opp=pveRound?(roundState.phase==='prep'?'파밍 대기':'야생동물'):'PLAYER B',oppHp=pveRound?100:roundState.hp.B;
  const seconds=['prep','result','combat','supply'].includes(roundState.phase)?Math.max(0,Math.ceil(roundState.remaining)):null;
- const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='supply'?`보급 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:phaseLabel());
+ const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='supply'?`보급 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:`결투 · ${seconds}초`);
  const previousReady=p.querySelector('#roundOnlineReady');
- p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
+ const nextRounds=[1,2,3].map(i=>`<span class="live-schedule-step"><small>R${roundState.round+i}</small> ${liveRoundKind(roundState.round+i)}</span>`).join('');
+ const kind=liveRoundKind(roundState.round);
+ p.innerHTML=`<div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds"><b>다음</b>${nextRounds}</span></div><div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
  const newlyRenderedReady=p.querySelector('#roundOnlineReady');
  if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
  else if(newlyRenderedReady){
@@ -636,13 +643,16 @@ let livePhaseVersion=0,liveCompletedRound=0,liveCombatActive=false;
 let liveSupplyApplied=false;
 const livePendingSupplyUnits=[];
 let liveSupplyTimerId=null;
+let liveSupplyCollapsed=false;
 function liveSupplyRefreshTimer(){
  const panel=document.querySelector('#liveSupplyPanel'),net=window.LIVEMultiplayer?.getRoom()?.game;
  if(!panel||panel.hidden||net?.phase!=='supply')return;
+ const peek=panel.querySelector('[data-supply-peek-time]');
  const deadline=Math.min(net.endsAt||Infinity,net.earlyEndsAt||Infinity);
  const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
  const clock=panel.querySelector('[data-supply-clock]'),bar=panel.querySelector('[data-supply-progress]');
  if(clock)clock.textContent=String(remaining).padStart(2,'0');
+ if(peek)peek.textContent=String(remaining);
  if(bar)bar.style.width=`${Math.min(100,remaining/30*100)}%`;
  panel.classList.toggle('supply-urgent',remaining<=5);
 }
@@ -658,10 +668,20 @@ function liveFlushSupplyUnitQueue(){
 }
 function liveSupplyUi(net,slot){
  let el=document.querySelector('#liveSupplyPanel');
- if(!el){el=document.createElement('section');el.id='liveSupplyPanel';document.body.appendChild(el)}
+ if(!el){
+  el=document.createElement('section');el.id='liveSupplyPanel';document.body.appendChild(el);
+  el.addEventListener('click',e=>{
+   if(!e.target.closest('[data-supply-toggle]'))return;
+   liveSupplyCollapsed=!liveSupplyCollapsed;
+   el.classList.toggle('supply-collapsed',liveSupplyCollapsed);
+   const toggle=el.querySelector('[data-supply-toggle]');
+   if(toggle)toggle.setAttribute('aria-expanded',String(!liveSupplyCollapsed));
+  });
+ }
  const opts=net.supplyOptions?.[slot]||[],picked=net.supplyResolved?.[slot];
  el.hidden=net.phase!=='supply';
- if(el.hidden){if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
+ el.classList.toggle('supply-collapsed',liveSupplyCollapsed);
+ if(el.hidden){liveSupplyCollapsed=false;el.classList.remove('supply-collapsed');if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
  const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
  const describe=t=>{
   if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png',visual:'coin',badge:'+10 C'};
@@ -680,7 +700,7 @@ function liveSupplyUi(net,slot){
  const stamp=[net.round,slot,JSON.stringify(opts),pickIndex].join(':');
  if(el.dataset.stamp!==stamp){
   el.dataset.stamp=stamp;
-  el.innerHTML=`<div class="supply-modal" role="dialog" aria-modal="true" aria-labelledby="supplyHeading">
+  el.innerHTML=`<button type="button" class="supply-peek-toggle" data-supply-toggle aria-expanded="${!liveSupplyCollapsed}"><span class="supply-open-label">보급 선택 접기 ▾</span><span class="supply-collapsed-label">보급 선택 펼치기 · <b data-supply-peek-time>30</b>초 ▴</span></button><div class="supply-modal" role="dialog" aria-modal="true" aria-labelledby="supplyHeading">
    <div class="supply-topline"><span class="supply-signature"><i></i> AGLAIA / L.I.V.E. <b>SUPPORT DROP</b></span><span class="supply-round-tag">ROUND ${Number(net.round)||5} <span>·</span> SUPPLY PHASE</span></div>
    <div class="supply-heading-row"><div><div class="supply-head-kicker">/ 보급품 선택</div><h2 id="supplyHeading">다음 전투를 위한 <em>한 가지.</em></h2><p>제시된 3개의 보급품 중 하나를 선택해. 실험체는 무료로 벤치에 합류해.</p></div>
    <div class="supply-timer" aria-label="남은 선택 시간"><span>TIME LEFT</span><strong><span data-supply-clock>30</span><small>s</small></strong></div></div>
@@ -1004,3 +1024,9 @@ $("#step").onclick=()=>{if(!running&&!start())return;paused=true;$("#pause").tex
 $("#reset").onclick=reset;$("#speed").onchange=e=>speed=+e.target.value;$("#batch").onclick=batch;
 for(const id of ["masteryA","masteryB","moveInterval","seed"])$("#"+id).onchange=reset;
 buildBoard();ensureInspector();ensureRoundUI();reset();renderRoundUI();ensureAppShell();
+// Offline QA: bypass the online lobby and open the existing combat/round sandbox.
+if(new URLSearchParams(location.search).get("qa")==="combat")enterAppMode("test");
+else if(new URLSearchParams(location.search).get("qa")==="round")enterAppMode("game");
+if(["combat","round"].includes(new URLSearchParams(location.search).get("qa"))){
+ const btn=document.getElementById("devExit");if(btn){btn.hidden=false;btn.textContent="← QA LAB";btn.onclick=()=>location.assign("/qa.html");}
+}

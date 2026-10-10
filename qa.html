@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L.I.V.E. | QA LAB — 미니게임 실험실</title>
+<link rel="stylesheet" href="qa.css">
+</head>
+<body>
+<header class="qa-nav">
+  <a class="qa-brand" href="/" aria-label="L.I.V.E. 메인으로 돌아가기"><span class="qa-mark">L<span>·</span>V</span><span class="qa-brand-txt"><b>L.I.V.E.</b><small>AGLAIA / SYSTEMS LAB</small></span></a>
+  <span class="qa-environment"><span class="qa-dot"></span> LOCAL SANDBOX · ONLINE DATA ISOLATED</span>
+  <a class="qa-exit" href="/">멀티플레이로 돌아가기 ↗</a>
+</header>
+<main class="qa-shell">
+  <section class="qa-heading"><div><span class="qa-label">TESTING / M4-10</span><h1>실험실 <span>QA LAB</span></h1><p>로그인 없이 시험해. 여기에서 발생한 결과는 실제 계정, 로비, 상점, 크레딧에 반영되지 않아.</p></div><div class="qa-heading-meta"><span class="qa-label">6 MINI-GAMES</span><b>2인 역할 시뮬레이션</b><small>한 브라우저에서 A·B를 번갈아 조작하는 시험 환경</small></div></section>
+  <div class="qa-shortcuts">
+    <a href="/?qa=combat"><span>↗</span><b>전투 QA</b><small>실험체 3×3 배치 · 아이템 · 시드 · 100회 전투</small></a>
+    <a href="/?qa=round"><span>↗</span><b>로컬 라운드 QA</b><small>로컬 게임 루프 확인 · 온라인 서버와 별도</small></a>
+  </div>
+  <section class="qa-game-section">
+    <div class="qa-section-head"><div><span class="qa-label">SIMULATION INDEX</span><h2>미니게임 선택</h2></div><p>각 게임은 독립 실행돼. 다른 게임으로 바꾸면 현재 테스트는 초기화돼.</p></div>
+    <nav class="qa-games" aria-label="미니게임 종류" id="qaGameNav"></nav>
+    <div class="qa-dashboard">
+      <section class="qa-stage" aria-label="미니게임 플레이 영역">
+        <div class="qa-stage-head"><div><span class="qa-label" id="qaGameType">MINI-GAME</span><h2 id="qaTitle">준비 중</h2><p id="qaDescription"></p></div><div class="qa-stage-actions"><span id="qaSeedDisplay" class="qa-seed">SEED —</span><button type="button" id="qaReplay" class="qa-icon-button">↺ 동일 시드 재실행</button><button type="button" id="qaRestart" class="qa-icon-button">새 시드 ↻</button></div></div>
+        <div id="qaStage" class="qa-stage-content" aria-live="polite"></div>
+      </section>
+      <aside class="qa-side">
+        <div class="qa-side-head"><span class="qa-label">TEST SESSION</span><h3>조작 패널</h3></div>
+        <div id="qaParticipants" class="qa-participants"></div>
+        <div class="qa-side-section"><h4>테스트 기록</h4><div id="qaHistory" class="qa-history" role="log" aria-live="polite"></div></div>
+        <div class="qa-side-note"><b>QA 모드 안내</b><p>보상은 화면에만 표시되는 <strong>가상 크레딧</strong>이야. 온라인 상대방과 실시간으로 연결하지 않으며, 숨겨진 정보는 A/B 시점 전환으로 테스트해.</p><p>미니게임의 실제 온라인 라운드 편성은 후속 개발 대상이야.</p></div>
+      </aside>
+    </div>
+  </section>
+</main>
+<script src="items.js"></script>
+<script src="qa.js"></script>
+</body>
+</html>
