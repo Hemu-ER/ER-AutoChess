@@ -5,6 +5,22 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const {CombatEngine}=require('./combat-engine.js');
+const {roster:supplyRoster}=require('./roster.js');
+// M4-08: each player rolls three independent reward slots; only exact duplicate cards are rerolled.
+const SUPPLY_ODDS=Object.freeze([['basic',30],['complete',5],['credits',25],['exp',20],['unit1',12],['unit2',8]]);
+const SUPPLY_UNITS={1:supplyRoster.filter(r=>!r.pveOnly&&r.cost===1).map(r=>r.id),2:supplyRoster.filter(r=>!r.pveOnly&&r.cost===2).map(r=>r.id)};
+if(!SUPPLY_UNITS[1].length||!SUPPLY_UNITS[2].length)throw Error('보급용 1·2코스트 실험체 풀이 비어 있어.');
+function drawSupplyReward(){
+ const roll=crypto.randomInt(100);let cumulative=0;const kind=SUPPLY_ODDS.find(([,weight])=>(cumulative+=weight)>roll)?.[0];
+ if(kind==='credits'||kind==='exp')return {type:kind,value:10};
+ if(kind==='basic'||kind==='complete')return {type:kind,value:crypto.randomInt(kind==='basic'?7:28)};
+ const cost=kind==='unit1'?1:2,units=SUPPLY_UNITS[cost];
+ return {type:'unit',cost,value:units[crypto.randomInt(units.length)]};
+}
+function drawSupplyChoices(){
+ const cards=[];for(let i=0;i<3;i++){let option,tries=0;do{option=drawSupplyReward()}while(cards.some(x=>x.type===option.type&&x.value===option.value)&&++tries<30);cards.push(option)}return cards;
+}
+
 const root = __dirname;
 const PORT = Number(process.env.PORT || 3000);
 const rooms = new Map();
@@ -88,9 +104,7 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   const players=[...r.players.values()].sort((a,b)=>a.slot-b.slot);
   if(players.length!==2){g.phase='finished';g.endsAt=Date.now();broadcast(r);return}
   if(g.round===5){
-   const kinds=[{type:'basic',weight:35},{type:'complete',weight:5},{type:'credits',weight:35},{type:'exp',weight:25}];
-   const roll=()=>{const n=crypto.randomInt(100);let sum=0;const type=kinds.find(k=>(sum+=k.weight)>n).type;return {type, value:type==='credits'||type==='exp'?10:crypto.randomInt(type==='basic'?7:28)};};
-   g.supplyOptions=players.map(()=>[roll(),roll(),roll()]);g.supplyResolved=[null,null];g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
+   g.supplyOptions=players.map(()=>drawSupplyChoices());g.supplyResolved=[null,null];g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
   }
   const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;
   const a=players[0],b=players[1];let battle=null,duration=3;
@@ -113,4 +127,4 @@ if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable}
 if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
 if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-cache'});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
 loadAccounts().then(()=>server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
-module.exports={server,rooms};
+module.exports={server,rooms,drawSupplyReward,drawSupplyChoices,SUPPLY_ODDS};

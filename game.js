@@ -474,8 +474,21 @@ function renderRoundUI(){
  const p=$('#roundModePanel');if(!p)return;const r1Prep=roundState.round===1&&roundState.phase==='prep',opp=r1Prep?'파밍 대기':roundState.round===1?'야생동물':'PLAYER B',oppHp=roundState.round===1?100:roundState.hp.B;
  const seconds=['prep','result','combat','supply'].includes(roundState.phase)?Math.max(0,Math.ceil(roundState.remaining)):null;
  const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='supply'?`보급 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:phaseLabel());
+ const previousReady=p.querySelector('#roundOnlineReady');
  p.innerHTML=`<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
- p.querySelector('#roundOnlineReady')?.addEventListener('click',async()=>{const net=window.LIVEMultiplayer?.getRoom();const me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());try{await window.LIVEMultiplayer.setRoundReady(!me?.roundReady)}catch(e){$('#status').textContent=e.message}});
+ const newlyRenderedReady=p.querySelector('#roundOnlineReady');
+ if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
+ else if(newlyRenderedReady){
+  newlyRenderedReady.addEventListener('click',async()=>{
+   if(newlyRenderedReady.dataset.pending==='1')return;
+   const net=window.LIVEMultiplayer?.getRoom(),me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());
+   const target=!me?.roundReady; newlyRenderedReady.dataset.pending='1';newlyRenderedReady.disabled=true;
+   newlyRenderedReady.textContent=target?'준비 완료 전송 중…':'준비 취소 전송 중…';
+   try{await window.LIVEMultiplayer.setRoundReady(target)}catch(e){$('#status').textContent=e.message}
+   finally{newlyRenderedReady.dataset.pending='0';newlyRenderedReady.disabled=false;}
+  });
+ }
+
  p.querySelector('#roundSkip')?.addEventListener('click',()=>{if(window.LIVEMultiplayer?.getRoom()?.started){$('#status').textContent='온라인 준비 · 서버가 동시에 전투를 시작해.';return}beginRoundCombat()})
 }
 function creditHtml(amount,cls='credit-price'){
@@ -584,6 +597,7 @@ function bindShopSynergyTags(root){
  bindSynergyTooltips(root);
 }
 function renderGameEconomy(){
+ liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&[1,3].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
  if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
@@ -595,7 +609,7 @@ function renderGameEconomy(){
  p.innerHTML='';
  if(!dock){dock=document.createElement('section');dock.id='gameBottomDock';dock.className='game-bottom-dock';document.body.appendChild(dock)}
  const max=masteryExpToNext(),prog=Math.min(max||0,gameState.masteryProgress),pct=max?prog/max*100:100,bonus=Math.max(0,gameState.masteryLevel-1);
- dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 열기':'▼ 상점 접기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span><div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div></div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>고정 적응형 능력치 +${bonus}%</small></div><div class="mastery-track"><i style="width:${pct}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} EXP · 라운드마다 +${GAME_TEMP.masteryNaturalExp} EXP`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 EXP +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
+ dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 열기':'▼ 상점 접기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span><div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div>${livePendingSupplyUnits.length?`<div class="supply-bench-queue" role="status">보급 실험체 ${livePendingSupplyUnits.map(id=>esc(displayName(byId[id]))).join(', ')} 영입 대기 · 벤치 자리를 비워줘.</div>`:''}</div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>고정 적응형 능력치 +${bonus}%</small></div><div class="mastery-track"><i style="width:${pct}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} EXP · 라운드마다 +${GAME_TEMP.masteryNaturalExp} EXP`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 EXP +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
  dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;renderGameEconomy()});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindShopSynergyTags(dock);bindOwnedPointerDrag(dock);bindItemTooltips(dock);normalizeVisuals(dock);renderItemPanel();
 }
 
@@ -603,6 +617,7 @@ function startRoundMode(){
  clearRoundTimer();
  if(running||battle)reset();
  teams={A:[],B:[]};
+ livePendingSupplyUnits.length=0;liveSupplyApplied=false;
  Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0});
  Object.assign(roundState,{active:true,phase:'prep',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:'',lastDamage:0});
  const oneCost=playableRoster().filter(r=>r.cost===1);
@@ -619,18 +634,78 @@ function startRoundMode(){
 
 let livePhaseVersion=0,liveCompletedRound=0,liveCombatActive=false;
 let liveSupplyApplied=false;
+const livePendingSupplyUnits=[];
+let liveSupplyTimerId=null;
+function liveSupplyRefreshTimer(){
+ const panel=document.querySelector('#liveSupplyPanel'),net=window.LIVEMultiplayer?.getRoom()?.game;
+ if(!panel||panel.hidden||net?.phase!=='supply')return;
+ const deadline=Math.min(net.endsAt||Infinity,net.earlyEndsAt||Infinity);
+ const remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+ const clock=panel.querySelector('[data-supply-clock]'),bar=panel.querySelector('[data-supply-progress]');
+ if(clock)clock.textContent=String(remaining).padStart(2,'0');
+ if(bar)bar.style.width=`${Math.min(100,remaining/30*100)}%`;
+ panel.classList.toggle('supply-urgent',remaining<=5);
+}
+function liveFlushSupplyUnitQueue(){
+ if(roundState.phase!=='prep'||!livePendingSupplyUnits.length)return;
+ let granted=0;
+ while(livePendingSupplyUnits.length){
+  const characterId=livePendingSupplyUnits[0];
+  if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(characterId))break;
+  livePendingSupplyUnits.shift();addOwned(characterId,false);granted++;
+ }
+ if(granted)gameState.message=`대기 중이던 보급 실험체 ${granted}명 영입 완료`;
+}
 function liveSupplyUi(net,slot){
  let el=document.querySelector('#liveSupplyPanel');
  if(!el){el=document.createElement('section');el.id='liveSupplyPanel';document.body.appendChild(el)}
  const opts=net.supplyOptions?.[slot]||[],picked=net.supplyResolved?.[slot];
  el.hidden=net.phase!=='supply';
- if(el.hidden)return;
- const names=t=>t.type==='credits'?'10 크레딧':t.type==='exp'?'숙련도 +10 EXP':t.type==='basic'?'기본 아이템 1개':'완성 아이템 1개';
- const remaining=Math.max(0,Math.ceil((Math.min(net.earlyEndsAt||Infinity,net.endsAt)-Date.now())/1000));
- const stamp=net.version+':'+slot+':'+Boolean(picked)+':'+remaining;
- if(el.dataset.stamp===stamp)return;el.dataset.stamp=stamp;
- el.innerHTML=`<div class="supply-card"><h2>ROUND 5 · 보급 선택</h2><p>원하는 보상 하나를 선택해 · ${remaining}초</p><div class="supply-choices">${opts.map((o,i)=>`<button data-supply="${i}" ${picked?'disabled':''}>${names(o)}</button>`).join('')}</div><small>${picked?'선택 완료 · 다른 플레이어를 기다리는 중':'시간 만료 시 무작위 보상 지급'}</small></div>`;
- el.querySelectorAll('[data-supply]').forEach(b=>b.addEventListener('click',async()=>{b.disabled=true;try{await fetch('/api/supply-pick',{method:'POST',headers:{'content-type':'application/json','x-live-token':window.LIVEMultiplayer?.getToken?.()||''},body:JSON.stringify({choice:Number(b.dataset.supply)})}).then(async r=>{if(!r.ok)throw Error((await r.json()).error)})}catch(e){console.warn(e)}}));
+ if(el.hidden){if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
+ const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
+ const describe=t=>{
+  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png',visual:'coin',badge:'+10 C'};
+  if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:'+10 EXP',subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:'LEVEL UP'};
+  if(t.type==='unit'){
+   const r=byId[t.value];
+   if(!r||![1,2].includes(r.cost))return {kind:'unavailable',category:'UNAVAILABLE',title:'정보 없음',subtitle:'',detail:'',visual:'exp',badge:'-'};
+   return {kind:'unit',category:`EXPERIMENT · ${r.cost} COST`,title:displayName(r),subtitle:skinName(r),detail:[r.role,...(r.affiliations||[])].join(' / '),img:r.asset?.sd,visual:'character',badge:`${r.cost} COST · 무료 영입`,cost:r.cost};
+  }
+  const isBasic=t.type==='basic';
+  const names=isBasic?BASIC_ITEMS:completedNames;
+  const name=names[t.value%names.length];
+  return {kind:isBasic?'basic':'complete',category:isBasic?'EQUIPMENT · BASIC':'EQUIPMENT · RARE',title:name,subtitle:isBasic?'기본 장비':'완성 장비',detail:itemStatsText(name)+(ITEM_EFFECT_HINTS[name]?' · '+ITEM_EFFECT_HINTS[name]:''),img:itemIcon(name),visual:'item',badge:isBasic?'BASIC':'RARE'};
+ };
+ const pickIndex=picked?opts.findIndex(o=>o.type===picked.type&&o.value===picked.value):-1;
+ const stamp=[net.round,slot,JSON.stringify(opts),pickIndex].join(':');
+ if(el.dataset.stamp!==stamp){
+  el.dataset.stamp=stamp;
+  el.innerHTML=`<div class="supply-modal" role="dialog" aria-modal="true" aria-labelledby="supplyHeading">
+   <div class="supply-topline"><span class="supply-signature"><i></i> AGLAIA / L.I.V.E. <b>SUPPORT DROP</b></span><span class="supply-round-tag">ROUND ${Number(net.round)||5} <span>·</span> SUPPLY PHASE</span></div>
+   <div class="supply-heading-row"><div><div class="supply-head-kicker">/ 보급품 선택</div><h2 id="supplyHeading">다음 전투를 위한 <em>한 가지.</em></h2><p>제시된 3개의 보급품 중 하나를 선택해. 실험체는 무료로 벤치에 합류해.</p></div>
+   <div class="supply-timer" aria-label="남은 선택 시간"><span>TIME LEFT</span><strong><span data-supply-clock>30</span><small>s</small></strong></div></div>
+   <div class="supply-progress-track"><div data-supply-progress></div></div>
+   <div class="supply-choices" role="group" aria-label="보급품 후보 3종">
+   ${opts.map((o,i)=>{const d=describe(o),selected=i===pickIndex;return `<button type="button" class="supply-option supply-${esc(d.kind)} ${selected?'supply-selected':''}" data-supply="${i}" ${picked?'disabled':''} aria-label="${esc(d.title)} 선택">
+      <span class="supply-card-top"><span class="supply-number">0${i+1}</span><span class="supply-category">${esc(d.category)}</span></span>
+      <span class="supply-art supply-art-${esc(d.visual)}">${d.img?`<img src="${esc(d.img)}" alt="" draggable="false" loading="eager">`:d.kind==='exp'?'<span class="supply-exp-symbol">EXP<small>+</small></span>':'<span class="supply-exp-symbol">?</span>'}<span class="supply-art-glow"></span></span>
+      <span class="supply-card-content"><span class="supply-reward-badge">${esc(d.badge)}</span><strong>${esc(d.title)}</strong><span class="supply-subtitle">${esc(d.subtitle)}</span><span class="supply-detail" title="${esc(d.detail)}">${esc(d.detail)}</span></span>
+      <span class="supply-card-action">${picked?(selected?'✓ 선택한 보상':'선택 종료'):'보급품 확보 <span aria-hidden="true">↗</span>'}</span>
+    </button>`}).join('')}
+   </div>
+   <footer class="supply-footer"><span data-supply-status role="status">${picked?'선택 완료. 다른 플레이어의 선택을 기다리는 중이야.':'선택 제한 30초 · 시간 만료 시 무작위 지급'}</span><span class="supply-footer-mark">LIVE SYSTEM / 05</span></footer>
+  </div>`;
+  el.querySelectorAll('[data-supply]').forEach(b=>b.addEventListener('click',async()=>{
+   if(el.dataset.pending==='1')return;
+   el.dataset.pending='1';el.querySelectorAll('[data-supply]').forEach(x=>x.disabled=true);
+   const status=el.querySelector('[data-supply-status]');if(status)status.textContent='선택 내용을 서버에 전송하는 중…';
+   try{const res=await fetch('/api/supply-pick',{method:'POST',headers:{'content-type':'application/json','x-live-token':window.LIVEMultiplayer?.getToken?.()||''},body:JSON.stringify({choice:Number(b.dataset.supply)})});if(!res.ok)throw Error((await res.json()).error||'보급 선택 실패');liveBeep('pick')}
+   catch(e){if(status)status.textContent=e.message;el.querySelectorAll('[data-supply]').forEach(x=>x.disabled=false)}
+   finally{el.dataset.pending='0'}
+  }));
+ }
+ liveSupplyRefreshTimer();
+ if(liveSupplyTimerId===null)liveSupplyTimerId=setInterval(liveSupplyRefreshTimer,200);
 }
 function liveApplySupplyReward(net,slot){
  if(net.round!==5||liveSupplyApplied)return;
@@ -638,17 +713,30 @@ function liveApplySupplyReward(net,slot){
  liveSupplyApplied=true;
  if(reward.type==='credits')gameState.credits+=10;
  else if(reward.type==='exp')addMasteryProgress(10,'보급 선택');
- else {const names=reward.type==='basic'?BASIC_ITEMS:Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);const name=names[reward.value%names.length];if(name)pushItem(name)}
- gameState.message='보급 보상 획득';renderGameEconomy();
+ else if(reward.type==='unit'){
+  const r=byId[reward.value];
+  if(r&&!r.pveOnly&&[1,2].includes(r.cost)){
+   const full=gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(r.id);
+   if(full){livePendingSupplyUnits.push(r.id);gameState.message=`보급 ${displayName(r)} 영입 대기 · 벤치에 자리를 만들어줘.`}
+   else{const outcome=addOwned(r.id,false);gameState.message=`보급 ${displayName(r)} 무료 영입${outcome.merged.length?' · 합성 완료!':''}`}
+  }
+ }else if(reward.type==='basic'||reward.type==='complete'){
+  const names=reward.type==='basic'?BASIC_ITEMS:Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
+  const name=names[reward.value%names.length];if(name){pushItem(name);gameState.message=`보급 ${name} 획득`}
+ }
+ renderGameEconomy();
 }
-let livePreviousUnitStats=new Map(),liveLastHit=0;const liveHitUntil=new Map();
+let livePreviousUnitStats=new Map(),liveLastHit=0;const liveHitUntil=new Map(),liveAttackUntil=new Map();
 function liveRenderHitEffects(){
- if(!battle||!running){livePreviousUnitStats.clear();return}
+ if(!battle||!running){livePreviousUnitStats.clear();liveHitUntil.clear();liveAttackUntil.clear();return}
  const now=performance.now(),hits=[];
  for(const u of units){const old=livePreviousUnitStats.get(u.id);if(old!==undefined&&u.hp<old-0.5)hits.push(u);livePreviousUnitStats.set(u.id,u.hp)}
  if(now-liveLastHit<110)return;liveLastHit=now;
- for(const u of hits.slice(0,4)){
-  liveHitUntil.set(u.id,now+190);
+ for(const u of hits.slice(0,6)){
+  liveHitUntil.set(u.id,now+390);
+  const attackers=units.filter(a=>a.team!==u.team&&!a.dead&&a.hp>0);
+  attackers.sort((a,b)=>((a.x-u.x)**2+(a.y-u.y)**2)-((b.x-u.x)**2+(b.y-u.y)**2));
+  if(attackers[0])liveAttackUntil.set(attackers[0].id,now+250);
  }
 }
 window.LIVEApplyGame=function(net,slot,players){
@@ -871,7 +959,8 @@ function render(){
  renderCurrentSynergyPanel();
  board.querySelectorAll('.unit').forEach(e=>e.remove());
  for(const u of units){
-  const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✦';e.appendChild(spark)}
+  const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}
+  if((liveAttackUntil.get(u.id)||0)>performance.now())e.classList.add('live-attack-flash');
   const ownedEntry=appMode==='game'&&u.team==='A'?teams.A.find(x=>x.x===u.x&&x.y===u.y&&x.characterId===u.characterId&&x.star===u.star):null;
   if(appMode==='game'&&ownedEntry?.ownedId){const owned=gameState.owned.find(o=>o.uid===ownedEntry.ownedId);e.insertAdjacentHTML('beforeend',equippedSlots(owned));bindItemTooltips(e);e.draggable=false;e.dataset.ownedDrag=ownedEntry.ownedId;e.style.touchAction='none';e.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,ownedEntry.ownedId,e))}else{e.draggable=!running&&!battle;e.ondragstart=event=>event.dataTransfer.setData('text/plain',u.id)}
   if(appMode!=='game'){e.onmouseenter=()=>showInspector(u);e.onfocus=()=>showInspector(u)}
