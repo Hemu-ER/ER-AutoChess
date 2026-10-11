@@ -47,7 +47,7 @@
   }
   function selectedRegion(round, roomCode) {
     if (fixedPreviewRegion && zones.some(z => z[0] === fixedPreviewRegion)) return fixedPreviewRegion;
-    return zones[hash(`${roomCode || 'local'}:${round}`) % zones.length][0];
+    return window.ERCombat?.pickArenaRegion?.(roomCode||'local',round)||zones[hash(`${roomCode || 'local'}:${round}`) % zones.length][0];
   }
   function setArtwork(key) {
     if (selected === key) return;

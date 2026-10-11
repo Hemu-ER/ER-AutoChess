@@ -4,7 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const {CombatEngine}=require('./combat-engine.js');
+const {CombatEngine,pickArenaRegion}=require('./combat-engine.js');
 const {roster:supplyRoster}=require('./roster.js');
 // M4-08: each player rolls three independent reward slots; only exact duplicate cards are rerolled.
 const SUPPLY_ODDS=Object.freeze([['basic',30],['complete',5],['credits',25],['exp',20],['unit1',12],['unit2',8]]);
@@ -129,9 +129,9 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   if(g.round===5){
    g.supplyOptions=players.map(()=>drawSupplyChoices());g.supplyResolved=[null,null];g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
   }
-  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;
+  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;g.region=pickArenaRegion(r.code,g.round);
   const a=players[0],b=players[1];let battle=null,duration=3;
-  if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
+  if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
   g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
  }
  if(g.phase==='supply'){for(const p of r.players.values())if(!g.supplyResolved[p.slot])g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;}
@@ -143,7 +143,7 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   if(g.hp.some(x=>x<=0)){
    g.phase='finished';g.endsAt=Date.now();g.endReason='elimination';
    g.winnerSlot=g.hp[0]<=0&&g.hp[1]<=0?null:(g.hp[0]<=0?1:0);
-  }else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
+  }else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
   g.version++;broadcast(r);
  }
 }
