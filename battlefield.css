@@ -1,4 +1,5 @@
-/* L.I.V.E. M4-16 — floor-only 3x6 arena.
+/* L.I.V.E. M4-16a — correct over-aggressive radial floor fade.
+   Floor-only 3x6 arena.
    Artwork is centered in the responsive board; no decor / no crop / no stretching.
    PREP 3x3 stays undecorated. Combat and game rules remain unchanged. */
 body[data-app-mode="game"] #board,
@@ -23,8 +24,17 @@ body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-t
   background-size: contain;
   filter: brightness(.77) saturate(.86);
   opacity: 1;
-  -webkit-mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 68%, rgba(0,0,0,.96) 74%, rgba(0,0,0,.48) 90%, transparent 100%);
-  mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 68%, rgba(0,0,0,.96) 74%, rgba(0,0,0,.48) 90%, transparent 100%);
+  /* Rectangular, independent edge fades. Keep the full playable field visible.
+     Only the outer 6% (horizontal) and 8% (vertical) feather into black.
+     Compositing makes corners fade from both directions. */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%),
+    linear-gradient(to bottom, transparent 0%, #000 8%, #000 92%, transparent 100%);
+  mask-composite: intersect;
 }
 
 /* Retire the M4-14/15 decoration pseudo-element outright. */
