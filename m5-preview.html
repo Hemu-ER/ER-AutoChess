@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070c12">
+<title>L.I.V.E. — M5 연구소 전장 실험실</title>
+<link rel="stylesheet" href="m5-preview.css">
+</head>
+<body>
+<main class="lab-app">
+  <header class="lab-topbar">
+    <a class="lab-return" href="/" aria-label="기존 게임으로 돌아가기">← <span>기존 게임</span></a>
+    <div class="lab-identity">
+      <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
+      <strong>전장 렌더링 실험실</strong>
+    </div>
+    <span class="lab-revision">M5-01 <i>PROTOTYPE</i></span>
+  </header>
+
+  <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
+    <div>
+      <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
+      <h1>연구소 <em>01</em></h1>
+      <p>실제 2100×900 바닥 이미지를 게임 오브젝트로 배치한 3×6 전장 프로토타입.</p>
+    </div>
+    <div class="lab-mode-switch" role="group" aria-label="보드 모드">
+      <button id="mode-combat" type="button" class="mode-selected" aria-pressed="true"><span class="mode-dot"></span>전투 <small>3×6</small></button>
+      <button id="mode-prep" type="button" aria-pressed="false"><span class="mode-dot"></span>준비 <small>3×3</small></button>
+    </div>
+  </section>
+
+  <section class="lab-frame" aria-label="인터랙티브 전장">
+    <header class="lab-board-header">
+      <div><span class="lab-tick"></span><b>연구소</b><span>중앙 전장 · 지역 효과 없음</span></div>
+      <div class="lab-board-header-right"><span class="lab-dot" aria-hidden="true"></span><span id="renderer-status">엔진 초기화 중</span><span class="lab-sep"></span><span id="mode-status">전투 모드</span></div>
+    </header>
+    <div class="lab-stage-space">
+      <div class="lab-stage-wrap" id="stage-wrap" style="--board-ratio:2100 / 900">
+        <div id="stage" role="img" aria-label="3행 6열의 연구소 전장, 칸을 클릭하여 선택할 수 있습니다"></div>
+      </div>
+    </div>
+    <footer class="lab-board-footer">
+      <div><span class="team-mark ally"></span> A 진영 <small>COL 01—03</small></div>
+      <div class="lab-board-footer-center">원본 2100 × 900 <span>·</span> 그리드 350 × 300</div>
+      <div><small>COL 04—06</small> B 진영 <span class="team-mark enemy"></span></div>
+    </footer>
+  </section>
+
+  <section class="lab-details" aria-label="전장 상태 및 조작">
+    <div class="lab-info-panel lab-selection">
+      <div class="lab-info-top"><span>SELECTED CELL</span><span class="lab-index">01 / 18</span></div>
+      <div class="lab-selected-main"><strong id="cell-title">A · 후열 / 상단</strong><span id="cell-code">X 00 / Y 00</span></div>
+      <div class="lab-coords"><span>중앙 접지점</span><code id="cell-position">175, 150</code></div>
+      <div class="lab-footnote">클릭한 칸의 중심점을 게임 내부 좌표로 표시해.</div>
+    </div>
+    <div class="lab-info-panel lab-controls">
+      <div class="lab-info-top"><span>INTERACTION TEST</span><span class="lab-live-chip">LIVE INPUT</span></div>
+      <div class="lab-actions">
+        <button type="button" id="toggle-grid" aria-pressed="true">격자 표시 <strong>ON</strong></button>
+        <button type="button" id="toggle-points" aria-pressed="true">접지점 표시 <strong>ON</strong></button>
+        <button type="button" id="select-next">다음 칸 선택 →</button>
+      </div>
+      <div class="lab-viewport">화면 표시 크기 <span id="viewport-status">—</span></div>
+      <p class="lab-footnote">이 화면은 별도 시각 프로토타입이야. 전투·상점·계정 데이터는 변경하지 않아.</p>
+    </div>
+  </section>
+  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-00 · M5-01 — ART & COORDINATE PROOF</footer>
+</main>
+<script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
+<script defer src="m5-preview.js"></script>
+</body>
+</html>
