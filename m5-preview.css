@@ -35,3 +35,17 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .lab-error{padding:35px;color:#ffb5bf;font-size:13px;text-align:center}
 @media(max-width:950px){.lab-squad-groups{grid-template-columns:1fr}.lab-unit-status{flex-wrap:wrap}.lab-unit-status small{margin-left:0;text-align:left;width:100%}}
 @media(max-width:500px){.lab-squad-panel{padding:14px}.lab-unit-card{padding:6px 4px;gap:3px}.lab-unit-card img{width:34px;height:53px}.lab-unit-card span{font-size:11px}.lab-unit-card small{font-size:9px}.lab-squad-heading{align-items:flex-start;flex-direction:column}}
+
+/* M5-03 deterministic engine test controls; combat figures remain canvas sprites. */
+.lab-combat-panel{margin-top:14px;padding:18px 20px;border:1px solid #3b525b;border-radius:9px;background:#102028}
+.lab-combat-panel .lab-info-top{color:#a6cbd1}.lab-combat-row{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:16px 0}
+.lab-combat-row button{border:1px solid #46616c;border-radius:6px;background:#213743;color:#e5f2f3;padding:11px 16px;min-height:42px}
+.lab-combat-row button.combat-primary{background:#2a5866;border-color:#74bec6;color:white;font-weight:700}
+.lab-combat-row button:disabled{opacity:.36;cursor:not-allowed}
+.lab-combat-seed{display:flex;flex-direction:column;gap:5px;font-size:11px;color:#a4c3c9}
+.lab-combat-seed input{width:115px;height:42px;padding:8px 10px;color:#eff;background:#0c151d;border:1px solid #405a63;border-radius:6px}
+.lab-combat-state{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding:12px 0;border-top:1px solid #30474e;font-size:13px}
+.lab-combat-state strong{color:#a4ece7}.lab-combat-state b{color:#f4d9a7}
+.lab-combat-log{margin:0;padding:0;list-style:none;max-height:150px;overflow:auto;display:grid;gap:5px;font-size:11px;color:#8ea5ae;font-variant-numeric:tabular-nums}
+.lab-combat-log li{padding:5px 8px;background:#0b1720;border-radius:4px}
+@media(max-width:760px){.lab-combat-row button{flex:1 1 130px}.lab-combat-seed{flex:1 1 115px}.lab-combat-seed input{width:100%}}

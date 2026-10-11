@@ -13,16 +13,16 @@
     <a class="lab-return" href="/" aria-label="기존 게임으로 돌아가기">← <span>기존 게임</span></a>
     <div class="lab-identity">
       <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
-      <strong>실험체 배치 실험실</strong>
+      <strong>전투 렌더링 실험실</strong>
     </div>
-    <span class="lab-revision">M5-02 <i>PROTOTYPE</i></span>
+    <span class="lab-revision">M5-03 <i>PROTOTYPE</i></span>
   </header>
 
   <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
     <div>
       <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
       <h1>연구소 <em>01</em></h1>
-      <p>기존 실험체 PNG를 전장 스프라이트로 배치해. 준비 모드에서 잡아 옮기고 자리도 교환해 봐.</p>
+      <p>실험체 배치와 기존 전투 엔진의 결정적 재생을 하나의 전장에 연결했어.</p>
     </div>
     <div class="lab-mode-switch" role="group" aria-label="보드 모드">
       <button id="mode-combat" type="button" aria-pressed="false"><span class="mode-dot"></span>전투 <small>3×6</small></button>
@@ -62,8 +62,20 @@
         <button type="button" id="select-next">다음 칸 선택 →</button><button type="button" id="reset-units">배치 초기화 ↺</button>
       </div>
       <div class="lab-viewport">화면 표시 크기 <span id="viewport-status">—</span></div>
-      <p class="lab-footnote">별도 M5 실험실이야. 전투·상점·계정 데이터는 변경하지 않아.</p>
+      <p class="lab-footnote">별도 M5 실험실이야. 기존 엔진을 별도로 실행하며 상점·계정·M4 게임 데이터는 변경하지 않아.</p>
     </div>
+  </section>
+  <section class="lab-combat-panel" aria-label="실제 전투 엔진 테스트">
+    <div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
+    <div class="lab-combat-row">
+      <div class="lab-combat-seed"><label for="combat-seed">전투 시드</label><input type="number" min="1" max="2147483646" step="1" id="combat-seed" value="123456" /></div>
+      <button type="button" id="combat-start" class="combat-primary">▶ 전투 시작</button>
+      <button type="button" id="combat-pause" disabled>Ⅱ 일시정지</button>
+      <button type="button" id="combat-speed">속도 1×</button>
+      <button type="button" id="combat-stop" disabled>↺ 배치로 돌아가기</button>
+    </div>
+    <div class="lab-combat-state"><strong id="combat-live">배치 모드</strong><b id="combat-result"></b></div>
+    <ol id="combat-log" class="lab-combat-log" aria-label="전투 이벤트 기록"></ol>
   </section>
   <section class="lab-squad-panel" aria-label="실험체 배치 목록">
     <div class="lab-squad-heading"><div><span class="lab-eyebrow">SPRITE PLACEMENT</span><strong>실험체 배치 테스트</strong></div><span id="lab-feedback" aria-live="polite"></span></div>
@@ -81,9 +93,12 @@
       </div></div>
     </div>
   </section>
-  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-02 — SPRITE PLACEMENT LAB</footer>
+  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-03 — SPRITE PLACEMENT LAB</footer>
 </main>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
+<script defer src="roster.js"></script>
+<script defer src="items.js"></script>
+<script defer src="combat-engine.js"></script>
 <script defer src="m5-preview.js"></script>
 </body>
 </html>
