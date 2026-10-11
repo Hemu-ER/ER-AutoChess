@@ -1,6 +1,6 @@
-/* L.I.V.E. M4-15 — floor fully visible, decor fitted against its perimeter.
-   All artwork is anchored to the existing responsive 3x6 #board.
-   PREP 3x3 stays undecorated. No gameplay / cell layout changes. */
+/* L.I.V.E. M4-16 — floor-only 3x6 arena.
+   Artwork is centered in the responsive board; no decor / no crop / no stretching.
+   PREP 3x3 stays undecorated. Combat and game rules remain unchanged. */
 body[data-app-mode="game"] #board,
 body[data-app-mode="test"] #board {
   position: relative;
@@ -8,7 +8,8 @@ body[data-app-mode="test"] #board {
   background: transparent !important;
 }
 
-/* Show the entire 1916x821 floor, without cover cropping or stretching. */
+/* Floor alone; make every edge/corner blend into the dark game surface.
+   The mask applies to the floor image ONLY, not units or their hitboxes. */
 body[data-live-arena-visible="1"] #board.combat-board::before,
 body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::before {
   content: "";
@@ -17,42 +18,32 @@ body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-t
   z-index: 0;
   pointer-events: none;
   background-image: var(--live-floor-url);
-  background-position: center;
   background-repeat: no-repeat;
+  background-position: 50% 50%;
   background-size: contain;
-  filter: brightness(.86) saturate(.9);
+  filter: brightness(.77) saturate(.86);
   opacity: 1;
+  -webkit-mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 68%, rgba(0,0,0,.96) 74%, rgba(0,0,0,.48) 90%, transparent 100%);
+  mask-image: radial-gradient(ellipse closest-side at 50% 50%, #000 68%, rgba(0,0,0,.96) 74%, rgba(0,0,0,.48) 90%, transparent 100%);
 }
 
-/* The original decor PNG is 1672x941 with a LARGE transparent center.
-   M4-14 sized it to a 2560x1440 *reference canvas*, making the peripheral
-   structures float too far from the board (133.6% width / 175.4% height).
-   Fit the artwork's INNER opening to the actual floor perimeter instead.
-   Natural aspect-ratio is retained by setting only the width. */
+/* Retire the M4-14/15 decoration pseudo-element outright. */
 body[data-live-arena-visible="1"] #board.combat-board::after,
 body[data-live-arena-visible="1"] #board:not(.formation-board)[data-live-arena-test="1"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: var(--live-decor-width, 118%);
-  height: auto;
-  aspect-ratio: 1672 / 941;
-  transform: translate(-50%, -50%);
-  z-index: 1;
-  pointer-events: none;
-  background-image: var(--live-decor-url);
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  filter: brightness(.85) saturate(.91);
-  -webkit-mask-image: radial-gradient(ellipse farthest-side at center, black 84%, transparent 100%);
-  mask-image: radial-gradient(ellipse farthest-side at center, black 84%, transparent 100%);
+  content: none !important;
+  background-image: none !important;
 }
 body[data-live-arena-visible="1"] #board > .cell { position: relative; z-index: 2; }
 body[data-app-mode="game"] #board.formation-board::before,
 body[data-app-mode="game"] #board.formation-board::after { content: none !important; }
 
+/* Both axes centered in the available arena space: responsive at any zoom. */
+body[data-live-arena-visible="1"][data-app-mode="game"] .game-board-row > .board-shell,
+body[data-live-arena-visible="1"][data-app-mode="test"] .board-shell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
 body[data-live-arena-visible="1"][data-app-mode="game"] #board.combat-board,
 body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
   aspect-ratio: 1916 / 821;
@@ -60,10 +51,10 @@ body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
   grid-template-rows: repeat(3, minmax(0, 1fr)) !important;
   max-height: none !important;
   flex: none;
+  margin: auto !important;
 }
 
-/* Full blackout: the next arena is swapped in the same frame while covered.
-   1.7s total: title appears on solid black, then the new arena is revealed. */
+/* Keep the M4-15 solid-black round transition unchanged. */
 #liveArenaTransition {
   position: fixed;
   inset: 0;
@@ -102,10 +93,7 @@ body[data-live-arena-visible="1"][data-app-mode="test"] #board.combat-board {
   font-weight: 800;
   letter-spacing: .11em;
 }
-#liveArenaTransition small {
-  font-size: 13px;
-  color: #a6c7c3;
-}
+#liveArenaTransition small { font-size: 13px; color: #a6c7c3; }
 @keyframes liveArenaCurtain {
   0%, 70% { opacity: 1; }
   100% { opacity: 0; }

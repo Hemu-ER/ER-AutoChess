@@ -1,4 +1,4 @@
-/* L.I.V.E. M4-15 — region-matched floor, fitted decor and opaque curtain.
+/* L.I.V.E. M4-16 — floor-only region rendering, centered and masked, opaque curtain.
    Visual-only; no combat, inventory, or account state mutations. */
 (() => {
   'use strict';
@@ -20,9 +20,6 @@
   let curtainRequest = 0;
   let fixedPreviewRegion = null;
   let appliedSize = "";
-  // The PNG artwork's transparent opening nearly fills the original width.
-  // 118% aligns its inner edge with the floor instead of floating far outside it.
-  const DECOR_WIDTH = "118%";
   const loading = new Map();
   const hash = value => {
     let n = 2166136261;
@@ -32,21 +29,13 @@
     }
     return n >>> 0;
   };
-  function urls(key) {
-    return [
-      `assets/battlefields/floor/${key}.png`,
-      `assets/battlefields/decor/${key}.png`
-    ];
-  }
+  function floorUrl(key) { return `assets/battlefields/floor/${key}.png`; }
   function preload(key) {
     if (loading.has(key)) return;
-    const images = urls(key).map(src => {
-      const img = new Image();
-      img.decoding = 'async';
-      img.src = src;
-      return img;
-    });
-    loading.set(key, images);
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = floorUrl(key);
+    loading.set(key, img);
   }
   function roomSnapshot() {
     try { return window.LIVEMultiplayer?.getRoom?.() || null; }
@@ -63,10 +52,9 @@
   function setArtwork(key) {
     if (selected === key) return;
     selected = key;
-    const [floor, decor] = urls(key);
-    board.style.setProperty('--live-floor-url', `url("${floor}")`);
-    board.style.setProperty('--live-decor-url', `url("${decor}")`);
-    board.style.setProperty('--live-decor-width', DECOR_WIDTH);
+    board.style.setProperty('--live-floor-url', `url("${floorUrl(key)}")`);
+    board.style.removeProperty('--live-decor-url');
+    board.style.removeProperty('--live-decor-width');
     board.dataset.liveArenaRegion = key;
     preload(key);
   }
