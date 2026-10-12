@@ -49,3 +49,29 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .lab-combat-log{margin:0;padding:0;list-style:none;max-height:150px;overflow:auto;display:grid;gap:5px;font-size:11px;color:#8ea5ae;font-variant-numeric:tabular-nums}
 .lab-combat-log li{padding:5px 8px;background:#0b1720;border-radius:4px}
 @media(max-width:760px){.lab-combat-row button{flex:1 1 130px}.lab-combat-seed{flex:1 1 115px}.lab-combat-seed input{width:100%}}
+
+/* M5-04 multiplayer lab — independent of the M4 interface. */
+.m5-online-panel{border:1px solid #3c5c67;background:#101e27;border-radius:10px;margin-top:14px;padding:18px 20px;display:grid;gap:12px}
+.m5-online-banner{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px;background:#0b161e;border:1px solid #344b56;border-radius:6px;flex-wrap:wrap}
+.m5-online-banner b{color:#a1e3df}.m5-online-banner small{color:#8ea8af;font-size:11px}
+.m5-online-section{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.m5-online-section input{min-width:115px;max-width:220px;flex:1 1 130px;color:#ecf5f5;background:#0a141b;border:1px solid #3f5965;border-radius:6px;padding:11px;min-height:40px}
+.m5-online-section button,.m5-supply button{border:1px solid #50717c;border-radius:5px;padding:10px 15px;min-height:40px;background:#1e3a44;color:#ebf8f8;cursor:pointer}
+.m5-online-section button:hover,.m5-supply button:hover{background:#2a5663}
+.m5-online-section button:disabled,.m5-supply button:disabled{opacity:.45;cursor:default}
+#m5-room[hidden],#m5-auth[hidden],#m5-lobby[hidden],#m5-supply[hidden],#m5-farm-done[hidden]{display:none!important}
+#m5-room{display:grid;gap:12px}#m5-room-title{color:#a8e0e6;letter-spacing:.08em}
+#m5-room-members{color:#b3c7ca;font-size:12px;flex:1 1 150px}
+#m5-phase-info{color:#a5d7cd;font-size:12px}
+.m5-supply{border:1px solid #607c76;border-radius:8px;background:#112a30;padding:12px;display:grid;gap:12px}
+.m5-supply-choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.m5-supply-choices button{text-align:left;display:grid;gap:5px}
+.m5-chat-log{height:108px;overflow:auto;background:#0b161e;border-radius:5px;padding:10px;display:flex;flex-direction:column;gap:5px;color:#98bbc2;font-size:11px}
+.m5-chat{display:grid;gap:8px}.m5-chat-log b{color:#b9ece3}
+#m5-connection{color:#8dd9c2}.m5-round-curtain{position:fixed;inset:0;z-index:99999;pointer-events:none;visibility:hidden;opacity:0;display:grid;place-items:center;background:#03080c;color:#e7f8f5;text-align:center}
+.m5-round-curtain.on{visibility:visible;animation:m5-curtain 1.7s linear both}.m5-round-curtain strong{font-size:clamp(30px,6vw,70px);letter-spacing:.1em}.m5-round-curtain small{display:block;letter-spacing:.18em;color:#91bdbb;margin-top:14px}
+@keyframes m5-curtain{0%,70%{opacity:1}100%{opacity:0}}
+@media(max-width:760px){.m5-online-panel{padding:12px}.m5-online-section button{flex:1 1 auto}.m5-supply-choices{grid-template-columns:1fr}.m5-online-banner{align-items:flex-start}}
+
+.m5-crit-toggle{display:flex;align-items:center;gap:6px;font-size:11px;color:#e6c484;white-space:nowrap}.m5-crit-toggle input{accent-color:#e6c484}
+
+#m5-region-select{background:#132630;color:#c8edef;border:1px solid #446774;border-radius:5px;padding:9px 10px;font:inherit;font-size:11px;max-width:135px}#m5-region-select:disabled{opacity:.5}

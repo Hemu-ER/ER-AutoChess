@@ -13,18 +13,18 @@
     <a class="lab-return" href="/" aria-label="기존 게임으로 돌아가기">← <span>기존 게임</span></a>
     <div class="lab-identity">
       <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
-      <strong>전투 렌더링 실험실</strong>
+      <strong>차세대 전투 · 온라인 실험실</strong>
     </div>
-    <span class="lab-revision">M5-03 <i>PROTOTYPE</i></span>
+    <span class="lab-revision">M5-04 <i>ONLINE BETA</i></span>
   </header>
 
   <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
     <div>
       <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
       <h1>연구소 <em>01</em></h1>
-      <p>실험체 배치와 기존 전투 엔진의 결정적 재생을 하나의 전장에 연결했어.</p>
+      <p>2인 서버 전투 동기화 · 실험체 배치 · 지역별 게임판 · 치명타 피격 연출</p>
     </div>
-    <div class="lab-mode-switch" role="group" aria-label="보드 모드">
+    <div class="lab-mode-switch" role="group" aria-label="보드 모드"><select id="m5-region-select" aria-label="전장 지역 미리보기"><option value="lab">연구소</option><option value="hotel">호텔</option><option value="beach">모래사장</option><option value="alley">골목길</option><option value="forest">숲</option><option value="police">경찰서</option><option value="church">성당</option><option value="temple">절</option><option value="cemetery">묘지</option><option value="estate">고급주택가</option></select>
       <button id="mode-combat" type="button" aria-pressed="false"><span class="mode-dot"></span>전투 <small>3×6</small></button>
       <button id="mode-prep" type="button" class="mode-selected" aria-pressed="true"><span class="mode-dot"></span>준비 <small>3×3</small></button>
     </div>
@@ -32,7 +32,7 @@
 
   <section class="lab-frame" aria-label="인터랙티브 전장">
     <header class="lab-board-header">
-      <div><span class="lab-tick"></span><b>연구소</b><span>중앙 전장 · 지역 효과 없음</span></div>
+      <div><span class="lab-tick"></span><b id="lab-region-name">연구소</b><span id="lab-region-effect">중앙 전장 · 지역 효과 없음</span></div>
       <div class="lab-board-header-right"><span class="lab-dot" aria-hidden="true"></span><span id="renderer-status">엔진 초기화 중</span><span class="lab-sep"></span><span id="mode-status">준비 모드</span></div>
     </header>
     <div class="lab-stage-space">
@@ -65,11 +65,32 @@
       <p class="lab-footnote">별도 M5 실험실이야. 기존 엔진을 별도로 실행하며 상점·계정·M4 게임 데이터는 변경하지 않아.</p>
     </div>
   </section>
+  <section class="m5-online-panel" aria-label="M5 온라인 멀티플레이 실험실">
+    <div class="lab-info-top"><span>REAL-TIME ONLINE / 2 PLAYER BETA</span><span id="m5-connection">오프라인</span></div>
+    <div class="m5-online-banner"><b id="lab-round-state">오프라인 실험실</b><small>기존 M4 서비스와 같은 서버 API 사용 · 3명 고정 실험체 시험 편성</small></div>
+    <div id="m5-auth" class="m5-online-section">
+      <input id="m5-username" maxlength="20" autocomplete="username" placeholder="M4 계정 아이디" aria-label="계정 아이디">
+      <input id="m5-password" type="password" autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
+      <button id="m5-login">로그인</button><span id="m5-account"></span>
+    </div>
+    <div id="m5-lobby" class="m5-online-section" hidden>
+      <button id="m5-create" class="combat-primary">2인 방 만들기</button>
+      <input id="m5-room-code" placeholder="6자리 방 코드" maxlength="6" aria-label="방 코드">
+      <button id="m5-join">방 참가</button><button id="m5-logout">로그아웃</button>
+    </div>
+    <div id="m5-room" hidden>
+      <div class="m5-online-section"><b id="m5-room-title">ROOM</b><span id="m5-room-members"></span><button id="m5-room-ready">준비하기</button><button id="m5-room-start" hidden>게임 시작</button><button id="m5-leave">방 나가기</button></div>
+      <div class="m5-online-section"><button id="m5-round-ready">라운드 준비 완료</button><button id="m5-farm-done" hidden>파밍 완료 보고</button><span id="m5-phase-info">대기 중</span></div>
+      <div class="m5-supply" id="m5-supply" hidden><strong>보급 선택</strong><div id="m5-supply-choices" class="m5-supply-choices"></div></div>
+      <div class="m5-chat"><div id="m5-chat-log" class="m5-chat-log" role="log" aria-live="off"></div><div class="m5-online-section"><input id="m5-chat-input" maxlength="240" placeholder="방 채팅"><button id="m5-chat-send">전송</button></div></div>
+    </div>
+    <p id="m5-online-notice" class="lab-footnote" aria-live="polite">로그인하면 M4 서버에 실제 방을 만들 수 있어. M4 경제 데이터는 아직 M5로 가져오지 않아.</p>
+  </section>
   <section class="lab-combat-panel" aria-label="실제 전투 엔진 테스트">
     <div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
     <div class="lab-combat-row">
       <div class="lab-combat-seed"><label for="combat-seed">전투 시드</label><input type="number" min="1" max="2147483646" step="1" id="combat-seed" value="123456" /></div>
-      <button type="button" id="combat-start" class="combat-primary">▶ 전투 시작</button>
+      <label class="m5-crit-toggle"><input type="checkbox" id="m5-crit-demo" checked> 치명타 장비 시연</label><button type="button" id="combat-start" class="combat-primary">▶ 전투 시작</button>
       <button type="button" id="combat-pause" disabled>Ⅱ 일시정지</button>
       <button type="button" id="combat-speed">속도 1×</button>
       <button type="button" id="combat-stop" disabled>↺ 배치로 돌아가기</button>
@@ -93,12 +114,14 @@
       </div></div>
     </div>
   </section>
-  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-03 — SPRITE PLACEMENT LAB</footer>
+  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-04 — ONLINE GAME LAB</footer>
 </main>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer src="roster.js"></script>
 <script defer src="items.js"></script>
 <script defer src="combat-engine.js"></script>
+<script defer src="m5-visual-engine.js"></script>
 <script defer src="m5-preview.js"></script>
+<script defer src="m5-online.js"></script>
 </body>
 </html>

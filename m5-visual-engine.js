@@ -1,0 +1,289 @@
+// M5-only visual trace extension of M4-17 deterministic engine. Adds damage-event metadata only.
+// Shared deterministic combat runtime: DOM-independent.
+(function(root){'use strict';
+const {byId}=typeof module!=='undefined'&&module.exports?require('./roster.js'):root.ERRoster;
+const itemDB=typeof module!=='undefined'&&module.exports?require('./items.js'):root.LIVEItems;
+const BOARD_W=6,BOARD_H=3,DT=.05,QA={moveInterval:.5,rioDistance:{1:1,2:2/3,3:1/3},marcusCc:1,lauraCc:1,ayaCc:.5,mirkaCc:1,berniceSlow:.30,berniceSlowDur:3,debiModeAs:.15,debiModeDef:10,iremStartAs:0,johannSanctuary:4,charlotteBuffDur:3};
+const coefficients={
+ hyunwoo:{dog:[1.25,1.8,3],heal:[.05,.07,.10],bluffDef:[10,20,35]},
+ adela:{check:[1.8,2.4,4],pawn:[.5,.75,1.5],promotion:[.4,.55,.9]},
+ dailin:{drunk:[1,1.5,2.5],ten:[.5,.75,1],entry:[1.5,2,3.5]},
+ yuki:{head:[2,2.5,4],button:[.5,.75,1.5]},
+ rio:{shot:[3.4,4.5,7.5],kaeyumiMax:[.35,.45,.75]},
+ justina:{bomb:[.85,1.1,1.9],boost:[.45,.6,1.0]},
+ jenny:{persona:[1.5,2,3],revive:[.2,.3,.5],reviveAs:[.3,.5,1]},
+ nicky:{hot:[.2,.3,.5],guardChance:[.2,.2,.4],counter:[.75,1,2]},
+ shurin:{aoe:[2,2.5,4.5],resolve:[1,1.5,2.5]},
+ marcus:{quake:[1.5,2,3],shock:[1.5,2,3.5]},
+ ian:{revive:[.4,.5,.7],reviveAs:[.5,.75,1.5],lifesteal:[.2,.3,.5]},
+ yumin:{start:[1,1.5,2.5],windDot:[.4,.6,1],windExtra:[.75,1,2]},
+ 'debi-marlene':{rush:[1.5,2,3.5],currentHp:[.03,.04,.07]},
+ garnet:{chain:[.10,.15,.25],basicReduce:[.15,.25,.40],execute:[.10,.15,.25]},
+ kenneth:{shield:[1,2,4],lifesteal:[.10,.15,.25],rage:[.20,.30,.60]},
+ irem:{punch:[1.25,2,3.5],fishShield:[.6,1,1.8]},
+ laura:{twilight:[1.5,2,3.5],thief:[1,1.5,2.5]},
+ bianca:{dominion:[3.3,4.5,7.5],maxHp:[.12,.17,.27]},
+ cathy:{op:[1.5,2.1,3.2],maxHp:[.10,.14,.20],teamHeal:[.08,.13,.24]},
+ abigail:{spin:[1,1.5,2.5],shred:[.05,.08,.15]},
+ leny:{trap:[1.5,2,3.5],goldberg:[.35,.55,.90]},
+ hart:{peacemakerHeal:[.10,.15,.25],feedback:[.30,.40,.60]},
+ isol:{bomb:[1,1.5,2.5],start:[.15,.25,.50]},
+ chloe:{ninaHp:[.70,.70,.70],ninaAtk:[.70,.70,.70],ninaDef:[.80,.80,.80],ninaAs:[1,1,1]},
+ sua:{odyssey:[1.15,1.6,2.8],lifesteal:[.15,.25,.40],mind:[.25,.45,.85],heal:[.008,.015,.03]},
+ johann:{sanctuaryDef:[20,30,50],sanctuaryHp:[.20,.20,.20],sanctuaryAmp:[1,1.5,2.5],aura:[.10,.15,.25]},
+ nadine:{wild:[.025,.0375,.05],wolf:[1,1.5,3]},
+ bernice:{pellet:[.90,.90,.90],scatter:[.50,.50,.50],leg:[1,1.5,2.5]},
+ rozzi:{semtex:[.12,.16,.24],double:[.75,.80,.90]},
+ aya:{fear:[1.25,2,3.5],fixed:[.40,.60,1.20]},
+ mirka:{shield:[.10,.18,.32],crash:[.06,.10,.18]},
+ charlotte:{heal:[.60,.90,1.50],buff:[.10,.15,.30]}
+};
+const growth={hp:[1,1.7,2.8],atk:[1,1.7,2.8],amp:[1,1.7,2.8],def:[1,1.15,1.4],as:[1,1.05,1.15]};
+function toCombatPosition(team,x,y){return{x:team==='A'?x:5-x,y}}
+function validateConfig(input){
+ const config=JSON.parse(JSON.stringify(input));
+ for(const team of ['A','B']){
+  const entries=config['team'+team];
+  if(!Array.isArray(entries)||entries.length>3)throw new Error(team+'팀은 최대 3명입니다.');
+  const ids=new Set(),cells=new Set();
+  for(const e of entries){
+   if(!byId[e.characterId])throw new Error('알 수 없는 실험체: '+e.characterId);if(e.items!==undefined&&(!Array.isArray(e.items)||e.items.length>3||e.items.some(n=>!itemDB?.all[n])))throw new Error('장비 데이터가 올바르지 않아.');
+   ids.add(e.characterId); // 동일 실험체 중복 출전 허용
+   if(![1,2,3].includes(e.star))throw new Error('별 단계는 1~3입니다.');
+   if(![e.x,e.y].every(n=>Number.isInteger(n)&&n>=0&&n<=2))throw new Error('배치는 팀별 3×3 좌표여야 합니다.');
+   const key=e.x+','+e.y;if(cells.has(key))throw new Error('배치 칸이 중복됩니다.');cells.add(key);
+  }
+  const key='mastery'+team;config[key]??=1;
+  if(!Number.isInteger(config[key])||config[key]<1||config[key]>20)throw new Error('숙련도는 1~20입니다.');
+ }
+ config.seed??=24004;if(!Number.isInteger(config.seed))throw new Error('Seed는 정수여야 합니다.');
+ config.moveInterval??=QA.moveInterval;if(!Number.isFinite(config.moveInterval)||config.moveInterval<=0)throw new Error('이동 간격은 양수여야 합니다.');
+ config.targetStats??=true;return config;
+}
+// M4-17: confirmed regional mechanics; provisional values are centralized for balance QA.
+const ARENA_REGIONS = Object.freeze({
+ lab:{name:'연구소',detail:'지역 효과 없음'},
+ hotel:{name:'호텔',detail:'바니걸 실험체 공격 속도 +15%'},
+ beach:{name:'모래사장',detail:'고정 피해 적중 시 대상 최대 HP의 2% 추가 고정 피해'},
+ alley:{name:'골목길',detail:'수면 중 방어력 20% 감소'},
+ forest:{name:'숲',detail:'양 팀의 최전열 1명씩 최대 HP의 50% 피해'},
+ police:{name:'경찰서',detail:'전투 개시 시 전원 4초 행동 불능'},
+ church:{name:'성당',detail:'회복받은 실험체 공격 속도 +15% (5초)'},
+ temple:{name:'절',detail:'전투 개시 시 전원 최대 HP의 20% 보호막'},
+ cemetery:{name:'묘지',detail:'악마 사냥 디버프 대상 적응형 능력치 15% 감소 (5초)'},
+ estate:{name:'고급주택가',detail:'전투 개시 시 양 팀 클리닝 100스택'}
+});
+function pickArenaRegion(code,round){
+ let n=2166136261; for(const ch of `${code||'local'}:${round}`){n^=ch.charCodeAt(0);n=Math.imul(n,16777619)}
+ return Object.keys(ARENA_REGIONS)[(n>>>0)%Object.keys(ARENA_REGIONS).length];
+}
+
+function CombatEngine(input){
+ const config=validateConfig(input);const arena=ARENA_REGIONS[config.arenaRegion]?config.arenaRegion:null;let units=[],time=0,running=false,battleOver=false,prepared=false,outcome=null;
+ let openingSkillsDone=false;let stage={A:{},B:{}},shared={A:{swim:0,maid:0,nextPajama:5},B:{swim:0,maid:0,nextPajama:5}},rng=seeded(config.seed);const events=[],targetActivations=new WeakMap();
+ const log=message=>events.push({time,type:'log',message}),flash=(unit,amount,critical=false,sourceId=null,kind=null)=>events.push({time,type:'damage',unitId:unit.id,amount,critical:!!critical,sourceId:sourceId||null,kind:kind||'basic'});
+ function makeUnit(characterId,star,team,mastery,pos,instanceKey='0'){
+  const r=byId[characterId],m=1+(mastery-1)*.01,u={id:team+':'+characterId+':'+instanceKey,characterId,name:r.name,team,role:r.role,aff:[...r.affiliations],range:r.baseStats.range,main:r.main,star,x:pos.x,y:pos.y,initialX:pos.x,initialY:pos.y};
+  u.coefficients=Object.fromEntries(Object.entries(coefficients[characterId]||{}).map(([k,v])=>[k,v[star-1]]));
+  u.base=Object.fromEntries(Object.entries(growth).map(([k,v])=>[k,r.baseStats[k]*v[star-1]*(k===r.main?m:1)]));u.equipment=[];resetCombatState(u);return u;
+ }
+ const sourceCatalog={
+ '멧현우':{'도그파이트':'skill','허세':'passive'},'꿈델라':{'체크메이트':'skill','프로모션':'passive'},'다이린':{'만취':'skill','취기':'passive'},'유키멍':{'머리치기!':'skill','옷매무새 정리':'passive'},
+ '리오':{'정사필중':'skill','정사필중 정신 집중':'passive'},'유스티나':{'섬멸 포격':'skill','부스트 대쉬':'passive'},'제니':{'페르소나':'skill','죽음의 연기':'passive'},'니키':{'다혈질':'skill','가드&카운터':'passive'},
+ '슈린':{'결심응진':'passive','만검귀종':'skill'},'마커스':{'지각변동':'skill','전사의 투지':'passive'},'이안':{'해방':'skill','사로잡힌 육신':'passive'},'유민':{'풍류운산':'skill','풍류운산 행동 불능':'passive','바람 지속 피해':'passive','바람 추가 피해':'passive'},
+ '데비&마를렌':{'트윈즈 러시':'skill','블루&레드':'passive'},'가넷':{'처형식':'skill','익숙한 아픔':'passive'},'케네스':{'업화':'skill','억압된 분노':'passive'},'이렘':{'냥냥 펀치':'skill','고양이의 습성':'passive'},
+ '라우라':{'황혼의 도둑':'skill','괴도':'passive'},'비앙카':{'진조의 군림':'skill','짧은 안식':'passive'},'캐시':{'이머전시OP':'skill','외과 전문의':'passive'},'아비게일':{'바이너리 스핀':'skill','티어링 블레이드':'passive'},
+ '레니':{'스프링! 트랩':'skill','당근! 바주카':'passive'},'하트':{'Peacemaker':'skill','Feedback':'passive'},'아이솔':{'Mok제 폭탄':'skill','유격전':'passive'},'클로에':{'생명 공유':'skill','살아 있는 마리오네트':'passive'},
+ '수아':{'오딧세이':'skill','마음의 양식':'passive'},'요한':{'구원의 성역':'skill','빛의 가호':'passive'},'나딘':{'늑대 맹습':'skill','야성':'passive'},'버니스':{'레그샷':'skill','산탄':'passive'},
+ '로지':{'셈텍스탄 Mk-II':'skill','더블샷':'passive'},'아야':{'공포탄':'skill','고정 사격':'passive'},'미르카':{'크래시 해머':'skill','리펄스 게이지':'passive'},'샬럿':{'기적 실현':'skill','치유의 빛':'passive'}
+ };
+ function sourceStats(u,n,k){if(!u.damageSources[n])u.damageSources[n]={kind:k,activations:0,hits:0,raw:0,dealt:0,targets:Object.create(null)};return u.damageSources[n]}
+ function activateSource(u,n,k){sourceStats(u,n,k).activations++;if(k==='skill'){onSkillCast(u)}if(k==='skill')log(`<b>[스킬]</b> ${u.name} → ${n}`)}
+ function recordSourceDamage(u,n,k,raw,dealt,target){let e=sourceStats(u,n,k);e.raw+=raw;e.dealt+=dealt;if(dealt>0)e.hits++;if(target&&config.targetStats){let targetKey=target.name||target.id,s=e.targets[targetKey]||(e.targets[targetKey]={activations:0,hits:0,raw:0,dealt:0}),seen=targetActivations.get(e);if(!seen){seen=new Map();targetActivations.set(e,seen)}if(seen.get(targetKey)!==e.activations){s.activations++;seen.set(targetKey,e.activations)}s.raw+=raw;s.dealt+=dealt;if(dealt>0)s.hits++}}
+ function resetSourceStats(u){u.damageSources=Object.create(null);sourceStats(u,'기본 공격','basic');for(const[n,k]of Object.entries(sourceCatalog[u.name]||{}))sourceStats(u,n,k);for(const n of u.aff)if(n==='수영복'||n==='바니걸')sourceStats(u,n,'synergy')}
+ function seeded(seed){let x=seed|0;return()=>{x|=0;x=x+0x6D2B79F5|0;let t=Math.imul(x^x>>>15,1|x);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+ function resetCombatState(u){u.maxHp=u.base.hp;u.hp=u.maxHp;u.atk=u.base.atk;u.def=u.base.def;u.as=u.base.as;u.amp=u.base.amp;u.basicCount=0;u.nextAttack=Infinity;u.nextMove=config.moveInterval;u.damage={basic:0,skill:0,passive:0,synergy:0};u.damageTaken=0;u.healingDone=0;u.healingReceived=0;u.shieldAbsorbed=0;resetSourceStats(u);u.dead=false;u.ccUntil=0;u.channel=null;u.hot=false;u.boost=false;u.sleepUntil=0;u.prisonStacks=0;u.newYear=null;u.bandUntil=0;u.arenaChurchUntil=0;u.arenaDemonUntil=0;u.arenaDemonRatio=0;u.festivalUntil=0;u.festivalTier=0;u.shurin={phase:'normal',normalAttacks:0,resolveUses:0,burstUntil:0,totalResolveUses:0,totalAoeUses:0};u.wind={};u.nextWindTick=1;u.yuminCcDone=false;u.nextQuake=10;u.shock=false;u.nextShot=6;
+ u.skill={invulnUntil:0,immortalUntil:0,dogReady:false,bluffUntil:0,pawns:Object.create(null),drunk:0,drunkUntil:0,buttons:2,buttonChannelUntil:0,personaReady:false,revived:false,ianRevived:false,mode:'marlene',modeStacks:0,modeBonusLeft:0,chainDone:false,kennethStacks:0,kennethBuffUntil:0,shield:0,fish:true,bell:Object.create(null),thief:false,nextLaura:10,nextBianca:4,biancaRest:false,trauma:Object.create(null),cathyHealTicks:0,abigailCount:0,lenyGoldbergAt:3,lenyApplied:0,lenyTrapReady:false,hartUsed:false,isolNext:10,chloeShared:false,lifeShareMode:null,nina:null,nextSua:4,johannUsed:false,wild:0,wolfLeft:0,berniceCount:0,slowUntil:0,rozziCount:0,ayaFixedLeft:0,ayaFearUsed:false,mirkaGauge:0,lastHp:u.maxHp,nextCharlotte:10,charlotteBuffUntil:0};} 
+ function roleBuff(u){let d=u.team==='A'?u.initialX:5-u.initialX;if(u.role==='전사'&&d>=1){u[u.main==='atk'?'atk':'amp']*=1.15;u.as*=1.10;u.def+=10;u.maxHp*=1.10;u.hp=u.maxHp}if(u.role==='탱커'&&d===2){u.def+=20;u.maxHp*=1.20;u.hp=u.maxHp;u.as*=1.10}if(u.role==='원거리 평타'&&d<=1){u.atk*=1.20;u.as*=1.20}if(u.role==='원거리 스킬'&&d<=1){u.amp*=1.25;u.as*=1.10}if(u.role==='근거리 스킬'&&d>=1){u.amp*=1.20;u.as*=1.15}}
+ function lockSynergies(){for(const team of ['A','B']){let own=units.filter(u=>u.team===team),uniqueOwn=[...new Map(own.filter(u=>u.role!=='소환수').map(u=>[u.characterId,u])).values()],count=name=>uniqueOwn.filter(u=>u.aff.includes(name)).length;let hy=own.find(u=>u.name==='멧현우');if(hy&&initialDepth(hy)===2&&!own.some(u=>u!==hy&&initialDepth(u)===2)){hy.maxHp*=1.05;hy.hp*=1.05;hy.def*=1.10;hy.skill.hyunwooSpirit=true;log(`${team}팀 멧현우 · <b>현우정신 ON</b> (HP +5% / DEF +10%)`);}stage[team]={수영복:count('수영복'),바니걸:count('바니걸'),파자마:count('파자마'),마츠리:count('마츠리'),프리즌:count('프리즌'),군악대:count('군악대'),새해:count('새해'),악마사냥꾼:count('악마사냥꾼'),메이드:count('메이드'),애증:count('애증'),'치유의 노래':count('치유의 노래')};shared[team]={swim:0,maid:arena==='estate'?100:0,nextPajama:5};let supports=uniqueOwn.filter(u=>u.role==='서포터').length;if(supports){let r=.05*supports;for(let u of own){u[u.main==='atk'?'atk':'amp']*=1+r;u.as*=1+r;u.maxHp*=1+r;u.hp*=1+r}}let ny=stage[team].새해;if(ny){let hp=[0,.05,.10,.15][ny],df=[0,10,20,25][ny],hits=[0,10,20,30][ny];for(let u of own){u.maxHp*=1+hp;u.hp*=1+hp;u.def+=df;u.newYear={active:true,hpRatio:hp,defBonus:df,hitsLeft:hits}}}if(arena==='estate'&&stage[team].메이드>=2){const startDef=stage[team].메이드>=3?15:5;for(const u of own)u.def+=startDef}let kenneth=units.some(u=>u.name==='케네스');if(kenneth)for(let u of own.filter(u=>u.aff.includes('애증'))){u.amp*=1.30;u.as*=1.30;u.maxHp*=1.20;u.hp*=1.20;u.def*=1.20}}}
+ const dist=(a,b)=>Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y)),adjacent=(a,b)=>Math.abs(a.x-b.x)+Math.abs(a.y-b.y)===1,enemies=u=>units.filter(v=>!v.dead&&v.team!==u.team);
+ function target(u,ignoreRange=false){let all=enemies(u);if(u.name==='캐시'&&all.length){let best=Math.min(...all.map(initialDepth));let es=all.filter(v=>initialDepth(v)===best);es.sort((a,b)=>dist(u,a)-dist(u,b)||b.y-a.y);return es[0]}let es=all.filter(v=>ignoreRange||dist(u,v)<=u.range);if(!es.length)return null;es.sort((a,b)=>(a.y===u.y?0:1)-(b.y===u.y?0:1)||dist(u,a)-dist(u,b)||a.hp-b.hp||a.def-b.def||(b.y-a.y));return es[0]}
+ function nearestEnemy(u){return enemies(u).sort((a,b)=>dist(u,a)-dist(u,b)||a.hp-b.hp||a.def-b.def||(b.y-a.y))[0]||null}
+ const actual=(raw,def)=>raw*100/(100+Math.max(0,def));
+ function timedOffenseMultiplier(u){let m=1;if(u.festivalUntil>time)m*=u.festivalTier>=3?1.30:1.15;if(u.bandUntil>time)m*=stage[u.team].군악대>=2?1.20:1.10;return m}
+ const currentAtk=u=>u.atk*(arena==='cemetery'&&u.arenaDemonUntil>time?1-u.arenaDemonRatio:1)*(owns(u,'레가투스')&&state(u,'레가투스').until>time?1+.05*(state(u,'레가투스').count||0):1)*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.name==='이안'?(u.skill.ianRevived?1.2:.8):1)*(u.name==='케네스'&&u.skill.kennethBuffUntil>time?1+(u.coefficients.rage||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.skill.charlotteBuffRatio||0):1)*timedOffenseMultiplier(u),currentAmp=u=>u.amp*(arena==='cemetery'&&u.arenaDemonUntil>time?1-u.arenaDemonRatio:1)*(u.name==='니키'&&u.hot?1+(u.coefficients.hot||0):1)*(u.skill.charlotteBuffUntil>time?1+(u.skill.charlotteBuffRatio||0):1)*timedOffenseMultiplier(u),adaptive=u=>u.main==='atk'?currentAtk(u):currentAmp(u);
+ function currentAs(u,t){let a=u.as;if(arena==='hotel'&&u.aff.includes('바니걸'))a*=1.15;if(arena==='church'&&u.arenaChurchUntil>time)a*=1.15;if(u.name==='니키'&&u.hot)a*=1+(u.coefficients.hot||0);if(u.name==='리오'&&t)a*=1+(u.coefficients.kaeyumiMax||0)*(QA.rioDistance[dist(u,t)]||0);if(u.name==='다이린'&&u.skill.drunkUntil>time)a*=2;if(u.name==='이안'&&u.skill.ianRevived)a*=1+(u.coefficients.reviveAs||0);if(u.name==='데비&마를렌'&&u.skill.mode==='marlene')a*=1+QA.debiModeAs;if(u.name==='라우라'&&u.skill.thief)a*=2;if(u.name==='아야'&&u.skill.ayaFixedLeft>0)a*=2;if(u.name==='나딘')a*=1+Math.min(15,u.skill.wild)*(u.coefficients.wild||0);if(u.name==='케네스'&&u.skill.kennethBuffUntil>time)a*=1+(u.coefficients.rage||0);if(u.skill.slowUntil>time)a*=1-QA.berniceSlow;if(owns(u,'블레이드 부츠')&&state(u,'블레이드 부츠').until>time)a*=1.15;for(const n of ['팬텀 자켓','길리 슈트','살라딘의 화살통'])if(owns(u,n)&&state(u,n).until>time)a*=1+.05*(state(u,n).count||0);if(owns(u,'레가투스')&&state(u,'레가투스').until>time)a*=1+.05*(state(u,'레가투스').count||0);if(u.bandUntil>time)a*=stage[u.team].군악대>=2?1.20:1.10;return Math.min(4,a)}
+ function applyCC(u,dur){if(u.name==='요한')return;if(u.aff.includes('프리즌')&&stage[u.team].프리즌>=2)dur*=.5;u.ccUntil=Math.max(u.ccUntil,time+dur);if(u.channel){log(`${u.name} 정신 집중 <b>중단</b>`);if(u.name==='리오')u.nextShot=time+6;u.channel=null}}
+ function triggerPeacemaker(u){if(u.name!=='하트'||u.skill.hartUsed||u.dead||u.hp>0)return false;u.skill.hartUsed=true;u.hp=1;activateSource(u,'Peacemaker','skill');for(const x of units.filter(x=>!x.dead&&x.role!=='소환수'))x.skill.immortalUntil=Math.max(x.skill.immortalUntil||0,time+3);u.skill.peaceHealAt=time+2.8;log(`${u.name} <b>Peacemaker</b> · 체력 1로 생존`);return true}
+ function lifePair(chloe){if(!chloe?.skill?.nina)return null;let nina=units.find(x=>x.id===chloe.skill.nina&&!x.dead);return nina?{chloe,nina}:null}
+ function pairFor(u){if(u.name==='클로에')return lifePair(u);if(u.role==='소환수'&&u.ownerId){let chloe=units.find(x=>x.id===u.ownerId&&!x.dead);return chloe?lifePair(chloe):null}return null}
+ function activateLifeShare(pair){if(!pair||pair.chloe.skill.lifeShareMode)return false;let cLow=pair.chloe.hp<=pair.chloe.maxHp*.05,nLow=pair.nina.hp<=pair.nina.maxHp*.05;if(!cLow&&!nLow)return false;let protectedUnit=cLow?pair.chloe:pair.nina;pair.chloe.skill.lifeShareMode=cLow?'chloe':'nina';protectedUnit.skill.immortalUntil=Infinity;activateSource(protectedUnit,'생명 공유','skill');log(`${protectedUnit.name} <b>생명 공유</b> 발동`);return true}
+ function clearLifeShare(pair){if(!pair)return;pair.chloe.skill.lifeShareMode=null;pair.chloe.skill.immortalUntil=0;pair.nina.skill.immortalUntil=0}
+ function linkedProtectedFor(lifeline){let pair=pairFor(lifeline);if(!pair)return null;let mode=pair.chloe.skill.lifeShareMode;if(mode==='chloe'&&lifeline===pair.nina)return pair.chloe;if(mode==='nina'&&lifeline===pair.chloe)return pair.nina;return null}
+ function killLinkedProtected(lifeline){let chloe=lifeline.name==='클로에'?lifeline:(lifeline.ownerId?units.find(x=>x.id===lifeline.ownerId):null);if(!chloe)return;let nina=lifeline.role==='소환수'?lifeline:units.find(x=>x.id===chloe.skill.nina);if(!nina)return;let mode=chloe.skill.lifeShareMode,protectedUnit=mode==='chloe'&&lifeline===nina?chloe:mode==='nina'&&lifeline===chloe?nina:null;if(!protectedUnit)return;protectedUnit.skill.immortalUntil=0;protectedUnit.hp=0;protectedUnit.dead=true;log(`${lifeline.name} 사망 → <b>${protectedUnit.name} 생명 공유 종료·사망</b>`);clearLifeShare({chloe,nina})}
+ function endNinaLink(nina){let pair=pairFor(nina);if(pair)clearLifeShare(pair);if(nina?.ownerId){let owner=units.find(x=>x.id===nina.ownerId);if(owner&&owner.skill.nina===nina.id)owner.skill.nina=null}}
+ function despawnOwnedNina(chloe){if(!chloe?.skill?.nina)return;let nina=units.find(x=>x.id===chloe.skill.nina&&!x.dead);if(nina){nina.skill.immortalUntil=0;nina.hp=0;nina.dead=true;log(`${chloe.name} 사망 → <b>니나 소멸</b>`)}chloe.skill.nina=null;chloe.skill.lifeShareMode=null}
+
+ // M3: each unique completed item has one independent effect state, even if equipped twice.
+ const owns=(u,n)=>Boolean(u?.itemEffects?.[n]);
+ const state=(u,n)=>u.itemEffects[n];
+ function stack(u,n,max,dur=5){let st=state(u,n);st.count=Math.min(max,(st.until>time?st.count:0)+1);st.until=time+dur;return st.count}
+ function adjustedDefense(src,dst){let d=Math.max(0,dst.def-(src.penFlat||0));if(arena==='alley'&&dst.sleepUntil>time)d*=.80;d*=1-Math.min(1,Math.max(0,src.penPct||0));
+  if(owns(src,'용의 비늘'))d*=.85;if(owns(src,'아이언 메이든'))d*=.85;
+  // Distinct reduction sources multiply after penetration (M3-04/05).
+  for(const aura of units)if(!aura.dead&&aura.team!==dst.team&&owns(aura,'유령 신부의 드레스')&&dist(aura,dst)<=1)d*=.90;
+  for(const attacker of units)if(!attacker.dead&&attacker.team!==dst.team&&owns(attacker,'슈팅스타의 자켓')){const deb=state(attacker,'슈팅스타의 자켓').targets?.[dst.id];if(deb&&deb.until>time)d*=1-.05*deb.count}
+  return Math.max(0,d);
+ }
+ function periodicItems(u){if(!u.itemEffects)return;
+  for(const [name,ratio,key] of [['스펙터',.20,'atk'],['레버넌트',.25,'amp']])if(owns(u,name)){let st=state(u,name);if(time+1e-9>=st.next){st.next+=1;for(const t of enemies(u).filter(v=>dist(u,v)<=1))damage(u,t,(key==='atk'?currentAtk(u):currentAmp(u))*ratio,'passive',false,{sourceName:name,itemDamage:true,skipHooks:true})}}
+  if(owns(u,'미스릴 퀴버')){const shield=state(u,'미스릴 퀴버');if(shield.shieldUntil&&time>=shield.shieldUntil){u.skill.shield=Math.max(0,u.skill.shield-(shield.grantedShield||0));shield.shieldUntil=0;shield.grantedShield=0}}
+  if(owns(u,'아오자이')){let st=state(u,'아오자이');if(st.delayed.length){let keep=[];for(const d of st.delayed){const amount=d.remaining/Math.max(1,Math.ceil((d.end-time)/DT));const actualAmount=Math.min(d.remaining,amount);d.remaining-=actualAmount;if(actualAmount>1e-8&&!u.dead)damage(d.src,u,actualAmount,'passive',true,{sourceName:'아오자이 지연 피해',skipHooks:true,noDelay:true});if(d.remaining>1e-6&&time<d.end&&!u.dead)keep.push(d)}st.delayed=keep}}
+  for(const [name,key,inc] of [['팬텀 자켓','hp',.10],['길리 슈트','def',.10],['살라딘의 화살통','adaptive',.05]])if(owns(u,name)){let st=state(u,name);if(st.count&&st.until<=time){if(st.bonusApplied){if(key==='hp'){const r=u.maxHp;u.maxHp/=1+inc;u.hp=Math.min(u.maxHp,u.hp*u.maxHp/r)}else if(key==='def')u.def/=1+inc;else u[u.main]/=1+inc}st.count=0;st.bonusApplied=false}}
+  for(const n of ['천룡잠','화령장','레가투스'])if(owns(u,n)&&state(u,n).until<=time)state(u,n).count=0;
+ }
+ function onBasicItemHit(u,t,crit){if(!u.itemEffects||t.dead)return;
+  for(const n of ['팬텀 자켓','길리 슈트','살라딘의 화살통'])if(owns(u,n)){let st=state(u,n);const prev=st.count||0;stack(u,n,4);if(st.count===4&&!st.bonusApplied){st.bonusApplied=true;if(n==='팬텀 자켓'){u.maxHp*=1.10;u.hp*=1.10}else if(n==='길리 슈트')u.def*=1.10;else u[u.main]*=1.05}}
+  if(owns(u,'미스릴 퀴버')){const st=state(u,'미스릴 퀴버');if(++st.count%3===0){u.skill.shield=u.maxHp*.06;st.grantedShield=u.skill.shield;st.shieldUntil=time+1}}
+  if(owns(u,'레이더')){const st=state(u,'레이더');if(++st.count%3===0){const dealt=damage(u,t,currentAtk(u)*(.15+(u.masteryLevel||1)*.01),'passive',false,{sourceName:'레이더',itemDamage:true,skipHooks:true});heal(u,dealt,u)}}
+  if(owns(u,'슈팅스타의 자켓')){let st=state(u,'슈팅스타의 자켓');st.targets??={};let deb=st.targets[t.id]||{count:0,until:0};deb.count=Math.min(2,(deb.until>time?deb.count:0)+1);deb.until=time+5;st.targets[t.id]=deb}
+  if(owns(u,'텔루리안 타임피스'))damage(u,t,currentAmp(u)*.20,'passive',false,{sourceName:'텔루리안 타임피스',itemDamage:true,skipHooks:true});
+  if(owns(u,'블래스터 헬멧')){let st=state(u,'블래스터 헬멧');if(time>=st.readyAt){damage(u,t,currentAtk(u),'passive',false,{sourceName:'블래스터 헬멧',itemDamage:true,skipHooks:true});st.readyAt=time+5}}
+  if(owns(u,'타이탄 아머')){let st=state(u,'타이탄 아머');if(time>=st.readyAt){const bonus=Math.max(0,u.maxHp-u.originalMaxHp);damage(u,t,bonus*(.05+Math.min(1,u.critChance||0)*.10),'passive',false,{sourceName:'타이탄 아머',itemDamage:true,skipHooks:true});st.readyAt=time+2}}
+  if(crit){for(const n of ['천룡잠','화령장','레가투스'])if(owns(u,n))stack(u,n,n==='레가투스'?3:5)}
+ }
+ function onSkillCast(u){if(!owns(u,'요명월'))return;for(const t of enemies(u).filter(v=>dist(u,v)<=1))damage(u,t,currentAmp(u)*.60,'passive',false,{sourceName:'요명월',itemDamage:true,skipHooks:true})}
+ function damage(src,dst,raw,kind='basic',fixed=false,opt={}){if(dst.dead)return 0;if(dst.skill?.invulnUntil>time)return 0;let r=raw;if(kind==='basic'&&dst.name==='가넷')r*=1-(dst.coefficients.basicReduce||0);if(dst.name==='비앙카'&&dst.skill.biancaRestUntil>time)r*=.10;if(dst.name==='다이린'&&dst.skill.drunkUntil>time)r*=.80;if(!fixed&&opt.guardable!==false&&dst.name==='니키'&&(kind==='basic'||kind==='skill')&&rng()<dst.coefficients.guardChance){r*=.20;activateSource(dst,'가드&카운터','passive');let cr=currentAmp(dst)*dst.coefficients.counter;damage(dst,src,cr,'passive',false,{guardable:false,sourceName:'가드&카운터',skipHooks:true});if(src.dead)return 0}if(src.role==='암살자'&&initialDepth(dst)<=1&&(kind==='basic'||kind==='skill'||kind==='passive'))r*=1.30;if(kind==='basic'&&!opt.itemDamage&&rng()<Math.min(1,Math.max(0,src.critChance||0))){r*=src.critDamage||2;opt.critical=true}if(kind==='skill'&&owns(src,'천룡잠')){const st=state(src,'천룡잠');if(st.until>time)r*=1+(st.count||0)*.02}if(owns(dst,'배틀 슈트')){const dd=dist(src,dst);if(dd>=1&&dd<=3)r*=1-dd*.05}if(owns(dst,'화령장')){const st=state(dst,'화령장');if(st.until>time)r*=1-(st.count||0)*.02}if(owns(dst,'아오자이')&&!opt.noDelay){const deferred=r*.20;r-=deferred;state(dst,'아오자이').delayed.push({src,remaining:deferred,end:time+3})}let d=fixed?r:actual(r,adjustedDefense(src,dst));if(dst.skill?.shield>0){let absorbed=Math.min(dst.skill.shield,d);dst.skill.shield-=absorbed;dst.shieldAbsorbed=(dst.shieldAbsorbed||0)+absorbed;d-=absorbed}
+  let pair=pairFor(dst),mode=pair?.chloe.skill.lifeShareMode;if(pair&&mode&&(kind==='basic'||kind==='skill')&&!opt.lifeShareTransfer){let protectedUnit=mode==='chloe'?pair.chloe:pair.nina,lifeline=mode==='chloe'?pair.nina:pair.chloe;if(dst===protectedUnit){let transfer=d*.70;d*=.30;let nEff=Math.min(Math.max(0,lifeline.hp),transfer);lifeline.hp-=transfer;lifeline.damageTaken=(lifeline.damageTaken||0)+nEff;if(lifeline.hp<=0){lifeline.hp=0;lifeline.dead=true;killLinkedProtected(lifeline);if(lifeline.role==='소환수')endNinaLink(lifeline);if(lifeline.name==='클로에')despawnOwnedNina(lifeline)}}}
+  let eff=Math.min(Math.max(0,dst.hp),d);dst.hp-=d;dst.damageTaken=(dst.damageTaken||0)+eff;src.damage[kind]=(src.damage[kind]||0)+eff;recordSourceDamage(src,opt.sourceName||({basic:'기본 공격',skill:'스킬',passive:'패시브',synergy:'시너지'}[kind]),kind,r,eff,dst);flash(dst,Math.round(eff),Boolean(opt.critical),src.id,kind);if(arena==='beach'&&fixed&&eff>0&&!opt.arenaFollowup){damage(src,dst,dst.maxHp*.02,'synergy',true,{sourceName:'모래사장',arenaFollowup:true,skipHooks:true,guardable:false,noDelay:true})}if(eff>0){if(owns(src,'서슬가시 체인'))dst.itemHealingReductionUntil=time+5;if(kind==='basic'&&!opt.itemDamage&&!opt.skipItemHit)onBasicItemHit(src,dst,Boolean(opt.critical));if(kind==='skill'&&owns(src,'블레이드 부츠'))state(src,'블레이드 부츠').until=time+2;if(opt.itemDamage&&src.itemLifesteal)heal(src,eff*src.itemLifesteal,src)}if(!opt.skipHooks&&eff>0){registerIncomingHit(dst,kind);prison(src,dst,kind);wakeSleep(src,dst,kind);demonHunter(src,dst,kind,opt)}if(dst.name==='비앙카'&&!dst.skill.biancaRest&&dst.hp>0&&dst.hp<=dst.maxHp*.5){dst.skill.biancaRest=true;dst.skill.biancaRestUntil=time+3;heal(dst,dst.maxHp*.5,dst);activateSource(dst,'짧은 안식','passive')}
+if(dst.name==='니키'&&!dst.hot&&dst.hp>0&&dst.hp<=dst.maxHp*.5){dst.hot=true;activateSource(dst,'다혈질','skill')}pair=pairFor(dst);if(pair&&!pair.chloe.skill.lifeShareMode)activateLifeShare(pair);triggerPeacemaker(dst);if(dst.hp<=0){
+  if(dst.skill?.immortalUntil>time){dst.hp=1;return eff}
+  if(dst.name==='제니'&&!dst.skill.revived){dst.skill.revived=true;dst.hp=dst.maxHp*(dst.coefficients.revive||.2);dst.dead=false;dst.skill.invulnUntil=time+1.5;dst.as*=1+(dst.coefficients.reviveAs||0);activateSource(dst,'죽음의 연기','passive');log(`${dst.name} <b>죽음의 연기</b> 부활`);return eff}
+  if(dst.name==='이안'&&!dst.skill.ianRevived){dst.skill.ianRevived=true;dst.hp=dst.maxHp*(dst.coefficients.revive||.4);dst.dead=false;activateSource(dst,'해방','skill');log(`${dst.name} <b>해방</b> 부활`);return eff}
+  dst.hp=0;dst.dead=true;killLinkedProtected(dst);if(dst.role==='소환수')endNinaLink(dst);if(dst.name==='클로에')despawnOwnedNina(dst);log(`${src.name} → <b>${dst.name}</b> 처치`);matsuriKill(src);if(owns(src,'프시케의 칼날')&&dst.role!=='야생동물')src.itemKillCredits=(src.itemKillCredits||0)+1
+ }return eff}
+ const heal=(u,a,source=u)=>{if(u.dead)return 0;let before=u.hp;u.hp=Math.min(u.maxHp,u.hp+a*(u.itemHealingReductionUntil>time?.80:1));let done=u.hp-before;if(done>0){u.healingReceived=(u.healingReceived||0)+done;if(source)source.healingDone=(source.healingDone||0)+done}if(done>0&&arena==='church')u.arenaChurchUntil=time+5;if(done>0&&u.aff.includes('군악대')&&stage[u.team].군악대>=1){let tier=stage[u.team].군악대;u.bandUntil=time+(tier>=2?10:5);log(`${u.name} <b>${tier}군악대</b> 버프 갱신`)}return done};
+ function initialDepth(u){return u.team==='A'?u.initialX:5-u.initialX}
+ function removeNewYear(u){let n=u.newYear;if(!n?.active)return;n.active=false;u.def-=n.defBonus;let old=u.maxHp;u.maxHp/=1+n.hpRatio;u.hp=Math.min(u.maxHp,u.hp*(u.maxHp/old));log(`${u.name} <b>새해</b> 버프 종료`)}
+ function registerIncomingHit(dst,kind){if((kind==='basic'||kind==='skill')&&dst.newYear?.active){dst.newYear.hitsLeft--;if(dst.newYear.hitsLeft<=0)removeNewYear(dst)}}
+ function prison(src,dst,kind){let tier=stage[src.team].프리즌;if(tier<2||!src.aff.includes('프리즌')||(kind!=='basic'&&kind!=='skill')||dst.ccUntil>time)return;dst.prisonStacks=Math.min(8,dst.prisonStacks+1);if(dst.prisonStacks>=8){dst.prisonStacks=0;applyCC(dst,tier>=3?1.5:1);log(`${dst.name} <b>프리즌</b> 행동 불능`)}}
+ function maidBasic(src){let tier=stage[src.team].메이드;if(tier<2||!src.aff.includes('메이드'))return;let sh=shared[src.team],old=sh.maid;sh.maid=Math.min(200,sh.maid+(tier>=3?15:10));let oldDef=tier>=3?Math.min(15,Math.floor(old/20)*3):Math.min(10,Math.floor(old/20)),newDef=tier>=3?Math.min(15,Math.floor(sh.maid/20)*3):Math.min(10,Math.floor(sh.maid/20));if(newDef>oldDef)for(let u of units.filter(x=>x.team===src.team&&!x.dead))u.def+=newDef-oldDef;if(sh.maid>=200){for(let u of units.filter(x=>x.team===src.team&&!x.dead))heal(u,u.maxHp*(tier>=3?.12:.10),src);for(let u of units.filter(x=>x.team===src.team&&!x.dead))u.def-=tier>=3?15:10;sh.maid=0;log(`<b>${tier}메이드</b> 클리닝 회복`)}}
+ function matsuriKill(src){if(src.role==='소환수')return;let tier=stage[src.team].마츠리;if(tier<2)return;let dur=tier>=3?10:5;for(let u of units.filter(x=>x.team===src.team&&!x.dead)){if(u.festivalUntil<=time){let hp=tier>=3?.30:.15;u.maxHp*=1+hp;u.hp*=1+hp}u.festivalTier=tier;u.festivalUntil=time+dur}log(`<b>${tier}마츠리</b> 축제 시작`)}
+ function expireFestival(){for(let u of units){if(u.festivalTier&&u.festivalUntil>0&&time>=u.festivalUntil){let hp=u.festivalTier>=3?.30:.15,old=u.maxHp;u.maxHp/=1+hp;u.hp=Math.min(u.maxHp,u.hp*(u.maxHp/old));u.festivalTier=0;u.festivalUntil=0}}}
+ function pajamaTick(){for(let team of ['A','B']){let tier=stage[team].파자마,sh=shared[team];if(tier<2||time+1e-9<sh.nextPajama)continue;while(time+1e-9>=sh.nextPajama)sh.nextPajama+=5;let es=units.filter(u=>u.team!==team&&!u.dead);if(!es.length)continue;let t=es[Math.floor(rng()*es.length)],dur=1;t.sleepUntil=time+dur;applyCC(t,dur);log(`<b>${tier}파자마</b> — ${t.name} 수면`)}}
+ function wakeSleep(src,dst,kind){if(dst.sleepUntil<=time||(kind!=='basic'&&kind!=='skill'))return;dst.sleepUntil=0;dst.ccUntil=Math.min(dst.ccUntil,time);let tier=stage[src.team].파자마;if(tier>=2){let ratio=tier>=3?2:1;damage(src,dst,currentAmp(src)*ratio,'synergy',false,{guardable:false,sourceName:'파자마',skipHooks:true})}log(`${dst.name} <b>수면 해제</b>`)}
+ function healingSong(charlotte){if(!charlotte?.aff?.includes('치유의 노래'))return;for(let u of units.filter(x=>x.team===charlotte.team&&!x.dead))heal(u,currentAmp(charlotte)*.70,charlotte)}
+ function demonHunter(src,dst,kind,opt={}){let tier=stage[src.team].악마사냥꾼;if(tier<2||!src.aff.includes('악마사냥꾼')||(kind!=='basic'&&kind!=='skill'))return;let sourceName=opt.sourceName||(kind==='basic'?'기본 공격':'스킬'),stats=sourceStats(src,sourceName,kind),actionKey=`${kind}|${sourceName}|${stats.activations||('t'+time.toFixed(6))}`;if(src.skill.demonHunterActionKey===actionKey)return;src.skill.demonHunterActionKey=actionKey;activateSource(src,'악마사냥꾼','synergy');if(arena==='cemetery'){dst.arenaDemonUntil=time+5;dst.arenaDemonRatio=.15}damage(src,dst,adaptive(src)*(tier>=3?.30:.15),'synergy',false,{guardable:false,sourceName:'악마사냥꾼',skipHooks:true})}
+ function bunny(u,t){let c=stage[u.team].바니걸||0;if(!u.aff.includes('바니걸')||c<2||t.dead)return;let ch=c>=3?.40:.20,ra=c>=3?.75:.50;if(rng()<ch){activateSource(u,'바니걸','synergy');damage(u,t,adaptive(u)*ra,'synergy',false,{guardable:false,sourceName:'바니걸'})}}
+ function swimsuit(u){let c=stage[u.team].수영복||0;if(!u.aff.includes('수영복')||c<2)return;shared[u.team].swim++;let need=c>=3?15:20,ra=c>=3?.05:.03;if(shared[u.team].swim>=need){shared[u.team].swim=0;activateSource(u,'수영복','synergy');for(const e of enemies(u))damage(u,e,e.maxHp*ra,'synergy',true,{guardable:false,sourceName:'수영복'})}}
+ function shurinBasic(u,t){let s=u.shurin;if(s.phase==='burst'&&time>=s.burstUntil){s.phase='normal';s.normalAttacks=0;s.burstUntil=0}if(s.phase==='normal'){s.normalAttacks++;if(s.normalAttacks===3)s.phase='ready';return}activateSource(u,'결심응진','passive');let dealt=damage(u,t,currentAtk(u)*u.coefficients.resolve,'passive',false,{guardable:false,sourceName:'결심응진'});heal(u,dealt*.5,u);s.totalResolveUses++;if(s.phase==='burst')return;s.normalAttacks=0;s.resolveUses++;if(s.resolveUses<2){s.phase='normal';return}s.resolveUses=0;s.phase='burst';s.burstUntil=time+3;s.totalAoeUses++;activateSource(u,'만검귀종','skill');for(const e of enemies(u).filter(e=>adjacent(u,e)))damage(u,e,currentAtk(u)*u.coefficients.aoe,'skill',false,{guardable:true,sourceName:'만검귀종'})}
+ function basicHit(u,t,mult=1,opt={}){if(!t||t.dead)return;activateSource(u,'기본 공격','basic');let dealt=damage(u,t,currentAtk(u)*mult,'basic',false,{guardable:true,sourceName:'기본 공격'});bunny(u,t);swimsuit(u);maidBasic(u);return dealt}
+ function basicAttack(u,t){
+  if(u.role==='소환수'){u.basicCount++;activateSource(u,'기본 공격','basic');return damage(u,t,currentAtk(u),'basic',false,{guardable:true,sourceName:'기본 공격',skipHooks:true})}
+  // Bernice/Rozzi are genuine double basic attacks: each hit counts.
+  let hits=u.name==='로지'?2:1;
+  for(let h=0;h<hits&&!t.dead;h++){
+   u.basicCount++;
+   let mult=u.name==='버니스'?(u.coefficients.pellet||.7):u.name==='로지'?(u.coefficients.double||.6):1;
+   let dealt=basicHit(u,t,mult);
+   if(u.name==='케네스')heal(u,dealt*(u.coefficients.lifesteal||.1),u);if(u.name==='이안'&&u.skill.ianRevived)heal(u,dealt*(u.coefficients.lifesteal||.2),u);if(u.skill.goldberg>0){let l=units.find(x=>x.team===u.team&&x.name==='레니'&&!x.dead&&dist(x,u)<=2);if(l){u.skill.goldberg--;activateSource(l,'당근! 바주카','passive');damage(l,t,currentAmp(l)*(l.coefficients.goldberg||.5),'passive',false,{guardable:false,sourceName:'당근! 바주카'});heal(u,currentAmp(l)*(l.coefficients.goldberg||.5),l);}}
+   if(u.name==='샬럿'&&u.basicCount%3===0){activateSource(u,'치유의 빛','passive');for(const a of units.filter(x=>x.team===u.team&&!x.dead&&dist(u,x)<=2)){heal(a,currentAmp(u)*(u.coefficients.heal||.6),u);a.skill.charlotteBuffUntil=time+QA.charlotteBuffDur;a.skill.charlotteBuffRatio=u.coefficients.buff||.1}healingSong(u)}
+   if(u.name==='버니스'){activateSource(u,'산탄','passive');for(const e of enemies(u).filter(e=>e!==t&&e.x===t.x))damage(u,e,currentAtk(u)*(u.coefficients.scatter||.5),'passive',false,{guardable:false,sourceName:'산탄'});u.skill.berniceCount++}
+   if(u.name==='로지')u.skill.rozziCount++;
+   if(u.name==='멧현우'){if(u.skill.dogReady){u.skill.dogReady=false;activateSource(u,'도그파이트','skill');let d=damage(u,t,currentAtk(u)*(u.coefficients.dog||2),'skill',false,{sourceName:'도그파이트'});heal(u,u.maxHp*(u.coefficients.heal||.08),u);u.def+=u.coefficients.bluffDef||20;u.skill.bluffUntil=time+2}if(u.basicCount>=3){u.basicCount=0;u.skill.dogReady=true}}
+   if(u.name==='꿈델라'&&!t.dead){activateSource(u,'프로모션','passive');damage(u,t,currentAmp(u)*(u.coefficients.promotion||.4),'passive',false,{guardable:false,sourceName:'프로모션'});u.skill.pawns[t.id]=Math.min(3,(u.skill.pawns[t.id]||0)+1)}
+   if(u.name==='다이린'){if(u.skill.drunkUntil<=time){u.skill.drunk+=5;if(u.skill.drunk%10===0){activateSource(u,'취기','passive');damage(u,t,currentAtk(u)*(u.coefficients.ten||.5),'passive',false,{guardable:false,sourceName:'취기'})}if(u.skill.drunk>=40){u.skill.drunk=0;u.skill.drunkUntil=time+3;activateSource(u,'만취','skill');if(!t.dead)damage(u,t,currentAtk(u)*(u.coefficients.entry||1.5),'skill',false,{guardable:false,sourceName:'만취'})}}else{damage(u,t,currentAtk(u)*(u.coefficients.drunk||1),'skill',false,{guardable:false,sourceName:'만취'})}}
+   if(u.name==='유키멍'){if(u.skill.headReady){u.skill.headReady=false;activateSource(u,'머리치기!','skill');damage(u,t,currentAtk(u)*(u.coefficients.head||2),'skill',false,{sourceName:'머리치기!'});applyCC(t,.5)}if(u.skill.buttons>0){u.skill.buttons--;activateSource(u,'옷매무새 정리','passive');damage(u,t,currentAtk(u)*(u.coefficients.button||.5),'passive',false,{guardable:false,sourceName:'옷매무새 정리'})}if(u.basicCount>=5){u.basicCount=0;u.skill.headReady=true}if(u.skill.buttons===0&&!u.skill.buttonChannelUntil)u.skill.buttonChannelUntil=time+.5}
+   if(u.name==='유스티나'){if(u.boost&&!t.dead){activateSource(u,'부스트 대쉬','passive');damage(u,t,currentAmp(u)*(u.coefficients.boost||.35),'passive',false,{guardable:false,sourceName:'부스트 대쉬'});u.boost=false}if(u.basicCount>=2){u.basicCount=0;activateSource(u,'섬멸 포격','skill');for(const e of enemies(u).filter(e=>e.y===t.y))damage(u,e,currentAmp(u)*(u.coefficients.bomb||.7),'skill',false,{sourceName:'섬멸 포격'});u.boost=true}}
+   if(u.name==='제니'){if(u.skill.personaReady){u.skill.personaReady=false;activateSource(u,'페르소나','skill');damage(u,t,currentAmp(u)*(u.coefficients.persona||1.5),'skill',false,{sourceName:'페르소나'})}if(u.basicCount>=2){u.basicCount=0;u.skill.personaReady=true}}
+   if(u.name==='슈린')shurinBasic(u,t);
+   if(u.name==='마커스'&&t.shock&&!t.dead){t.shock=false;activateSource(u,'전사의 투지','passive');damage(u,t,currentAtk(u)*u.coefficients.shock,'passive',false,{guardable:false,sourceName:'전사의 투지'});applyCC(t,.5)}
+   if(u.name==='유민'&&!t.dead){let before=u.wind[t.id]||0;if(before>=2){activateSource(u,'바람 추가 피해','passive');damage(u,t,currentAmp(u)*u.coefficients.windExtra,'passive',false,{guardable:false,sourceName:'바람 추가 피해'})}u.wind[t.id]=Math.min(2,before+1)}
+   if(u.name==='데비&마를렌'){u.skill.modeStacks++;if(u.skill.modeBonusLeft>0){u.skill.modeBonusLeft--;damage(u,t,t.hp*(u.coefficients.currentHp||.03),'passive',true,{guardable:false,sourceName:'블루&레드'})}if(u.skill.modeStacks>=5){u.skill.modeStacks=0;activateSource(u,'트윈즈 러시','skill');damage(u,t,currentAtk(u)*(u.coefficients.rush||1.5),'skill',false,{sourceName:'트윈즈 러시'});u.skill.mode=u.skill.mode==='marlene'?'debi':'marlene';u.skill.modeBonusLeft=5}}
+   if(u.name==='케네스'){u.skill.kennethStacks=Math.min(5,u.skill.kennethStacks+1);if(u.skill.kennethStacks>=5){u.skill.kennethStacks=0;activateSource(u,'업화','skill');activateSource(u,'억압된 분노','passive');u.skill.shield=(u.skill.shield||0)+currentAtk(u)*(u.coefficients.shield||3);u.skill.kennethBuffUntil=time+5}}
+   if(u.name==='이렘'&&!t.dead){let had=!!u.skill.bell[t.id];if(had){delete u.skill.bell[t.id];activateSource(u,'냥냥 펀치','skill');damage(u,t,currentAmp(u)*(u.coefficients.punch||3),'skill',false,{sourceName:'냥냥 펀치'});if(u.skill.fish){u.skill.fish=false;u.skill.shield=(u.skill.shield||0)+currentAmp(u)*(u.coefficients.fishShield||2)}}else u.skill.bell[t.id]=true}
+   if(u.name==='라우라'){if(u.skill.thief){u.skill.thief=false;activateSource(u,'괴도','passive');damage(u,t,currentAmp(u)*(u.coefficients.thief||1),'passive',false,{guardable:false,sourceName:'괴도'})}else u.skill.thief=true}
+   if(u.name==='캐시'){u.skill.cathyBasics=(u.skill.cathyBasics||0)+1;if(u.skill.cathyBasics>=2&&!t.dead){u.skill.cathyBasics=0;u.skill.trauma[t.id]=true;activateSource(u,'외과 전문의','passive')}if(u.skill.trauma[t.id]&&!t.dead){delete u.skill.trauma[t.id];activateSource(u,'이머전시OP','skill');damage(u,t,currentAmp(u)*(u.coefficients.op||1.5)+t.maxHp*(u.coefficients.maxHp||.1),'skill',true,{sourceName:'이머전시OP'});for(const a of units.filter(x=>x.team===u.team&&!x.dead))heal(a,a.maxHp*(u.coefficients.teamHeal||.05),u)}}
+   if(u.name==='아비게일'&&!t.dead){t.def=Math.max(0,t.def*(1-(u.coefficients.shred||.05)));u.skill.abigailCount++;if(u.skill.abigailCount>=3){u.skill.abigailCount=0;activateSource(u,'바이너리 스핀','skill');for(const e of enemies(u))damage(u,e,currentAmp(u)*(u.coefficients.spin||1),'skill',false,{sourceName:'바이너리 스핀'})}}
+   if(u.name==='레니'&&u.skill.lenyTrapReady){u.skill.lenyTrapReady=false;activateSource(u,'스프링! 트랩','skill');damage(u,t,currentAmp(u)*(u.coefficients.trap||1.5),'skill',false,{sourceName:'스프링! 트랩'});applyCC(t,.5)}
+   if(u.name==='하트'){activateSource(u,'Feedback','passive');for(let i=0;i<2&&!t.dead;i++)damage(u,t,currentAtk(u)*(u.coefficients.feedback||.3),'passive',false,{guardable:false,sourceName:'Feedback'})}
+   if(u.name==='수아'){activateSource(u,'마음의 양식','passive');damage(u,t,currentAmp(u)*(u.coefficients.mind||.5),'passive',false,{guardable:false,sourceName:'마음의 양식'});heal(u,u.maxHp*(u.coefficients.heal||.02),u)}
+   if(u.name==='나딘'&&u.skill.wolfLeft>0){u.skill.wolfLeft--;damage(u,t,currentAtk(u)*(u.coefficients.wolf||1),'skill',false,{guardable:false,sourceName:'늑대 맹습'})}
+   if(u.name==='버니스'&&u.skill.berniceCount>=3){u.skill.berniceCount=0;activateSource(u,'레그샷','skill');for(const e of enemies(u).filter(e=>e.y===t.y)){damage(u,e,currentAtk(u)*(u.coefficients.leg||1),'skill',false,{sourceName:'레그샷'});e.skill.slowUntil=time+QA.berniceSlowDur}}
+   if(u.name==='로지'&&u.skill.rozziCount>=10){u.skill.rozziCount=0;activateSource(u,'셈텍스탄 Mk-II','skill');damage(u,t,t.maxHp*(u.coefficients.semtex||.08),'skill',true,{sourceName:'셈텍스탄 Mk-II'})}
+   if(u.name==='아야'){if(u.skill.ayaFixedLeft>0){u.skill.ayaFixedLeft--;activateSource(u,'고정 사격','passive');damage(u,t,currentAmp(u)*(u.coefficients.fixed||.75),'passive',false,{guardable:false,sourceName:'고정 사격'})}u.skill.ayaBasics=(u.skill.ayaBasics||0)+1;if(u.skill.ayaBasics>=3&&u.skill.ayaFixedLeft===0){u.skill.ayaBasics=0;u.skill.ayaFixedLeft=5}}
+   if(u.name==='미르카')u.skill.mirkaGauge+=5;
+  }
+ }
+ function move(u){let t=nearestEnemy(u);if(!t||target(u))return;let dir=u.team==='A'?1:-1,nx=u.x+dir,vacant=(x,y)=>x>=0&&x<BOARD_W&&y>=0&&y<BOARD_H&&!units.some(v=>!v.dead&&v.x===x&&v.y===y);if((t.x-u.x)*dir>0&&vacant(nx,u.y)){u.x=nx;return}let ny=u.y+Math.sign(t.y-u.y);if(ny!==u.y&&vacant(u.x,ny))u.y=ny}
+ function periodicAndSkills(){
+  expireFestival();pajamaTick();for(const u of units)if(!u.dead)periodicItems(u);
+  let periodicOrder=units.slice();for(let i=periodicOrder.length-1;i>0;i--){let j=Math.floor(rng()*(i+1));[periodicOrder[i],periodicOrder[j]]=[periodicOrder[j],periodicOrder[i]]}for(const u of periodicOrder){if(u.dead||u.arenaPoliceUntil>time)continue;
+   if(u.name==='멧현우'&&u.skill.bluffUntil&&time>=u.skill.bluffUntil){u.def-=u.coefficients.bluffDef||20;u.skill.bluffUntil=0}
+   if(u.name==='꿈델라'&&time+1e-9>=u.skill.nextAdela){u.skill.nextAdela+=10;activateSource(u,'체크메이트','skill');for(const e of enemies(u)){let p=u.skill.pawns[e.id]||0;damage(u,e,currentAmp(u)*((u.coefficients.check||1.5)+p*(u.coefficients.pawn||.5)),'skill',false,{sourceName:'체크메이트'});u.skill.pawns[e.id]=0}}
+   if(u.name==='유키멍'&&u.skill.buttonChannelUntil&&time>=u.skill.buttonChannelUntil){u.skill.buttons=2;u.skill.buttonChannelUntil=0}
+   if(u.name==='유민'){if(!u.yuminCcDone&&time>=1){u.yuminCcDone=true;activateSource(u,'풍류운산 행동 불능','passive');for(const e of enemies(u))applyCC(e,.5)}if(time+1e-9>=u.nextWindTick){while(time+1e-9>=u.nextWindTick)u.nextWindTick+=1;if(enemies(u).some(e=>(u.wind[e.id]||0)>0))activateSource(u,'바람 지속 피해','passive');for(const e of enemies(u))if((u.wind[e.id]||0)>0)damage(u,e,currentAmp(u)*u.coefficients.windDot,'passive',false,{guardable:false,sourceName:'바람 지속 피해'})}}
+   if(u.name==='마커스'&&time+1e-9>=u.nextQuake&&u.ccUntil<=time){u.nextQuake+=10;activateSource(u,'지각변동','skill');for(const e of enemies(u)){damage(u,e,currentAtk(u)*u.coefficients.quake,'skill',false,{sourceName:'지각변동'});if(!e.dead){applyCC(e,QA.marcusCc);e.shock=true}}}
+   if(u.name==='리오'){if(u.channel&&u.channel.type==='shot'&&time+1e-9>=u.channel.ends){let t=nearestEnemy(u);u.channel=null;if(t){activateSource(u,'정사필중','skill');damage(u,t,currentAtk(u)*u.coefficients.shot,'skill',false,{sourceName:'정사필중'});for(const e of enemies(u).filter(e=>e!==t&&adjacent(e,t)))damage(u,e,currentAtk(u)*u.coefficients.shot*.5,'skill',false,{sourceName:'정사필중'})}}else if(!u.channel&&time+1e-9>=u.nextShot&&u.ccUntil<=time){u.nextShot+=7;u.channel={type:'shot',ends:time+.5};log(`${u.name} 정사필중 정신 집중`)}}
+   if(u.name==='가넷'&&!u.skill.chainDone){let t=nearestEnemy(u);if(t){u.skill.chainDone=true;activateSource(u,'처형식','skill');applyCC(t,1);t.def*=.90;damage(u,t,t.maxHp*(u.coefficients.chain||.1),'skill',true,{sourceName:'처형식'});if(!t.dead&&t.hp/t.maxHp<=u.coefficients.execute){t.hp=0;t.dead=true;log(`${u.name} → <b>${t.name}</b> 처형`)}}}
+   if(u.name==='이렘'){if(!u.skill.nextFish)u.skill.nextFish=3;if(time>=u.skill.nextFish){u.skill.nextFish+=3;u.skill.fish=true}}
+   if(u.name==='라우라'&&time>=u.skill.nextLaura){u.skill.nextLaura+=10;activateSource(u,'황혼의 도둑','skill');for(const e of enemies(u)){damage(u,e,currentAmp(u)*(u.coefficients.twilight||1.5),'skill',false,{sourceName:'황혼의 도둑'});applyCC(e,QA.lauraCc)}}
+   if(u.name==='비앙카'){if(time>=u.skill.nextBianca){u.skill.nextBianca+=8;let t=target(u,true)||nearestEnemy(u);if(t){activateSource(u,'진조의 군림','skill');damage(u,t,currentAmp(u)*(u.coefficients.dominion||3)+t.maxHp*(u.coefficients.maxHp||.1),'skill',false,{sourceName:'진조의 군림'})}}}
+   if(u.name==='레니'&&time>=u.skill.lenyGoldbergAt){u.skill.lenyGoldbergAt+=3;activateSource(u,'당근! 바주카','passive');for(const a of units.filter(x=>x.team===u.team&&!x.dead))a.skill.goldberg=(a.skill.goldberg||0)+1;u.skill.lenyApplied++;if(u.skill.lenyApplied>=2){u.skill.lenyApplied=0;u.skill.lenyTrapReady=true}}
+   if(u.name==='하트')triggerPeacemaker(u);if(u.name==='하트'&&u.skill.peaceHealAt&&time>=u.skill.peaceHealAt){for(const x of units.filter(x=>!x.dead&&x.role!=='소환수'))heal(x,x.maxHp*(u.coefficients.peacemakerHeal||.1),u);u.skill.peaceHealAt=0}
+   if(u.name==='아이솔'&&time>=u.skill.isolNext){u.skill.isolNext+=10;activateSource(u,'Mok제 폭탄','skill');for(const e of enemies(u))damage(u,e,currentAtk(u)*(u.coefficients.bomb||1),'skill',false,{sourceName:'Mok제 폭탄'})}
+   if(u.name==='수아'&&time>=u.skill.nextSua){u.skill.nextSua+=4;let t=target(u,true)||nearestEnemy(u);if(t){activateSource(u,'오딧세이','skill');let total=0;for(const e of enemies(u).filter(e=>e.y===t.y))total+=damage(u,e,currentAmp(u)*(u.coefficients.odyssey||1.5),'skill',false,{sourceName:'오딧세이'});heal(u,total*(u.coefficients.lifesteal||.3),u)}}
+   if(u.name==='요한'&&!u.skill.johannUsed){let a=units.filter(x=>x.team===u.team&&!x.dead&&x!==u&&dist(u,x)<=2&&x.hp<=x.maxHp*.45).sort((a,b)=>a.hp/a.maxHp-b.hp/b.maxHp)[0];if(a){u.skill.johannUsed=true;activateSource(u,'구원의 성역','skill');a.def+=u.coefficients.sanctuaryDef||20;a.skill.sanctuaryUntil=time+QA.johannSanctuary;a.skill.sanctuaryNext=time+1;a.skill.sanctuaryOwner=u.id}}
+   if(u.skill.sanctuaryUntil>time&&u.skill.sanctuaryNext&&time>=u.skill.sanctuaryNext){u.skill.sanctuaryNext+=1;let owner=units.find(x=>x.id===u.skill.sanctuaryOwner);if(owner)heal(u,u.maxHp*(owner.coefficients.sanctuaryHp||.20)+currentAmp(owner)*(owner.coefficients.sanctuaryAmp||1),owner)}
+   if(u.name==='나딘'){let whole=Math.floor(time);if(whole>(u.skill.wildTime||0)){u.skill.wildTime=whole;u.skill.wild=Math.min(15,u.skill.wild+2)}if(u.skill.wild>=15&&!u.skill.wolfTriggered){u.skill.wolfTriggered=true;u.skill.wolfLeft=3;activateSource(u,'늑대 맹습','skill')}}
+   if(u.name==='아야'&&!u.skill.ayaFearUsed&&enemies(u).some(e=>adjacent(u,e))){u.skill.ayaFearUsed=true;activateSource(u,'공포탄','skill');for(const e of enemies(u)){damage(u,e,currentAmp(u)*(u.coefficients.fear||2),'skill',false,{sourceName:'공포탄'});applyCC(e,QA.ayaCc)}}
+   if(u.name==='미르카'){let loss=Math.max(0,(u.skill.lastHp-u.hp)/u.maxHp);if(loss>0)u.skill.mirkaGauge+=loss*100*2;u.skill.lastHp=u.hp;if(u.skill.mirkaGauge>=100){u.skill.mirkaGauge=0;activateSource(u,'크래시 해머','skill');u.skill.shield=(u.skill.shield||0)+u.maxHp*(u.coefficients.shield||.2);let t=target(u,true)||nearestEnemy(u);if(t)for(const e of enemies(u).filter(e=>e===t||adjacent(e,t))){damage(u,e,u.maxHp*(u.coefficients.crash||.1),'skill',false,{sourceName:'크래시 해머'});applyCC(e,QA.mirkaCc)}}}
+   if(u.name==='샬럿'&&time>=u.skill.nextCharlotte){u.skill.nextCharlotte+=10;activateSource(u,'기적 실현','skill');for(const a of units.filter(x=>x.team===u.team&&!x.dead))a.skill.invulnUntil=time+1}
+  }
+ }
+ function affiliationTier(name,count){if(name==='군악대'||name==='새해')return count; if(name==='애증'||name==='치유의 노래')return count?1:0; if(name==='에레보스')return 0; return count>=3?3:count>=2?2:0}
+ function synergySnapshot(){let out={};for(const team of ['A','B']){let own=units.filter(u=>u.team===team),uniqueOwn=[...new Map(own.filter(u=>u.role!=='소환수').map(u=>[u.characterId,u])).values()],aff={};for(const name of ['파자마','바니걸','수영복','마츠리','프리즌','군악대','새해','악마사냥꾼','메이드','애증','치유의 노래','에레보스']){let count=uniqueOwn.filter(u=>u.aff.includes(name)).length,tier=affiliationTier(name,count);aff[name]={count,tier,active:tier>0}}out[team]={affiliations:aff,roles:own.map(u=>({id:u.id,name:u.name,role:u.role,active:roleActive(u)})),shared:{swim:shared[team].swim,maid:shared[team].maid,nextPajama:shared[team].nextPajama}}}return out}
+ function roleActive(u){let d=initialDepth(u);if(u.role==='전사'||u.role==='근거리 스킬')return d>=1;if(u.role==='탱커')return d===2;if(u.role==='원거리 평타'||u.role==='원거리 스킬')return d<=1;if(u.role==='암살자'||u.role==='서포터')return true;return false}
+ function logSynergyStart(){for(const team of ['A','B']){let s=synergySnapshot()[team],active=Object.entries(s.affiliations).filter(([,v])=>v.active).map(([n,v])=>`${n} ${v.tier}`);log(`<b>${team}팀 시너지 확정</b> · ${active.length?active.join(' / '):'활성 소속 없음'}`);for(const r of s.roles)log(`${team}팀 ${r.name} · ${r.role} ${r.active?'<b>역할 시너지 ON</b>':'역할 시너지 OFF'}`)}}
+ function summonNina(chloe){
+  const xs=chloe.team==='A'?[0,1,2]:[3,4,5],dirs=[[1,0],[-1,0],[0,1],[0,-1]],occupied=(x,y,extra=null)=>units.some(v=>!v.dead&&v.x===x&&v.y===y)||(extra&&extra.x===x&&extra.y===y),inside=(x,y)=>x>=0&&x<BOARD_W&&y>=0&&y<BOARD_H;
+  let empties=[];for(const x of xs)for(let y=0;y<BOARD_H;y++)if(!occupied(x,y))empties.push({x,y});if(!empties.length)return null;
+  const freeNeighbors=(u,extra)=>dirs.reduce((n,[dx,dy])=>{let x=u.x+dx,y=u.y+dy;return n+(inside(x,y)&&!occupied(x,y,extra)?1:0)},0);
+  let safe=empties.filter(pos=>{if(freeNeighbors(pos,pos)===0)return false;for(const ally of units.filter(v=>!v.dead&&v.team===chloe.team&&v.role!=='소환수')){let before=freeNeighbors(ally,null),after=freeNeighbors(ally,pos);if(before>0&&after===0)return false}return true});
+  let pool=safe.length?safe:empties,pos=pool[Math.floor(rng()*pool.length)],n={id:chloe.team+':nina',characterId:'nina',name:'니나',team:chloe.team,role:'소환수',aff:[],range:1,main:'atk',star:chloe.star,x:pos.x,y:pos.y,initialX:pos.x,initialY:pos.y,coefficients:{},base:{hp:chloe.maxHp*.70,atk:chloe.atk*.70,def:chloe.def*.80,as:chloe.as,amp:0}};resetCombatState(n);n.ownerId=chloe.id;n.nextAttack=time+1/currentAs(n,null);units.push(n);chloe.skill.nina=n.id;activateSource(chloe,'살아 있는 마리오네트','passive');log(`${chloe.name} → <b>니나 소환</b>`);return n
+ }
+ function applyArenaStart(){
+ if(!arena)return;
+ log(`<b>지역: ${ARENA_REGIONS[arena].name}</b> · ${ARENA_REGIONS[arena].detail}`);
+ if(arena==='temple')for(const u of units)u.skill.shield+=(u.maxHp*.20);
+ if(arena==='police')for(const u of units){u.ccUntil=Math.max(u.ccUntil,4);u.arenaPoliceUntil=4}
+ if(arena==='estate')for(const u of units){u.arenaCleaning=100}
+ if(arena==='forest'){
+   // Select targets from both teams BEFORE modifying either side. Never hit the entire front row.
+   const targets=['A','B'].map(team=>units.filter(u=>u.team===team&&u.role!=='야생동물'&&u.role!=='소환수')
+     .sort((a,b)=>initialDepth(b)-initialDepth(a)||b.hp-a.hp||a.initialY-b.initialY||a.id.localeCompare(b.id))[0]).filter(Boolean);
+   for(const u of targets){const dealt=Math.min(u.hp,u.maxHp*.5);u.hp=Math.max(0,u.hp-dealt);u.damageTaken+=dealt;flash(u,Math.round(dealt));if(u.hp<=0){u.dead=true};log(`<b>숲</b> ${u.team}팀 ${u.name} · 최대 HP 50% 피해`)}
+ }
+}
+function prepareBattle(){if(prepared)return;if(!units.some(u=>u.team==='A')||!units.some(u=>u.team==='B'))throw new Error('양 팀에 최소 1명을 선택하세요.');prepared=true;running=true;units.forEach(roleBuff);lockSynergies();applyArenaStart();logSynergyStart();
+ for(const u of units){u.skill.nextAdela=6;if(u.name==='이안')activateSource(u,'사로잡힌 육신','passive');if(u.name==='아이솔'){u.atk*=1+(u.coefficients.start||.15);u.as*=1+(u.coefficients.start||.15);activateSource(u,'유격전','passive')}if(u.name==='이렘'){u.as*=1+QA.iremStartAs}if(u.name==='요한'){for(const a of units.filter(x=>x.team===u.team&&!x.dead&&x!==u&&dist(u,x)<=2)){let r=u.coefficients.aura||.1;a.atk*=1+r;a.amp*=1+r;a.as*=1+r}activateSource(u,'빛의 가호','passive')}}
+ for(const u of units)u.nextAttack=1/currentAs(u,null);if(arena!=='police'){openingSkills();openingSkillsDone=true}
+ }
+ function openingSkills(){for(const u of [...units].filter(u=>u.name==='클로에'))summonNina(u);for(const u of units.filter(u=>u.name==='데비&마를렌')){let t=nearestEnemy(u);if(t){u.skill.modeStacks=0;activateSource(u,'트윈즈 러시','skill');damage(u,t,currentAtk(u)*(u.coefficients.rush||1.5),'skill',false,{sourceName:'트윈즈 러시'});u.skill.mode=u.skill.mode==='marlene'?'debi':'marlene';u.skill.modeBonusLeft=5}}for(const u of units.filter(u=>u.name==='유민')){activateSource(u,'풍류운산','skill');for(const e of enemies(u))damage(u,e,u.amp*u.coefficients.start,'skill',false,{guardable:true,sourceName:'풍류운산'})}}
+ function timeoutResult(){let a=units.filter(u=>u.team==='A').reduce((s,u)=>s+Math.max(0,u.hp)/u.maxHp,0),b=units.filter(u=>u.team==='B').reduce((s,u)=>s+Math.max(0,u.hp)/u.maxHp,0);return Math.abs(a-b)<1e-9?'무승부':a>b?'A팀 승리':'B팀 승리'}
+ function tick(dt){if(battleOver)return;time+=dt;if(!openingSkillsDone&&time>=4){openingSkills();openingSkillsDone=true}periodicAndSkills();
+ // Two-phase same-timestamp action handling: decide every ready unit's action first, then resolve it.
+ // Every unit that was alive and ready at decision time gets scheduled before resolution.
+ // Equal-timestamp actions are then resolved in seeded-random order instead of array/team order,
+ // so neither A nor B owns a permanent first-action advantage. This preserves deterministic replays
+ // for a given seed while making initiative symmetric across seeds.
+ let actions=[];for(const u of units.filter(u=>!u.dead)){if(u.ccUntil>time||u.channel)continue;let t=target(u);if(t&&time+1e-9>=u.nextAttack){actions.push({type:'attack',u,t});u.nextAttack=time+1/currentAs(u,t)}else if(!t&&time+1e-9>=u.nextMove){actions.push({type:'move',u});u.nextMove=time+config.moveInterval}}
+ for(let i=actions.length-1;i>0;i--){let j=Math.floor(rng()*(i+1));[actions[i],actions[j]]=[actions[j],actions[i]]}for(const a of actions){if(a.type==='attack'){if(a.t&&!a.t.dead)basicAttack(a.u,a.t);else{let t=target(a.u);if(t)basicAttack(a.u,t)}}else if(a.type==='move'&&!a.u.dead)move(a.u)}let a=units.some(u=>u.team==='A'&&!u.dead),b=units.some(u=>u.team==='B'&&!u.dead);if(!a||!b||time>=60){battleOver=true;running=false;outcome=!a&&!b?'무승부':!a?'B팀 승리':!b?'A팀 승리':timeoutResult();log(`<b>${outcome}</b> · ${time.toFixed(1)}초`)}}
+ for(const team of ['A','B'])config['team'+team].forEach((e,i)=>{const u=makeUnit(e.characterId,e.star,team,config['mastery'+team],toCombatPosition(team,e.x,e.y),e.ownedId??i);u.equipment=[...(e.items||[])];u.masteryLevel=config['mastery'+team];u.itemEffects=Object.create(null);u.itemHealingReductionUntil=0;for(const name of new Set(u.equipment))if(itemDB?.all[name]&&!itemDB.all[name].basic)u.itemEffects[name]={count:0,until:0,next:1,readyAt:0,delayed:[],targets:{},bonusApplied:false};for(const name of u.equipment){const st=itemDB?.all[name]?.stats||{};for(const key of ['hp','atk','amp','def'])if(st[key]){if(key==='hp'){u.maxHp+=st.hp;u.hp+=st.hp}else u[key]+=st[key]}if(st.as)u.as*=1+st.as;if(st.crit)u.critChance=(u.critChance||0)+st.crit;if(st.penFlat)u.penFlat=(u.penFlat||0)+st.penFlat}u.critDamage=2+(owns(u,'운명의 주사위')?0.10:0);u.itemLifesteal=u.name==='케네스'?(u.coefficients.lifesteal||.1):u.name==='이안'?(u.coefficients.lifesteal||.2):0;if(owns(u,'오토-암즈'))u.atk*=1.10;if(owns(u,'임세티'))u.amp*=1.15;if(owns(u,'미스릴 크롭')){u.maxHp*=1.20;u.hp*=1.20}if(owns(u,'가디언 슈트'))u.def*=1.10;u.originalMaxHp=u.base.hp;units.push(u)});
+ const getResult=()=>JSON.parse(JSON.stringify({time,battleOver,outcome,itemKillCredits:{A:units.filter(u=>u.team==='A').reduce((s,u)=>s+(u.itemKillCredits||0),0),B:units.filter(u=>u.team==='B').reduce((s,u)=>s+(u.itemKillCredits||0),0)},units,synergies:prepared?synergySnapshot():null}));
+ const api={start:prepareBattle,step(){prepareBattle();tick(DT);return getResult()},run(){prepareBattle();while(!battleOver)tick(DT);return getResult()},getResult,drainEvents(){return events.splice(0)}};
+ api.runtime={makeUnit,resetCombatState,roleBuff,lockSynergies,prepareBattle,seeded,sourceStats,activateSource,recordSourceDamage,dist,adjacent,enemies,target,nearestEnemy,actual,currentAs,applyCC,shurinBasic,move,periodicAndSkills,tick,timeoutResult,healingSong,heal,damage,triggerPeacemaker,currentAtk,currentAmp,synergySnapshot,roleActive,maidBasic,matsuriKill,pajamaTick};Object.defineProperties(api.runtime,{stage:{get:()=>stage},shared:{get:()=>shared},units:{get:()=>units},time:{get:()=>time}});
+ return api;
+}
+const api={CombatEngine,toCombatPosition,validateConfig,DT,coefficients,ARENA_REGIONS,pickArenaRegion};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.M5Combat=api;
+})(globalThis);
