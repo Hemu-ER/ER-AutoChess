@@ -1,9 +1,11 @@
-/* L.I.V.E. M5-06 — readable combat feedback, isolated from M4.
+/* L.I.V.E. M5-09 — instant drag feedback and inspection UI, isolated from M4.
    PixiJS render path / Canvas fallback; neither changes the live M4 game. */
 (() => {
   'use strict';
   const W = 2100, H = 900, COLS = 6, ROWS = 3, CW = W / COLS, CH = H / ROWS;
   let FLOOR_URL = 'assets/m5/floor/lab.png';
+  // Dedicated 3×3 formation artwork is deliberately undecided; keep the 3×6 cropping adapter until an approved asset exists.
+  const PREP_FLOOR_URL = null;
   const REGIONS=Object.freeze({lab:'연구소',hotel:'호텔',beach:'모래사장',alley:'골목길',forest:'숲',police:'경찰서',church:'성당',temple:'절',cemetery:'묘지',estate:'고급주택가'});
   const WILD={1:[['wild_boar',2,1],['wild_dog',1,0]],3:[['wild_wolf',2,0],['wild_wolf',2,2],['wild_boar',1,1]]};
   const OTHER_BOUNDS={bounds:[0,0,800,1200]};
@@ -225,6 +227,7 @@
       if(picked&&isOwn(picked)&&state.mode==='prep'&&!combat){
         state.activeUnitId=picked.id;state.x=picked.x;state.y=picked.y;render();
         gesture={id:picked.id,pointerId:e.pointerId,down:p,now:p,moving:false};
+        canvas.classList.add('m5-unit-grabbed');
         try{canvas.setPointerCapture(e.pointerId);}catch{}
       }
     });
@@ -232,12 +235,12 @@
       if(!gesture||e.pointerId!==gesture.pointerId)return;
       const p=pointerWorld(e);if(!p)return;
       gesture.now=p;
-      if(!gesture.moving&&Math.hypot(p.x-gesture.down.x,p.y-gesture.down.y)>22)gesture.moving=true;
+      if(!gesture.moving&&Math.hypot(p.x-gesture.down.x,p.y-gesture.down.y)>8)gesture.moving=true;
       if(gesture.moving){state.hover=p.valid&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;renderer.drag(gesture);renderer.paint();}
     });
     const end=e=>{
       if(!gesture||e.pointerId!==gesture.pointerId)return;
-      const g=gesture;gesture=null;state.hover=null;
+      const g=gesture;gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');
       const p=pointerWorld(e);
       if(g.moving){
         // Dropping an owned battlefield unit into the M4-style bench dock
@@ -258,8 +261,8 @@
     canvas.addEventListener('dragover',e=>{if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.hasDrag?.()){e.preventDefault();e.dataTransfer.dropEffect='move';}});
     canvas.addEventListener('drop',e=>{if(state.mode!=='prep'||combat||state.onlineSlot!==null)return;const p=pointerWorld(e);if(p?.valid&&p.cellX<3){e.preventDefault();window.M5Economy?.drop?.(p.cellX,p.cellY);}});
     canvas.addEventListener('pointerup',end);
-    canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;renderer.positions();render();}});
-    canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;renderer.positions();render();}});
+    canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
+    canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
   }
   function buildCombatConfig(seed){
     const toEntry=u=>({characterId:charId(u),star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:state.onlineSlot===null&&$('m5-crit-demo')?.checked&&u.team==='A'&&charId(u)==='aya'?['운명의 주사위','레가투스']:u.items||[]});
@@ -611,9 +614,12 @@
         const attack=acting.find(f=>f.kind==='attack');
         if(attack){const t=clamp01((clock-attack.at)/(attack.until-attack.at));
           shift=(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*t);}
-        obj.node.position.set(p.x+shift,p.y);obj.node.zIndex=p.y;
+        const isGrabbed=!combat&&gesture?.moving&&gesture.id===u.id;
+        const dragShift=isGrabbed?{x:gesture.now.x-gesture.down.x,y:gesture.now.y-gesture.down.y}:{x:0,y:0};
+        obj.node.position.set(p.x+shift+dragShift.x,p.y+dragShift.y);
+        obj.node.zIndex=isGrabbed?2000:p.y;
         obj.node.visible=state.mode==='combat'||isOwn(u);
-        obj.node.alpha=u.dead?.22:1;
+        obj.node.alpha=isGrabbed?.83:u.dead?.22:1;
         obj.sprite.tint=acting.some(f=>f.kind==='hit'||f.kind==='crit')?0xffd8de:0xffffff;
         const bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds,sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);obj.sprite.scale.set(visualTeam(u)==='B'?-sc:sc,sc);
         obj.node.children[1].alpha=combat?.35:state.activeUnitId===u.id?1:.60;const ring=obj.node.children[1];ring.clear().ellipse(0,-7,84,23).stroke({width:4,color:visualTeam(u)==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
@@ -663,7 +669,12 @@
       this.mode();
     }
     async setFloor(url){if(this.activeFloor===url)return;const image=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=url});this.floor=image;this.activeFloor=url;this.paint();}
-    async prepareBattleSprites(list){for(const u of list){if(this.images.has(u.characterId))continue;try{const im=await new Promise((ok,fail)=>{const v=new Image();v.onload=()=>ok(v);v.onerror=fail;v.src=src(u.characterId)});this.images.set(u.characterId,im)}catch{}}this.paint();}
+    async prepareBattleSprites(list){
+      await Promise.all([...new Set(list.map(u=>u.characterId))].filter(id=>!this.images.has(id)).map(id=>new Promise(resolve=>{
+        const im=new Image();im.onload=()=>{this.images.set(id,im);this.paint();resolve();};im.onerror=()=>resolve();im.src=src(id);
+      })));
+      this.paint();
+    }
     mode(){this.canvas.width=viewW();this.canvas.height=H;this.paint();}
     positions(){this.paint();}
     drag(){this.paint();}
@@ -693,7 +704,9 @@
         const mid=(bb[0]+bb[2])/2;
         c.save();c.translate(cx,cy);if(visualTeam(u)==='B')c.scale(-1,1);
         if(acting.some(f=>f.kind==='hit'||f.kind==='crit')){c.shadowColor='#ffb4c0';c.shadowBlur=9;c.filter='brightness(1.08)';}
-        c.drawImage(im,-mid*scale,-bb[3]*scale,im.width*scale,im.height*scale);c.restore();
+        if(im?.complete&&im.naturalWidth>0)c.drawImage(im,-mid*scale,-bb[3]*scale,im.width*scale,im.height*scale);
+        else {c.fillStyle='#acdce9ab';c.font='bold 19px sans-serif';c.textAlign='center';c.fillText('불러오는 중',0,-24);}
+        c.restore();
         // Skill burst is drawn by paintCinematicCanvas: avoid a second overlapping ring.
         if(combat)drawHpCanvas(c,u,{x:cx,y:cy});
         c.restore();
@@ -711,16 +724,8 @@
     startInput();
     render();
   }
-  $('m5-brightness').addEventListener('input',e=>{
-    state.brightness=clamp(Number(e.target.value)/100,.55,1);
-    $('m5-brightness-value').textContent=Math.round(state.brightness*100)+'%';renderer?.paint();
-  });
-  $('m5-vfx').addEventListener('change',e=>{state.vfx=e.target.checked;renderer?.paint();});
-  $('m5-sound').addEventListener('change',e=>{state.sound=e.target.checked;});
-  $('m5-brightness-reset').addEventListener('click',()=>{
-    state.brightness=.75;state.vfx=true;state.sound=false;
-    $('m5-brightness').value='75';$('m5-brightness-value').textContent='75%';$('m5-vfx').checked=true;$('m5-sound').checked=false;renderer?.paint();
-  });
+  // M5-09: visual director panel retired. Stage defaults remain brightness 75%, VFX ON.
+
   $('m5-result-back').addEventListener('click',()=>{if(state.onlineSlot===null)stopCombat();});
   $('m5-region-select').addEventListener('change',e=>setRegion(e.target.value).catch(err=>feedback('지역 이미지 로드 실패: '+err.message)));
   $('combat-start').addEventListener('click',()=>startCombat());
@@ -770,6 +775,8 @@
     units.splice(0,units.length,...own,...enemy);
     if(!units.some(u=>u.id===state.activeUnitId))state.activeUnitId=own[0]?.id||null;
     if(renderer){
+      // Update the formation on this very frame; never wait for a new PNG request.
+      renderer.positions();render();
       await renderer.prepareBattleSprites?.(own.map(u=>({id:'A:'+u.id,characterId:u.characterId,team:'A'})));
       renderer.positions();render();
     }
@@ -857,6 +864,8 @@
     sandboxApplyRoster,onlineSetup,onlineSyncTeams,onlineTeamForServer,onlineStart,onlineRoundPrep,onlineLeave,updateOnlineHud,setRegion,
     getState:()=>({...state,units:units.map(u=>({...u})),viewWidth:viewW(),cellWidth:CW,cellHeight:CH}),
     cellFromClient:(clientX,clientY)=>{if(!renderer?.canvas)return null;const p=pointerWorld({clientX,clientY});return p?.valid&&state.mode==='prep'&&!combat&&state.onlineSlot===null&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;},
+    dragPreviewAt:(clientX,clientY)=>{if(!renderer?.canvas||combat||state.mode!=='prep')return null;const p=pointerWorld({clientX,clientY});const target=p?.valid&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;state.hover=target;renderer.paint();return target;},
+    clearDragPreview:()=>{state.hover=null;renderer?.paint();},
     selectCell,setMode,moveUnit,resetUnits,toggleGrid:()=>toggle('grid'),
     startCombat,stopCombat,pauseCombat,changeSpeed,
     getCombatState:()=>combat?{time:combat.snapshot.time,battleOver:combat.snapshot.battleOver,outcome:combat.snapshot.outcome,consistent:combat.consistent,serverMatch:combat.serverMatch,paused:combat.paused,criticalHits:combat.critCount,units:combat.snapshot.units.map(u=>({id:u.id,x:u.x,y:u.y,hp:u.hp,maxHp:u.maxHp,dead:u.dead}))}:null

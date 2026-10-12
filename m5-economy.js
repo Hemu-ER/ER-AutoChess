@@ -27,6 +27,7 @@
   const editable=()=>!busyOnline && !live.getCombatState();
   const makeOwned=(characterId,where='bench',x=null,y=null,star=1)=>({uid:data.nextUid++,characterId,star,location:where,x,y});
   function initial(){
+    clearPlacementEcho();
     data={credits:5,round:1,level:1,exp:0,locked:false,nextUid:1,shop:[],owned:[]};
     data.owned=defaultTeam.map(([c,x,y])=>makeOwned(c,'board',x,y));
     rollShop();chosenBench=null;chosenBoard=data.owned[1]?.uid||null;dragUid=null;
@@ -113,6 +114,20 @@
     syncBoard();render();message(`${name(o.characterId)} 벤치로 회수`);return true;
   }
   function recall(){return recallUid(chosenBoard);}
+  let placementEcho=null;
+  function clearPlacementEcho(){placementEcho?.remove();placementEcho=null;}
+  function showPlacementEcho(o,x,y){
+    clearPlacementEcho();
+    const stage=$('stage-wrap'),canvas=$('stage')?.querySelector('canvas');
+    if(!stage||!canvas)return;
+    const canvasRect=canvas.getBoundingClientRect(),stageRect=stage.getBoundingClientRect();
+    if(!canvasRect.width||!canvasRect.height)return;
+    const node=document.createElement('div');node.className='m5-placement-echo';
+    node.style.left=(canvasRect.left-stageRect.left+canvasRect.width*(x+.5)/3)+'px';
+    node.style.top=(canvasRect.top-stageRect.top+canvasRect.height*(y+.87)/3)+'px';
+    const im=document.createElement('img');im.src=`assets/characters/${o.characterId}.png`;im.alt='';
+    node.appendChild(im);stage.appendChild(node);placementEcho=node;
+  }
   function deploy(uid,x,y){
     if(!editable()||!Number.isInteger(x)||!Number.isInteger(y)||x<0||x>=3||y<0||y>=3)return false;
     const o=ownedByUid(uid);if(!o||o.location!=='bench')return false;
@@ -122,6 +137,7 @@
     if(occupant){occupant.location='bench';occupant.x=occupant.y=null;}
     o.location='board';o.x=x;o.y=y;
     chosenBench=null;chosenBoard=o.uid;
+    showPlacementEcho(o,x,y);
     syncBoard();render();message(occupant?`${name(o.characterId)} 배치 · ${name(occupant.characterId)} 벤치 복귀`:`${name(o.characterId)} 배치 완료`);
     return true;
   }
@@ -129,7 +145,7 @@
     if(busyOnline)return;
     const entries=board().map(o=>({uid:o.uid,characterId:o.characterId,star:o.star,x:o.x,y:o.y}));
     syncing=true;
-    Promise.resolve(live.sandboxApplyRoster(entries)).catch(e=>message('전장 스프라이트 연결 실패: '+e.message)).finally(()=>{syncing=false;});
+    Promise.resolve(live.sandboxApplyRoster(entries)).catch(e=>message('전장 스프라이트 연결 실패: '+e.message)).finally(()=>{syncing=false;clearPlacementEcho();});
   }
   function syncBoardPositions(people){
     if(busyOnline||syncing)return;
@@ -188,7 +204,7 @@
     panel.querySelectorAll('[data-buy]').forEach(el=>el.disabled ||=!editable());
   }
   function setOnline(on){
-    busyOnline=Boolean(on);panel.hidden=busyOnline;
+    busyOnline=Boolean(on);clearPlacementEcho();panel.hidden=busyOnline;
     document.body.classList.toggle('m5-economy-enabled',!busyOnline);
     if(!busyOnline){initial();}
     else{chosenBench=null;dragUid=null;render();}
@@ -200,31 +216,35 @@
   // Unified mouse/pen/touch drag with a real character-image ghost. HTML5
   // native drag is deliberately disabled (no mobile support, opaque preview).
   let benchGesture=null;
-  const removeGhost=()=>{benchGesture?.ghost?.remove();document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');};
+  const removeGhost=()=>{benchGesture?.ghost?.remove();document.querySelectorAll('.m5-bench-grabbed').forEach(x=>x.classList.remove('m5-bench-grabbed'));document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');live.clearDragPreview?.();};
   const placeGhost=(g,x,y)=>{if(!g.ghost)return;g.ghost.style.left=x+'px';g.ghost.style.top=y+'px';};
   panel.addEventListener('dragstart',e=>{if(e.target.closest('[data-bench]'))e.preventDefault();});
   panel.addEventListener('pointerdown',e=>{
     const seat=e.target.closest('[data-bench]');
     if(!seat||!editable()||(e.pointerType==='mouse'&&e.button!==0))return;
     const uid=Number(seat.dataset.bench),o=ownedByUid(uid);if(!o)return;
-    benchGesture={uid,pointerId:e.pointerId,x:e.clientX,y:e.clientY,active:false,ghost:null};
+    const ghost=document.createElement('div');ghost.className='m5-drag-ghost m5-drag-pending';
+    const img=document.createElement('img');img.src=`assets/characters/${o.characterId}.png`;img.alt='';
+    const txt=document.createElement('span');txt.textContent=name(o.characterId);
+    ghost.append(img,txt);document.body.appendChild(ghost);
+    benchGesture={uid,pointerId:e.pointerId,x:e.clientX,y:e.clientY,active:false,ghost};
+    placeGhost(benchGesture,e.clientX,e.clientY);
+    seat.classList.add('m5-bench-grabbed');
     if(e.pointerType!=='mouse')e.preventDefault();
   });
   document.addEventListener('pointermove',e=>{
     const g=benchGesture;if(!g||g.pointerId!==e.pointerId)return;
-    if(!g.active&&Math.hypot(e.clientX-g.x,e.clientY-g.y)>=8){
-      g.active=true;dragUid=g.uid;
-      const o=ownedByUid(g.uid);if(!o){benchGesture=null;dragUid=null;return;}
-      g.ghost=document.createElement('div');g.ghost.className='m5-drag-ghost';
-      const img=document.createElement('img');img.src=`assets/characters/${o.characterId}.png`;img.alt='';
-      const txt=document.createElement('span');txt.textContent=name(o.characterId);
-      g.ghost.append(img,txt);document.body.appendChild(g.ghost);
+    const distance=Math.hypot(e.clientX-g.x,e.clientY-g.y);
+    if(!g.active&&distance>=5){
+      g.active=true;dragUid=g.uid;g.ghost?.classList.remove('m5-drag-pending');
       document.body.classList.add('m5-is-dragging');
     }
+    placeGhost(g,e.clientX,e.clientY);
     if(!g.active)return;
-    e.preventDefault();placeGhost(g,e.clientX,e.clientY);
-    const cell=live.cellFromClient?.(e.clientX,e.clientY);
+    e.preventDefault();
+    const cell=live.dragPreviewAt?.(e.clientX,e.clientY);
     g.ghost.classList.toggle('m5-over-board',!!cell);
+    g.ghost.classList.toggle('m5-invalid-drop',!cell);
     $('stage')?.classList.toggle('m5-stage-drop-active',!!cell);
   },{passive:false});
   document.addEventListener('pointerup',e=>{

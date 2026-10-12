@@ -173,3 +173,44 @@ body.m5-is-dragging{user-select:none}.m5-drag-ghost{position:fixed;z-index:21474
 @media(max-width:1320px){.m5-live-layout{grid-template-columns:minmax(160px,195px) minmax(0,1fr) minmax(200px,240px);gap:8px}.lab-app{padding:6px 9px 16px}.m5-economy-panel{width:calc(100% - 10px)}}
 @media(max-width:1040px){.m5-live-layout{grid-template-columns:minmax(0,1fr) 245px}.m5-live-left{grid-column:1/-1;grid-row:2}.m5-live-center{grid-column:1;grid-row:1}.m5-live-right{grid-column:2;grid-row:1}.m5-live-left .m5-online-panel{max-height:210px}.m5-economy-panel{grid-template-columns:125px minmax(0,1fr) 175px}.m5-market-toolbar{gap:4px}}
 @media(max-width:760px){.m5-live-layout{display:flex;flex-direction:column}.m5-live-center,.m5-live-rail{width:100%}.m5-live-right{display:grid;grid-template-columns:1fr}.m5-live-left{order:3}.m5-economy-panel{position:relative;bottom:auto;grid-template-columns:1fr;grid-template-areas:'cap' 'title' 'toolbar' 'cards' 'bench' 'footer' 'msg';gap:8px;border-radius:9px;width:100%}.m5-economy-title>div:first-child{display:none}.m5-economy-title{width:135px}.m5-market-toolbar{flex-direction:row;flex-wrap:wrap}.m5-market-row{grid-template-columns:repeat(5,minmax(105px,1fr));overflow:auto}.m5-shop-card{height:145px}.m5-econ-footer{border-left:0;border-top:1px solid #314951;padding-top:8px;display:flex;flex-wrap:wrap;justify-content:space-between}.m5-bench-row{grid-template-columns:repeat(8,minmax(65px,1fr));overflow:auto}.m5-bench-slot{height:78px}}
+
+/* M5-09: fixed 75% floor brightness, left-top synergy HUD and inspection-ready panels. */
+.m5-live-center .lab-frame{position:relative}
+.m5-board-synergy{position:absolute;left:9px;top:47px;z-index:14;max-width:min(210px,36%);padding:8px 9px;border:1px solid #38535b;background:#08141ccf;border-radius:7px;pointer-events:none;box-shadow:0 10px 23px #0007}
+.m5-board-synergy-head{display:flex;justify-content:space-between;gap:8px;color:#d5f2ef;font-size:11px;margin-bottom:6px}.m5-board-synergy-head small{color:#84aab0;font-size:9px}
+.m5-board-synergy #m5-synergy-list{display:flex;gap:5px;flex-wrap:wrap;color:#98afb4;font-size:10px;line-height:1.35}
+.m5-board-synergy #m5-synergy-list>span{border:1px solid #4e6570;padding:3px 5px;border-radius:4px;background:#122732e8;color:#bacdd2;font-size:10px}
+.m5-board-synergy #m5-synergy-list>.m5-synergy-active{color:#baffed;border-color:#63c9a2;background:#194138dc}
+.m5-items-preview,.m5-log-preview,.m5-chat-preview{border:1px solid #354d57;border-radius:8px;background:#0d1720;padding:10px;min-width:0}
+.m5-panel-head{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:9px}.m5-panel-head strong{font-size:12px;color:#e4f0f3}.m5-panel-head small,.m5-items-preview>p{font-size:9px;color:#7f9ba5;margin:7px 0 0}.m5-panel-head span{color:#9fbfc5}
+.m5-items-preview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.m5-item-placeholder{height:38px;border:1px dashed #3d5361;background:#111f29;border-radius:5px;display:grid;place-items:center}
+.m5-item-placeholder small{font-size:9px;color:#66828e}
+.m5-log-preview .lab-combat-log{margin:0;max-height:210px;min-height:68px;overflow-y:auto;padding-left:20px;color:#a5bdc5}
+.m5-chat-preview{margin-top:9px}.m5-chat-preview .m5-chat{display:flex;flex-direction:column;gap:6px}.m5-chat-preview .m5-chat-log{min-height:76px;max-height:180px;overflow-y:auto;padding:8px;border-radius:5px;background:#080f17;color:#a8c1c9;font-size:11px;overflow-wrap:anywhere}
+.m5-chat-idle{margin:0;color:#829da5;font-size:10px}.m5-chat-preview .m5-online-section{display:flex;flex-wrap:nowrap}.m5-chat-preview #m5-chat-input{width:100%;min-width:0}.m5-chat-preview #m5-chat-send{flex:0 0 auto}
+.m5-bench-slot.m5-bench-grabbed{outline:2px solid #92efd5;outline-offset:1px;filter:brightness(1.16)}
+.m5-drag-ghost{transition:none!important;will-change:left,top;opacity:1;transform:translate(-50%,-84%)}
+.m5-drag-ghost.m5-drag-pending{opacity:.78;transform:translate(-50%,-84%) scale(.8);border-color:#96b9c7}
+.m5-drag-ghost.m5-invalid-drop{border-color:#e9949c;box-shadow:0 0 12px #c45a7588}
+#stage canvas{cursor:grab}#stage canvas.m5-unit-grabbed{cursor:grabbing}
+.m5-stage-drop-active{outline:3px solid #92f4cb;outline-offset:3px}
+@media(max-width:1040px){.m5-board-synergy{max-width:36%;padding:6px}}
+@media(max-width:760px){.m5-board-synergy{top:43px;left:5px;max-width:43%;padding:5px}.m5-board-synergy-head{font-size:10px}.m5-board-synergy #m5-synergy-list>span{font-size:9px;padding:2px 3px}.m5-items-preview-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+
+/* M5-09: keep usable combat controls and log ahead of debugging controls. */
+.m5-live-right .lab-combat-panel{max-height:270px;overflow-y:auto}
+.m5-live-right .lab-combat-row{gap:4px}
+.m5-live-right .lab-combat-row button{min-height:29px;padding:5px 6px;font-size:10px}
+.m5-live-right .m5-log-preview{max-height:160px;overflow:hidden}
+.m5-live-right .m5-log-preview .lab-combat-log{max-height:106px;min-height:45px}
+.m5-live-right .lab-details{opacity:.88}
+
+/* Keep a visible image on the landing cell until async sprite textures complete. */
+.m5-placement-echo{position:absolute;z-index:19;pointer-events:none;width:clamp(40px,15%,90px);height:clamp(70px,30%,150px);transform:translate(-50%,-100%);display:flex;align-items:flex-end;justify-content:center;filter:drop-shadow(0 5px 12px #0af6);animation:m5PlacementEcho .22s ease-out both}
+.m5-placement-echo img{width:100%;height:100%;object-fit:contain;object-position:center bottom}
+@keyframes m5PlacementEcho{from{opacity:.7;scale:.94}to{opacity:1;scale:1}}
+
+/* Top-left synergy is a real rail panel, never painted over units or HP HUD. */
+.m5-live-left>.m5-board-synergy{position:relative;left:auto;top:auto;z-index:auto;max-width:none;width:100%;padding:10px;pointer-events:auto;background:#0d1720;box-shadow:none}
+.m5-live-left>.m5-board-synergy #m5-synergy-list{display:flex;flex-wrap:wrap}
