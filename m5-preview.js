@@ -1,4 +1,4 @@
-/* L.I.V.E. M5-03 — independent engine-driven combat laboratory.
+/* L.I.V.E. M5-05 — cinematic 2D combat laboratory, isolated from M4.
    PixiJS render path / Canvas fallback; neither changes the live M4 game. */
 (() => {
   'use strict';
@@ -27,12 +27,43 @@
   const units = originals.map(u => ({...u}));
   const src = id => `assets/characters/${id}.png`;
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
-  const state = {mode:'prep', x:1, y:1, grid:false, points:false, engine:'loading', activeUnitId:'bianca', hover:null, onlineSlot:null, onlinePhase:'', round:0, region:'lab'};
+  const state = {brightness:.75, vfx:true, sound:false, mode:'prep', x:1, y:1, grid:false, points:false, engine:'loading', activeUnitId:'bianca', hover:null, onlineSlot:null, onlinePhase:'', round:0, region:'lab'};
   const root = $('stage'), wrap = $('stage-wrap');
   let renderer = null, gesture = null, toastTimer = 0;
   let combat = null, raf = null, lastFrame = 0, lag = 0, lastStatus = 0;
   const visual = new Map();
-  const floaters = [], flashes = [];
+  const floaters = [], flashes = [], combatEffects=[];
+  let audioContext=null,lastSound=0,recapRendered=false;
+  function tuneSound(kind){
+    if(!state.sound||nowMs()-lastSound<100)return;
+    lastSound=nowMs();try{
+      const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+      audioContext ||= new C();if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+      const t=audioContext.currentTime,g=audioContext.createGain(),osc=audioContext.createOscillator();
+      osc.type=kind==='crit'?'sawtooth':kind==='skill'?'triangle':'sine';
+      const hz=kind==='crit'?190:kind==='skill'?420:kind==='kill'?125:310;
+      osc.frequency.setValueAtTime(hz,t);osc.frequency.exponentialRampToValueAtTime(hz*.55,t+.14);
+      g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(kind==='crit'?.035:.013,t+.012);g.gain.exponentialRampToValueAtTime(.0001,t+.16);
+      osc.connect(g).connect(audioContext.destination);osc.start(t);osc.stop(t+.17);
+    }catch{}
+  }
+  function fxBurst(kind,x,y,color='#b2ecf2'){
+    if(!state.vfx)return;
+    combatEffects.push({kind,x,y,at:nowMs(),color,duration:kind==='skill'?900:kind==='kill'?820:480});
+    if(combatEffects.length>90)combatEffects.shift();
+  }
+  function fxTrace(source,target,critical=false){
+    if(!state.vfx||!source||!target)return;
+    const a=visual.get(source.id)||spritePoint(source),b=visual.get(target.id)||spritePoint(target);
+    if(!a||!b)return;
+    combatEffects.push({kind:'trace',x:a.x,y:a.y-110,x2:b.x,y2:b.y-115,at:nowMs(),color:critical?'#ffd27f':'#9acbdc',duration:350});
+    if(combatEffects.length>90)combatEffects.shift();
+  }
+  function hpTop(u,p){
+    const bb=(portraits[u.characterId||u.id]||OTHER_BOUNDS).bounds;
+    const sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);
+    return Math.max(18,p.y-(bb[3]-bb[1])*sc-32);
+  }
   const battleActive = () => !!combat;
   const shownUnits = () => combat ? combat.snapshot.units.map(u => ({...u, id:u.characterId})) : units;
   const portraitFor = u => portraits[u.characterId || u.id];
@@ -189,6 +220,47 @@
     return {teamA:units.filter(u=>u.team==='A').map(toEntry),teamB:units.filter(u=>u.team==='B').map(toEntry),
       masteryA:1,masteryB:1,moveInterval:.5,seed,arenaRegion:state.region};
   }
+  function updateTacticalHud(){
+    const bar=$('m5-tactical-hud');if(!bar)return;
+    bar.hidden=!combat;
+    const list=combat?.snapshot.units||[];
+    for(const [team,id] of [['A','ally'],['B','enemy']]){
+      const pool=list.filter(u=>visualTeam(u)===team),alive=pool.filter(u=>!u.dead&&u.hp>0);
+      $("m5-hud-"+id).textContent=alive.length+' / '+pool.length;
+      const pct=100*pool.reduce((sum,u)=>sum+Math.max(0,u.hp),0)/Math.max(1,pool.reduce((sum,u)=>sum+u.maxHp,0));
+      $("m5-hud-"+id+'-hp').style.width=Math.max(0,Math.min(100,pct)).toFixed(2)+'%';
+    }
+    $('m5-hud-phase').textContent=combat?.finished?'전투 종료':combat?.paused?'전투 일시정지':'COMBAT / 교전 중';
+    $('m5-hud-counter').textContent=combat?.snapshot.time.toFixed(1)+' SEC' || '00:00';
+  }
+  function buildRecap(){
+    if(!combat?.finished||recapRendered)return;
+    recapRendered=true;
+    const b=combat,all=b.snapshot.units.filter(u=>u.role!=='소환수'&&u.role!=='야생동물');
+    const max=Math.max(1,...all.map(u=>Object.values(u.damage||{}).reduce((a,v)=>a+v,0)));
+    $('m5-battle-roster').replaceChildren(...all.map(u=>{
+      const dmg=Math.round(Object.values(u.damage||{}).reduce((a,v)=>a+v,0));
+      const e=document.createElement('div');e.className='m5-battle-member'+(visualTeam(u)==='B'?' enemy':'');
+      const head=document.createElement('div');head.className='head';
+      const name=document.createElement('b');name.textContent=u.name;const val=document.createElement('span');val.textContent=dmg.toLocaleString('ko-KR');head.append(name,val);
+      const track=document.createElement('div');track.className='damage';const fill=document.createElement('i');fill.style.width=(dmg/max*100).toFixed(1)+'%';track.append(fill);
+      const foot=document.createElement('small');foot.textContent=`받은 피해 ${Math.round(u.damageTaken||0).toLocaleString('ko-KR')} · ${u.dead?'전투 불능':'생존'}`;
+      e.append(head,track,foot);return e;
+    }));
+    $('m5-analysis-result').textContent=b.snapshot.outcome;
+    $('m5-battle-analysis').hidden=false;
+    const result=$('m5-battle-result');result.hidden=false;
+    const ownWin=state.onlineSlot===1?'B팀 승리':'A팀 승리';
+    const outcome=b.snapshot.outcome;
+    const title=outcome==='무승부'?'DRAW / 무승부':outcome===ownWin?'VICTORY / 승리':'DEFEAT / 패배';
+    $('m5-result-title').textContent=title;
+    $('m5-result-sub').textContent=b.consistent?'전투 엔진 결과 일치 · 시드 '+b.config.seed:'전투 종료 · 검증 상태를 확인해 줘';
+    $('m5-result-score').replaceChildren(...[
+      ['전투 시간',b.snapshot.time.toFixed(1)+'초'],['치명타',String(b.critCount)+'회'],['생존 인원',String(b.snapshot.units.filter(u=>visualTeam(u)==='A'&&!u.dead).length)+'명']
+    ].map(([name,value])=>{const e=document.createElement('span'),t=document.createElement('b');t.textContent=value;e.textContent=name;e.append(t);return e;}));
+    $('m5-result-back').hidden=state.onlineSlot!==null;
+    if(state.onlineSlot!==null)$('m5-result-sub').textContent+=' · 서버가 다음 라운드를 진행해';
+  }
   function updateCombatUI(){
     const live=$('combat-live'), start=$('combat-start'), pause=$('combat-pause'), stop=$('combat-stop');
     if(!live)return;
@@ -202,6 +274,8 @@
     $('combat-log').replaceChildren(...(b?.logs||[]).slice(-8).reverse().map(t=>{const li=document.createElement('li');li.textContent=t;return li;}));
     $('mode-combat').disabled=!!b||state.onlineSlot!==null;$('mode-prep').disabled=!!b||state.onlineSlot!==null;$('reset-units').disabled=!!b||state.onlineSlot!==null;
     $('combat-speed').textContent=`속도 ${b?.speed || 1}×`;
+    updateTacticalHud();
+    if(b?.finished)buildRecap();
     updateInfo();
   }
   function startCombat(override=null){
@@ -211,14 +285,14 @@
     $('combat-seed').value=String(seed);
     const cfg=override||buildCombatConfig(seed);
     try {
-      if(!Array.isArray(cfg.teamA)||!Array.isArray(cfg.teamB))throw new Error('전투 편성 데이터 형식이 올바르지 않아.');
       // Reference run uses the very same original engine and exact same config.
       const expected=new ERCombat.CombatEngine(cfg).run();
       const engine=new (window.M5Combat?.CombatEngine||ERCombat.CombatEngine)(cfg);
       engine.start();
       const snapshot=engine.getResult();
       combat={engine,config:cfg,expected,snapshot,paused:false,finished:false,consistent:null,speed:1,logs:[],critCount:0};
-      visual.clear();floaters.length=0;flashes.length=0;
+      visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;recapRendered=false;
+      $('m5-battle-result').hidden=true;$('m5-battle-analysis').hidden=true;
       for(const u of snapshot.units){const p=spritePoint(u);visual.set(u.id,{x:p.x,y:p.y});}
       renderer?.prepareBattleSprites?.(snapshot.units);
       const events=engine.drainEvents();for(const e of events)if(e.type==='log') combat.logs.push(stripLog(e.message));
@@ -235,8 +309,15 @@
   function markFx(u,kind,text){
     if(!u)return;
     const p=visual.get(u.id)||spritePoint(u),now=nowMs();
-    flashes.push({key:u.id,kind,until:now+(kind==='skill'?760:kind==='hit'||kind==='crit'?380:240)});
-    if(text)floaters.push({x:p.x+(Math.random()-.5)*35,y:p.y-185,text,color:kind==='crit'?'#ffd37d':kind==='hit'?'#ff9ba6':'#c3eeff',critical:kind==='crit',at:now});
+    flashes.push({key:u.id,kind,at:now,until:now+(kind==='skill'?760:kind==='hit'||kind==='crit'?380:kind==='kill'?820:240)});
+    if(kind==='hit'||kind==='crit'||kind==='skill'||kind==='kill')fxBurst(kind,p.x,p.y-100,kind==='crit'?'#ffd78c':kind==='hit'?'#ff9ba6':kind==='kill'?'#d4e4eb':'#b1e9ff');
+    if(kind==='crit'||kind==='skill'||kind==='kill')tuneSound(kind);
+    if(text){
+      const overlap=floaters.filter(f=>Math.abs(f.x-p.x)<125&&now-f.at<360).length;
+      const stagger=[0,-72,72,-115,115][overlap%5];
+      floaters.push({x:p.x+stagger,y:p.y-185-Math.floor(overlap/5)*43,text,
+        color:kind==='crit'?'#ffd37d':kind==='hit'?'#ff9ba6':kind==='heal'?'#86eec3':'#c3eeff',critical:kind==='crit',at:now});
+    }
     while(floaters.length>45)floaters.shift();
   }
   function stepCombat(){
@@ -248,20 +329,33 @@
       const v=old.get(u.id);
       if(!visual.has(u.id)){const p=spritePoint(u);visual.set(u.id,{x:p.x,y:p.y});}
       if(!v)continue;
-      if(u.basicCount>v.basicCount)markFx(u,'attack',null);
-      if(u.dead&&!v.dead)markFx(u,'hit','KO');
+      if(u.basicCount>v.basicCount){
+        markFx(u,'attack',null);
+        const enemies=b.snapshot.units.filter(t=>t.team!==u.team&&!t.dead);
+        enemies.sort((a,b)=>(a.x-u.x)**2+(a.y-u.y)**2-((b.x-u.x)**2+(b.y-u.y)**2));
+        if(enemies[0])fxTrace(u,enemies[0]);
+      }
+      if(u.hp>v.hp+1.0)markFx(u,'heal','+'+Math.round(u.hp-v.hp).toLocaleString('ko-KR'));
+      if(u.dead&&!v.dead)markFx(u,'kill','KO');
     }
     for(const e of b.engine.drainEvents()){
       if(e.type==='damage' && e.amount>0){
         const receiver=b.snapshot.units.find(u=>u.id===e.unitId);
-        if(receiver){markFx(receiver,e.critical?'crit':'hit',Number(e.amount).toLocaleString('ko-KR'));if(e.critical)b.critCount++;}
+        if(receiver){
+          markFx(receiver,e.critical?'crit':'hit',Number(e.amount).toLocaleString('ko-KR'));
+          if(e.critical)b.critCount++;
+          if(e.sourceId){const source=b.snapshot.units.find(x=>x.id===e.sourceId);if(source)fxTrace(source,receiver,e.critical);}
+        }
       }
       if(e.type!=='log')continue;
       const line=stripLog(e.message);b.logs.push(`[${e.time.toFixed(1)}] ${line}`);
       if(b.logs.length>70)b.logs.shift();
       if(line.includes('[스킬]')){
         const caster=b.snapshot.units.find(u=>line.includes(u.name));
-        if(caster)markFx(caster,'skill','SKILL');
+        if(caster){markFx(caster,'skill',null);
+          const name=line.split('→').slice(1).join('→').trim().slice(0,22);
+          if(name)floaters.push({x:(visual.get(caster.id)||spritePoint(caster)).x,y:(visual.get(caster.id)||spritePoint(caster)).y-210,text:name,color:'#d6f5ff',critical:false,at:nowMs()});
+        }
       }
     }
     if(b.snapshot.battleOver){
@@ -287,6 +381,7 @@
     if(!combat.finished||floaters.length||flashes.length){
       const t=nowMs();for(let i=floaters.length-1;i>=0;i--)if(t-floaters[i].at>1100)floaters.splice(i,1);
       for(let i=flashes.length-1;i>=0;i--)if(t>flashes[i].until)flashes.splice(i,1);
+      for(let i=combatEffects.length-1;i>=0;i--)if(t-combatEffects[i].at>combatEffects[i].duration)combatEffects.splice(i,1);
       raf=requestAnimationFrame(combatFrame);
     }
   }
@@ -295,21 +390,63 @@
   function stopCombat(){
     if(!combat)return false;
     if(raf!==null)cancelAnimationFrame(raf);raf=null;
-    combat=null;lag=0;visual.clear();floaters.length=0;flashes.length=0;
+    combat=null;lag=0;visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;recapRendered=false;
+    $('m5-battle-result').hidden=true;$('m5-battle-analysis').hidden=true;$('m5-tactical-hud').hidden=true;
     state.mode='prep';state.x=Math.min(state.x,2);
     renderer?.mode();renderer?.positions(true);
     updateCombatUI();return true;
   }
   function fxFor(key){return flashes.filter(f=>f.key===key);}
   function drawHpCanvas(c,u,p){
-    const pct=clamp01(u.hp/Math.max(1,u.maxHp)),x=p.x-83,y=Math.max(22,p.y-(u.y===0?230:274));
+    const pct=clamp01(u.hp/Math.max(1,u.maxHp)),x=p.x-83,y=hpTop(u,p);
     c.fillStyle='#071117dd';c.fillRect(x-3,y-3,172,19);
     c.fillStyle='#2e3a40';c.fillRect(x,y,166,11);
-    c.fillStyle=u.team==='A'?'#73e0e7':'#f09aaf';c.fillRect(x,y,166*pct,11);
+    c.fillStyle=visualTeam(u)==='A'?'#73e0e7':'#f09aaf';c.fillRect(x,y,166*pct,11);
     if(u.skill?.shield>0){c.fillStyle='#9bd5f4';c.fillRect(x,y+13,166*clamp01(u.skill.shield/Math.max(1,u.maxHp)),3);}
     if(u.ccUntil>combat.snapshot.time||u.sleepUntil>combat.snapshot.time){c.fillStyle='#ffd888';c.fillRect(p.x-2,y-12,5,8);}
   }
   function drawFloatCanvas(c){const now=nowMs();for(const f of floaters){const t=clamp01((now-f.at)/1100);c.save();c.globalAlpha=1-t;c.textAlign='center';c.font=f.critical?'italic 900 49px sans-serif':'bold 31px sans-serif';if(f.critical){c.translate(f.x,f.y-48*t);c.scale(1.13-.13*t,1.13-.13*t);c.translate(-f.x,-(f.y-48*t));}c.strokeStyle='#061018';c.lineWidth=5;c.strokeText(f.text,f.x,f.y-48*t);c.fillStyle=f.color;c.fillText(f.text,f.x,f.y-48*t);c.restore();}}
+  function paintCinematicPixi(g){
+    g.clear();if(!combat||!state.vfx)return;
+    const now=nowMs();
+    for(const e of combatEffects){
+      const t=clamp01((now-e.at)/e.duration),a=1-t;
+      const color=Number.parseInt(e.color.replace('#',''),16);
+      if(e.kind==='trace'){
+        const mx=e.x+(e.x2-e.x)*Math.min(1,t*2.8),my=e.y+(e.y2-e.y)*Math.min(1,t*2.8);
+        g.moveTo(e.x,e.y).lineTo(mx,my).stroke({color,width:13,alpha:a*.13});
+        g.moveTo(e.x,e.y).lineTo(mx,my).stroke({color,width:3,alpha:a*.8});
+        g.circle(mx,my,5+7*t).fill({color,alpha:a*.85});
+      }else{
+        const r=(e.kind==='skill'?56:e.kind==='kill'?40:18)+t*(e.kind==='skill'?150:90);
+        g.circle(e.x,e.y,r).stroke({color,width:e.kind==='skill'?8:5,alpha:a*.7});
+        if(e.kind==='crit'||e.kind==='kill')for(let i=0;i<8;i++){
+          const angle=(i/8)*Math.PI*2,x1=e.x+Math.cos(angle)*r*.6,y1=e.y+Math.sin(angle)*r*.6;
+          g.moveTo(x1,y1).lineTo(e.x+Math.cos(angle)*r*1.4,e.y+Math.sin(angle)*r*1.4).stroke({color,width:4,alpha:a*.75});
+        }
+      }
+    }
+  }
+  function paintCinematicCanvas(c){
+    if(!combat||!state.vfx)return;
+    const now=nowMs();c.save();c.globalCompositeOperation='screen';
+    for(const e of combatEffects){
+      const t=clamp01((now-e.at)/e.duration),a=1-t;c.globalAlpha=a;
+      c.strokeStyle=e.color;c.fillStyle=e.color;
+      if(e.kind==='trace'){
+        const mx=e.x+(e.x2-e.x)*Math.min(1,t*2.8),my=e.y+(e.y2-e.y)*Math.min(1,t*2.8);
+        c.beginPath();c.lineWidth=4;c.moveTo(e.x,e.y);c.lineTo(mx,my);c.stroke();
+        c.beginPath();c.arc(mx,my,7+7*t,0,Math.PI*2);c.fill();
+      }else{
+        const r=(e.kind==='skill'?56:e.kind==='kill'?40:18)+t*(e.kind==='skill'?150:90);
+        c.lineWidth=e.kind==='skill'?8:5;c.beginPath();c.arc(e.x,e.y,r,0,Math.PI*2);c.stroke();
+        if(e.kind==='crit'||e.kind==='kill')for(let i=0;i<8;i++){
+          const a=i*Math.PI/4;c.beginPath();c.moveTo(e.x+Math.cos(a)*r*.6,e.y+Math.sin(a)*r*.6);c.lineTo(e.x+Math.cos(a)*r*1.4,e.y+Math.sin(a)*r*1.4);c.stroke();
+        }
+      }
+    }
+    c.restore();
+  }
   function rectGridPixi(g){
     g.clear();
     if(state.grid){
@@ -345,6 +482,7 @@
       const floor=await P.Assets.load(FLOOR_URL);
       if(Math.round(floor.width)!==W||Math.round(floor.height)!==H)throw Error('바닥 원본은 2100×900이어야 해');
       this.floorSprite=new P.Sprite(floor);this.app.stage.addChild(this.floorSprite);
+      this.floorSprite.tint=0xbfbfbf;
       this.grid=new P.Graphics();this.markers=new P.Graphics();
       this.app.stage.addChild(this.grid,this.markers);
       this.pieces=new P.Container();this.pieces.sortableChildren=true;this.app.stage.addChild(this.pieces);
@@ -398,6 +536,7 @@
       })||null;
     }
     paint(){
+      const shade=Math.round(state.brightness*255);this.floorSprite.tint=(shade<<16)|(shade<<8)|shade;
       rectGridPixi(this.grid);this.markers.clear();
       if(!combat)rectanglePixi(this.markers,state.x,state.y,state.x<3?0x8ae1eb:0xf2b8c9,.10);
       if(state.hover)rectanglePixi(this.markers,state.hover.x,state.hover.y,0xa3ffcc,.14);
@@ -416,15 +555,15 @@
         const h=obj.node.children[3];h.clear();
         if(combat){
           const pct=clamp01(u.hp/Math.max(1,u.maxHp));
-          h.roundRect(-87,Math.max(22-p.y,u.y===0?-230:-274)-3,174,17,3).fill({color:0x041018,alpha:.93});
-          h.rect(-83,Math.max(22-p.y,u.y===0?-230:-274),166,11).fill({color:0x26343c});
-          h.rect(-83,Math.max(22-p.y,u.y===0?-230:-274),166*pct,11).fill({color:u.team==='A'?0x70dce5:0xe895ae});
-          if(u.skill?.shield>0)h.rect(-83,Math.max(22-p.y,u.y===0?-230:-274)+14,166*clamp01(u.skill.shield/Math.max(1,u.maxHp)),3).fill({color:0x9dd8fa});
+          h.roundRect(-87,hpTop(u,p)-p.y-3,174,17,3).fill({color:0x041018,alpha:.93});
+          h.rect(-83,hpTop(u,p)-p.y,166,11).fill({color:0x26343c});
+          h.rect(-83,hpTop(u,p)-p.y,166*pct,11).fill({color:visualTeam(u)==='A'?0x70dce5:0xe895ae});
+          if(u.skill?.shield>0)h.rect(-83,hpTop(u,p)-p.y+14,166*clamp01(u.skill.shield/Math.max(1,u.maxHp)),3).fill({color:0x9dd8fa});
           if(acting.some(f=>f.kind==='skill'))h.circle(0,-115,90).stroke({width:9,color:0x9cddff,alpha:.75});
           if(u.ccUntil>combat.snapshot.time||u.sleepUntil>combat.snapshot.time)h.circle(0,-240,10).fill({color:0xf8d18b});
         }
       }
-      this.fxLayer.clear();
+      paintCinematicPixi(this.fxLayer);
       if(combat)for(const f of flashes.filter(f=>f.kind==='skill')){
         const u=combat.snapshot.units.find(x=>x.id===f.key);if(!u)continue;
         const p=visual.get(f.key)||spritePoint(u),t=1-clamp01((f.until-clock)/760);
@@ -468,7 +607,7 @@
       return Math.abs(x-p.x)<(bb[2]-bb[0])*scale*.5&&y<=p.y+10&&y>=p.y-(bb[3]-bb[1])*scale;
     })||null;}
     paint(){
-      if(!this.ctx)return;const c=this.ctx;c.clearRect(0,0,viewW(),H);c.drawImage(this.floor,0,0);
+      if(!this.ctx)return;const c=this.ctx;c.clearRect(0,0,viewW(),H);c.save();c.filter=`brightness(${state.brightness}) saturate(.88)`;c.drawImage(this.floor,0,0);c.restore();
       if(state.grid){for(let y=0;y<3;y++)for(let x=0;x<visibleCols();x++){
         c.strokeStyle=x<3?'#a2cbd04c':'#f1b4bc4c';c.lineWidth=2;c.strokeRect(x*CW+2,y*CH+2,CW-4,CH-4);
       }}
@@ -493,7 +632,7 @@
         if(combat)drawHpCanvas(c,u,{x:cx,y:cy});
         c.restore();
       }
-      if(combat)drawFloatCanvas(c);
+      if(combat){paintCinematicCanvas(c);drawFloatCanvas(c);}
     }
   }
   function fail(err){root.replaceChildren();const e=document.createElement('p');e.className='lab-error';e.textContent=`이미지를 표시하지 못했어: ${err.message}`;root.appendChild(e);$('renderer-status').textContent='로드 오류';}
@@ -506,6 +645,17 @@
     startInput();
     render();
   }
+  $('m5-brightness').addEventListener('input',e=>{
+    state.brightness=clamp(Number(e.target.value)/100,.55,1);
+    $('m5-brightness-value').textContent=Math.round(state.brightness*100)+'%';renderer?.paint();
+  });
+  $('m5-vfx').addEventListener('change',e=>{state.vfx=e.target.checked;renderer?.paint();});
+  $('m5-sound').addEventListener('change',e=>{state.sound=e.target.checked;});
+  $('m5-brightness-reset').addEventListener('click',()=>{
+    state.brightness=.75;state.vfx=true;state.sound=false;
+    $('m5-brightness').value='75';$('m5-brightness-value').textContent='75%';$('m5-vfx').checked=true;$('m5-sound').checked=false;renderer?.paint();
+  });
+  $('m5-result-back').addEventListener('click',()=>{if(state.onlineSlot===null)stopCombat();});
   $('m5-region-select').addEventListener('change',e=>setRegion(e.target.value).catch(err=>feedback('지역 이미지 로드 실패: '+err.message)));
   $('combat-start').addEventListener('click',()=>startCombat());
   $('combat-pause').addEventListener('click',pauseCombat);

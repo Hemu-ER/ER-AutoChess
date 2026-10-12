@@ -15,14 +15,14 @@
       <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
       <strong>차세대 전투 · 온라인 실험실</strong>
     </div>
-    <span class="lab-revision">M5-04 <i>ONLINE BETA</i></span>
+    <span class="lab-revision">M5-05 <i>CINEMATIC LAB</i></span>
   </header>
 
   <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
     <div>
       <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
       <h1>연구소 <em>01</em></h1>
-      <p>2인 서버 전투 동기화 · 실험체 배치 · 지역별 게임판 · 치명타 피격 연출</p>
+      <p>2인 온라인 전투 · 실전 스프라이트 전장 · 시네마틱 타격/스킬/결과 연출</p>
     </div>
     <div class="lab-mode-switch" role="group" aria-label="보드 모드"><select id="m5-region-select" aria-label="전장 지역 미리보기"><option value="lab">연구소</option><option value="hotel">호텔</option><option value="beach">모래사장</option><option value="alley">골목길</option><option value="forest">숲</option><option value="police">경찰서</option><option value="church">성당</option><option value="temple">절</option><option value="cemetery">묘지</option><option value="estate">고급주택가</option></select>
       <button id="mode-combat" type="button" aria-pressed="false"><span class="mode-dot"></span>전투 <small>3×6</small></button>
@@ -30,14 +30,31 @@
     </div>
   </section>
 
+
+  <section class="m5-presentation-bar" aria-label="전장 그래픽과 효과 설정">
+    <div class="m5-preset"><span class="lab-eyebrow">VISUAL DIRECTOR</span><b>전투 연출 설정</b></div>
+    <label class="m5-light-control">바닥 명도 <input type="range" id="m5-brightness" min="55" max="100" step="5" value="75"><output id="m5-brightness-value">75%</output></label>
+    <label class="m5-feature-check"><input type="checkbox" id="m5-vfx" checked> 공격 궤적 · 파티클</label>
+    <label class="m5-feature-check"><input type="checkbox" id="m5-sound"> 전투 효과음</label>
+    <button type="button" id="m5-brightness-reset">화면 설정 초기화</button>
+  </section>
+
   <section class="lab-frame" aria-label="인터랙티브 전장">
     <header class="lab-board-header">
       <div><span class="lab-tick"></span><b id="lab-region-name">연구소</b><span id="lab-region-effect">중앙 전장 · 지역 효과 없음</span></div>
       <div class="lab-board-header-right"><span class="lab-dot" aria-hidden="true"></span><span id="renderer-status">엔진 초기화 중</span><span class="lab-sep"></span><span id="mode-status">준비 모드</span></div>
     </header>
+    <div class="m5-tactical-hud" id="m5-tactical-hud" hidden aria-live="off">
+      <div class="m5-hud-side m5-hud-ally"><small>ALLY / 아군</small><strong id="m5-hud-ally">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-ally-hp"></i></div></div>
+      <div class="m5-hud-center"><span>AGLAIA · BATTLE DATA</span><b id="m5-hud-phase">전투 진행 중</b><small id="m5-hud-counter">00:00</small></div>
+      <div class="m5-hud-side m5-hud-enemy"><small>ENEMY / 상대</small><strong id="m5-hud-enemy">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-enemy-hp"></i></div></div>
+    </div>
     <div class="lab-stage-space">
       <div class="lab-stage-wrap" id="stage-wrap" style="--board-ratio:1050 / 900">
         <div id="stage" role="application" aria-label="연구소 전장, 실험체를 잡아 드래그해 배치할 수 있습니다"></div>
+        <div class="m5-battle-result" id="m5-battle-result" hidden role="status">
+          <div class="m5-result-content"><small>AGLAIA / AFTER ACTION REPORT</small><strong id="m5-result-title">전투 종료</strong><p id="m5-result-sub">전투 결과를 분석하고 있어.</p><div id="m5-result-score" class="m5-result-score"></div><button type="button" id="m5-result-back">배치 화면으로 돌아가기</button></div>
+        </div>
       </div>
     </div>
     <footer class="lab-board-footer">
@@ -97,6 +114,7 @@
     </div>
     <div class="lab-combat-state"><strong id="combat-live">배치 모드</strong><b id="combat-result"></b></div>
     <ol id="combat-log" class="lab-combat-log" aria-label="전투 이벤트 기록"></ol>
+    <div class="m5-battle-analysis" id="m5-battle-analysis" hidden><div class="lab-info-top"><span>AFTER ACTION / 피해량 리포트</span><span id="m5-analysis-result"></span></div><div class="m5-battle-roster" id="m5-battle-roster"></div></div>
   </section>
   <section class="lab-squad-panel" aria-label="실험체 배치 목록">
     <div class="lab-squad-heading"><div><span class="lab-eyebrow">SPRITE PLACEMENT</span><strong>실험체 배치 테스트</strong></div><span id="lab-feedback" aria-live="polite"></span></div>
@@ -114,7 +132,7 @@
       </div></div>
     </div>
   </section>
-  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-04 — ONLINE GAME LAB</footer>
+  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-05 — CINEMATIC ONLINE LAB</footer>
 </main>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer src="roster.js"></script>
