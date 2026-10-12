@@ -211,6 +211,7 @@
     $('combat-seed').value=String(seed);
     const cfg=override||buildCombatConfig(seed);
     try {
+      if(!Array.isArray(cfg.teamA)||!Array.isArray(cfg.teamB))throw new Error('전투 편성 데이터 형식이 올바르지 않아.');
       // Reference run uses the very same original engine and exact same config.
       const expected=new ERCombat.CombatEngine(cfg).run();
       const engine=new (window.M5Combat?.CombatEngine||ERCombat.CombatEngine)(cfg);
@@ -506,7 +507,7 @@
     render();
   }
   $('m5-region-select').addEventListener('change',e=>setRegion(e.target.value).catch(err=>feedback('지역 이미지 로드 실패: '+err.message)));
-  $('combat-start').addEventListener('click',startCombat);
+  $('combat-start').addEventListener('click',()=>startCombat());
   $('combat-pause').addEventListener('click',pauseCombat);
   $('combat-stop').addEventListener('click',stopCombat);
   $('combat-speed').addEventListener('click',changeSpeed);
