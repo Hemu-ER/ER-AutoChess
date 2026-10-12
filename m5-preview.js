@@ -1,4 +1,4 @@
-/* L.I.V.E. M5-05 — cinematic 2D combat laboratory, isolated from M4.
+/* L.I.V.E. M5-06 — readable combat feedback, isolated from M4.
    PixiJS render path / Canvas fallback; neither changes the live M4 game. */
 (() => {
   'use strict';
@@ -33,6 +33,11 @@
   let combat = null, raf = null, lastFrame = 0, lag = 0, lastStatus = 0;
   const visual = new Map();
   const floaters = [], flashes = [], combatEffects=[];
+  // A separate queue per actual combat unit. Nearby units must never share a
+  // damage-number staircase, even if their sprites visually overlap.
+  const damageLanes = new Map(), lastImpactFx = new Map();
+  const FLOAT_MS = 970, CRIT_FLOAT_MS = 1180;
+  const FX_LIMIT = 32;
   let audioContext=null,lastSound=0,recapRendered=false;
   function tuneSound(kind){
     if(!state.sound||nowMs()-lastSound<100)return;
@@ -47,17 +52,17 @@
       osc.connect(g).connect(audioContext.destination);osc.start(t);osc.stop(t+.17);
     }catch{}
   }
-  function fxBurst(kind,x,y,color='#b2ecf2'){
+  function fxBurst(kind,x,y,color='#b2ecf2',unitKey=null){
     if(!state.vfx)return;
-    combatEffects.push({kind,x,y,at:nowMs(),color,duration:kind==='skill'?900:kind==='kill'?820:480});
-    if(combatEffects.length>90)combatEffects.shift();
-  }
-  function fxTrace(source,target,critical=false){
-    if(!state.vfx||!source||!target)return;
-    const a=visual.get(source.id)||spritePoint(source),b=visual.get(target.id)||spritePoint(target);
-    if(!a||!b)return;
-    combatEffects.push({kind:'trace',x:a.x,y:a.y-110,x2:b.x,y2:b.y-115,at:nowMs(),color:critical?'#ffd27f':'#9acbdc',duration:350});
-    if(combatEffects.length>90)combatEffects.shift();
+    const now=nowMs();
+    // Preserve every damage number; skip only decorative duplicate impact rings.
+    if(kind==='hit'&&unitKey!==null){
+      if(now-(lastImpactFx.get(unitKey)||-Infinity)<115)return;
+      lastImpactFx.set(unitKey,now);
+    }
+    const duration=kind==='skill'?570:kind==='kill'?510:kind==='crit'?430:260;
+    combatEffects.push({kind,x,y,at:now,color,duration});
+    while(combatEffects.length>FX_LIMIT)combatEffects.shift();
   }
   function hpTop(u,p){
     const bb=(portraits[u.characterId||u.id]||OTHER_BOUNDS).bounds;
@@ -291,7 +296,8 @@
       engine.start();
       const snapshot=engine.getResult();
       combat={engine,config:cfg,expected,snapshot,paused:false,finished:false,consistent:null,speed:1,logs:[],critCount:0};
-      visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;recapRendered=false;
+      visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;
+      damageLanes.clear();lastImpactFx.clear();recapRendered=false;
       $('m5-battle-result').hidden=true;$('m5-battle-analysis').hidden=true;
       for(const u of snapshot.units){const p=spritePoint(u);visual.set(u.id,{x:p.x,y:p.y});}
       renderer?.prepareBattleSprites?.(snapshot.units);
@@ -309,16 +315,29 @@
   function markFx(u,kind,text){
     if(!u)return;
     const p=visual.get(u.id)||spritePoint(u),now=nowMs();
-    flashes.push({key:u.id,kind,at:now,until:now+(kind==='skill'?760:kind==='hit'||kind==='crit'?380:kind==='kill'?820:240)});
-    if(kind==='hit'||kind==='crit'||kind==='skill'||kind==='kill')fxBurst(kind,p.x,p.y-100,kind==='crit'?'#ffd78c':kind==='hit'?'#ff9ba6':kind==='kill'?'#d4e4eb':'#b1e9ff');
+    const duration=kind==='attack'?165:kind==='hit'?160:kind==='crit'?245:kind==='skill'?500:kind==='kill'?520:200;
+    flashes.push({key:u.id,kind,at:now,until:now+duration});
+    if(['hit','crit','skill','kill'].includes(kind))fxBurst(kind,p.x,p.y-102,
+      kind==='crit'?'#ffd78c':kind==='hit'?'#ffadb6':kind==='kill'?'#d4e4eb':'#b1e9ff',u.id);
     if(kind==='crit'||kind==='skill'||kind==='kill')tuneSound(kind);
     if(text){
-      const overlap=floaters.filter(f=>Math.abs(f.x-p.x)<125&&now-f.at<360).length;
-      const stagger=[0,-72,72,-115,115][overlap%5];
-      floaters.push({x:p.x+stagger,y:p.y-185-Math.floor(overlap/5)*43,text,
-        color:kind==='crit'?'#ffd37d':kind==='hit'?'#ff9ba6':kind==='heal'?'#86eec3':'#c3eeff',critical:kind==='crit',at:now});
+      const isDamage=kind==='hit'||kind==='crit';
+      let slot=0;
+      if(isDamage){
+        const lane=damageLanes.get(u.id);
+        slot=lane&&now-lane.at<510?Math.min(4,lane.slot+1):0;
+        damageLanes.set(u.id,{slot,at:now});
+      }
+      // Small diagonal overlap, rather than fan-shaped scattering. Clamp the
+      // entire staircase to the canvas, including the top and right edges.
+      const px=isDamage?p.x+slot*27:p.x;
+      const py=p.y-179-(isDamage?slot*19:0);
+      floaters.push({targetId:u.id,kind,x:clamp(px,75,viewW()-92),
+        y:clamp(py,54,H-45),text,
+        color:kind==='crit'?'#ffe49e':kind==='hit'?'#ffb0b7':kind==='heal'?'#8bffcc':'#d1eafb',
+        critical:kind==='crit',duration:kind==='crit'?CRIT_FLOAT_MS:FLOAT_MS,at:now});
     }
-    while(floaters.length>45)floaters.shift();
+    while(floaters.length>36)floaters.shift();
   }
   function stepCombat(){
     const b=combat;if(!b||b.finished)return;
@@ -333,7 +352,7 @@
         markFx(u,'attack',null);
         const enemies=b.snapshot.units.filter(t=>t.team!==u.team&&!t.dead);
         enemies.sort((a,b)=>(a.x-u.x)**2+(a.y-u.y)**2-((b.x-u.x)**2+(b.y-u.y)**2));
-        if(enemies[0])fxTrace(u,enemies[0]);
+        // Attacks are conveyed by sprite movement and target impact, not lines.
       }
       if(u.hp>v.hp+1.0)markFx(u,'heal','+'+Math.round(u.hp-v.hp).toLocaleString('ko-KR'));
       if(u.dead&&!v.dead)markFx(u,'kill','KO');
@@ -344,7 +363,7 @@
         if(receiver){
           markFx(receiver,e.critical?'crit':'hit',Number(e.amount).toLocaleString('ko-KR'));
           if(e.critical)b.critCount++;
-          if(e.sourceId){const source=b.snapshot.units.find(x=>x.id===e.sourceId);if(source)fxTrace(source,receiver,e.critical);}
+          // Long attacker-to-target lines intentionally removed.
         }
       }
       if(e.type!=='log')continue;
@@ -354,7 +373,11 @@
         const caster=b.snapshot.units.find(u=>line.includes(u.name));
         if(caster){markFx(caster,'skill',null);
           const name=line.split('→').slice(1).join('→').trim().slice(0,22);
-          if(name)floaters.push({x:(visual.get(caster.id)||spritePoint(caster)).x,y:(visual.get(caster.id)||spritePoint(caster)).y-210,text:name,color:'#d6f5ff',critical:false,at:nowMs()});
+          if(name){
+            const p=visual.get(caster.id)||spritePoint(caster);
+            floaters.push({targetId:caster.id,kind:'skill',x:clamp(p.x,90,viewW()-90),
+              y:clamp(p.y-225,40,H-60),text:name,color:'#d6f5ff',critical:false,duration:920,at:nowMs()});
+          }
         }
       }
     }
@@ -378,8 +401,8 @@
     for(const u of combat.snapshot.units){const target=spritePoint(u),v=visual.get(u.id);if(!v)continue;v.x+=(target.x-v.x)*Math.min(1,dt*12);v.y+=(target.y-v.y)*Math.min(1,dt*12);}
     renderer?.paint();
     if(now-lastStatus>145||combat.finished&&lastStatus!==Infinity){updateCombatUI();lastStatus=combat.finished?Infinity:now;}
-    if(!combat.finished||floaters.length||flashes.length){
-      const t=nowMs();for(let i=floaters.length-1;i>=0;i--)if(t-floaters[i].at>1100)floaters.splice(i,1);
+    if(!combat.finished||floaters.length||flashes.length||combatEffects.length){
+      const t=nowMs();for(let i=floaters.length-1;i>=0;i--)if(t-floaters[i].at>floaters[i].duration)floaters.splice(i,1);
       for(let i=flashes.length-1;i>=0;i--)if(t>flashes[i].until)flashes.splice(i,1);
       for(let i=combatEffects.length-1;i>=0;i--)if(t-combatEffects[i].at>combatEffects[i].duration)combatEffects.splice(i,1);
       raf=requestAnimationFrame(combatFrame);
@@ -390,7 +413,8 @@
   function stopCombat(){
     if(!combat)return false;
     if(raf!==null)cancelAnimationFrame(raf);raf=null;
-    combat=null;lag=0;visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;recapRendered=false;
+    combat=null;lag=0;visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;
+    damageLanes.clear();lastImpactFx.clear();recapRendered=false;
     $('m5-battle-result').hidden=true;$('m5-battle-analysis').hidden=true;$('m5-tactical-hud').hidden=true;
     state.mode='prep';state.x=Math.min(state.x,2);
     renderer?.mode();renderer?.positions(true);
@@ -405,45 +429,42 @@
     if(u.skill?.shield>0){c.fillStyle='#9bd5f4';c.fillRect(x,y+13,166*clamp01(u.skill.shield/Math.max(1,u.maxHp)),3);}
     if(u.ccUntil>combat.snapshot.time||u.sleepUntil>combat.snapshot.time){c.fillStyle='#ffd888';c.fillRect(p.x-2,y-12,5,8);}
   }
-  function drawFloatCanvas(c){const now=nowMs();for(const f of floaters){const t=clamp01((now-f.at)/1100);c.save();c.globalAlpha=1-t;c.textAlign='center';c.font=f.critical?'italic 900 49px sans-serif':'bold 31px sans-serif';if(f.critical){c.translate(f.x,f.y-48*t);c.scale(1.13-.13*t,1.13-.13*t);c.translate(-f.x,-(f.y-48*t));}c.strokeStyle='#061018';c.lineWidth=5;c.strokeText(f.text,f.x,f.y-48*t);c.fillStyle=f.color;c.fillText(f.text,f.x,f.y-48*t);c.restore();}}
+  function drawFloatCanvas(c){
+    const now=nowMs();
+    for(const f of floaters){
+      const t=clamp01((now-f.at)/f.duration),fade=t<.38?1:(1-t)/.62;
+      const lift=f.critical?43:30,scale=f.critical?1.12-.12*Math.min(1,t*4):1;
+      c.save();c.globalAlpha=fade;c.textAlign='center';c.textBaseline='alphabetic';
+      c.translate(f.x,f.y-lift*t);c.scale(scale,scale);
+      c.font=f.critical?'italic 900 48px sans-serif':f.kind==='skill'?'bold 26px sans-serif':'bold 31px sans-serif';
+      c.strokeStyle='#061018';c.lineJoin='round';c.lineWidth=f.critical?7:5;
+      c.strokeText(f.text,0,0);c.fillStyle=f.color;c.fillText(f.text,0,0);c.restore();
+    }
+  }
   function paintCinematicPixi(g){
     g.clear();if(!combat||!state.vfx)return;
     const now=nowMs();
     for(const e of combatEffects){
       const t=clamp01((now-e.at)/e.duration),a=1-t;
       const color=Number.parseInt(e.color.replace('#',''),16);
-      if(e.kind==='trace'){
-        const mx=e.x+(e.x2-e.x)*Math.min(1,t*2.8),my=e.y+(e.y2-e.y)*Math.min(1,t*2.8);
-        g.moveTo(e.x,e.y).lineTo(mx,my).stroke({color,width:13,alpha:a*.13});
-        g.moveTo(e.x,e.y).lineTo(mx,my).stroke({color,width:3,alpha:a*.8});
-        g.circle(mx,my,5+7*t).fill({color,alpha:a*.85});
-      }else{
-        const r=(e.kind==='skill'?56:e.kind==='kill'?40:18)+t*(e.kind==='skill'?150:90);
-        g.circle(e.x,e.y,r).stroke({color,width:e.kind==='skill'?8:5,alpha:a*.7});
-        if(e.kind==='crit'||e.kind==='kill')for(let i=0;i<8;i++){
-          const angle=(i/8)*Math.PI*2,x1=e.x+Math.cos(angle)*r*.6,y1=e.y+Math.sin(angle)*r*.6;
-          g.moveTo(x1,y1).lineTo(e.x+Math.cos(angle)*r*1.4,e.y+Math.sin(angle)*r*1.4).stroke({color,width:4,alpha:a*.75});
-        }
-      }
+      // Restrained, local impact. Skills remain noticeably larger than hits.
+      const radius=e.kind==='skill'?42+78*t:e.kind==='kill'?26+59*t:
+        e.kind==='crit'?20+52*t:12+27*t;
+      const alpha=(e.kind==='hit'?.25:e.kind==='crit'?.55:.45)*a;
+      g.circle(e.x,e.y,radius).stroke({color,width:e.kind==='skill'?5:3,alpha});
+      if(e.kind==='crit')g.circle(e.x,e.y,radius*.53).fill({color,alpha:alpha*.23});
     }
   }
   function paintCinematicCanvas(c){
     if(!combat||!state.vfx)return;
     const now=nowMs();c.save();c.globalCompositeOperation='screen';
     for(const e of combatEffects){
-      const t=clamp01((now-e.at)/e.duration),a=1-t;c.globalAlpha=a;
+      const t=clamp01((now-e.at)/e.duration),a=1-t;
+      c.globalAlpha=(e.kind==='hit'?.25:e.kind==='crit'?.55:.45)*a;
       c.strokeStyle=e.color;c.fillStyle=e.color;
-      if(e.kind==='trace'){
-        const mx=e.x+(e.x2-e.x)*Math.min(1,t*2.8),my=e.y+(e.y2-e.y)*Math.min(1,t*2.8);
-        c.beginPath();c.lineWidth=4;c.moveTo(e.x,e.y);c.lineTo(mx,my);c.stroke();
-        c.beginPath();c.arc(mx,my,7+7*t,0,Math.PI*2);c.fill();
-      }else{
-        const r=(e.kind==='skill'?56:e.kind==='kill'?40:18)+t*(e.kind==='skill'?150:90);
-        c.lineWidth=e.kind==='skill'?8:5;c.beginPath();c.arc(e.x,e.y,r,0,Math.PI*2);c.stroke();
-        if(e.kind==='crit'||e.kind==='kill')for(let i=0;i<8;i++){
-          const a=i*Math.PI/4;c.beginPath();c.moveTo(e.x+Math.cos(a)*r*.6,e.y+Math.sin(a)*r*.6);c.lineTo(e.x+Math.cos(a)*r*1.4,e.y+Math.sin(a)*r*1.4);c.stroke();
-        }
-      }
+      const r=e.kind==='skill'?42+78*t:e.kind==='kill'?26+59*t:e.kind==='crit'?20+52*t:12+27*t;
+      c.lineWidth=e.kind==='skill'?5:3;c.beginPath();c.arc(e.x,e.y,r,0,Math.PI*2);c.stroke();
+      if(e.kind==='crit'){c.globalAlpha*=.23;c.beginPath();c.arc(e.x,e.y,r*.53,0,Math.PI*2);c.fill();}
     }
     c.restore();
   }
@@ -545,11 +566,13 @@
       for(const u of drawn){const obj=this.sprites.get(u.drawKey)||this.sprites.get(u.id);if(!obj)continue;
         const p=combat ? visual.get(u.drawKey)||spritePoint(u):spritePoint(u);
         let shift=0;const acting=fxFor(u.drawKey);
-        if(acting.some(f=>f.kind==='attack'))shift=u.team==='A'?16:-16;
+        const attack=acting.find(f=>f.kind==='attack');
+        if(attack){const t=clamp01((clock-attack.at)/(attack.until-attack.at));
+          shift=(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*t);}
         obj.node.position.set(p.x+shift,p.y);obj.node.zIndex=p.y;
         obj.node.visible=state.mode==='combat'||isOwn(u);
         obj.node.alpha=u.dead?.22:1;
-        obj.sprite.tint=acting.some(f=>f.kind==='hit'||f.kind==='crit')?0xff9399:0xffffff;
+        obj.sprite.tint=acting.some(f=>f.kind==='hit'||f.kind==='crit')?0xffd8de:0xffffff;
         const bb=(portraits[u.id]||OTHER_BOUNDS).bounds,sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);obj.sprite.scale.set(visualTeam(u)==='B'?-sc:sc,sc);
         obj.node.children[1].alpha=combat?.35:state.activeUnitId===u.id?1:.60;const ring=obj.node.children[1];ring.clear().ellipse(0,-7,84,23).stroke({width:4,color:visualTeam(u)==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
         const h=obj.node.children[3];h.clear();
@@ -559,25 +582,24 @@
           h.rect(-83,hpTop(u,p)-p.y,166,11).fill({color:0x26343c});
           h.rect(-83,hpTop(u,p)-p.y,166*pct,11).fill({color:visualTeam(u)==='A'?0x70dce5:0xe895ae});
           if(u.skill?.shield>0)h.rect(-83,hpTop(u,p)-p.y+14,166*clamp01(u.skill.shield/Math.max(1,u.maxHp)),3).fill({color:0x9dd8fa});
-          if(acting.some(f=>f.kind==='skill'))h.circle(0,-115,90).stroke({width:9,color:0x9cddff,alpha:.75});
+          // Skill activation is rendered once in the effect layer, not repeated on the HP bar.
           if(u.ccUntil>combat.snapshot.time||u.sleepUntil>combat.snapshot.time)h.circle(0,-240,10).fill({color:0xf8d18b});
         }
       }
       paintCinematicPixi(this.fxLayer);
-      if(combat)for(const f of flashes.filter(f=>f.kind==='skill')){
-        const u=combat.snapshot.units.find(x=>x.id===f.key);if(!u)continue;
-        const p=visual.get(f.key)||spritePoint(u),t=1-clamp01((f.until-clock)/760);
-        this.fxLayer.circle(p.x,p.y-110,85+90*t).stroke({width:7,color:0xb3e8ff,alpha:(1-t)*.55});
-      }
       for(const label of this.textPool)label.visible=false;
       if(combat)for(let i=0;i<floaters.length;i++){
-        const f=floaters[i],t=clamp01((clock-f.at)/1100);
+        const f=floaters[i],t=clamp01((clock-f.at)/f.duration);
+        const fade=t<.38?1:(1-t)/.62;
         if(!this.textPool[i]){
           const label=new this.P.Text({text:'',style:{fontSize:28,fontWeight:'bold',fontFamily:'sans-serif',fill:0xffffff,stroke:{color:0x081015,width:4}}});
           label.anchor.set(.5,.5);this.labels.addChild(label);this.textPool[i]=label;
         }
         const label=this.textPool[i];label.visible=true;label.text=f.text;label.style.fill=f.color;
-        label.position.set(f.x,f.y-t*48);label.alpha=1-t;label.style.fontStyle=f.critical?'italic':'normal';label.style.fontSize=f.critical?45:28;label.scale.set(f.critical?1.18-.18*t:1);
+        label.position.set(f.x,f.y-t*(f.critical?43:30));label.alpha=fade;
+        label.style.fontStyle=f.critical?'italic':'normal';
+        label.style.fontWeight=f.critical?'900':'bold';label.style.fontSize=f.critical?48:f.kind==='skill'?26:31;
+        label.scale.set(f.critical?1.12-.12*Math.min(1,t*4):1);
       }
     }
   }
@@ -619,16 +641,17 @@
       const ordered=getDrawUnits().filter(u=>state.mode==='combat'||isOwn(u)).slice().sort((a,b)=>a.y-b.y||a.x-b.x);
       for(const u of ordered){const meta=portraits[u.id]||OTHER_BOUNDS,bb=meta.bounds,im=this.images.get(u.id),p=combat?visual.get(u.drawKey)||spritePoint(u):spritePoint(u);
         const shift=gesture?.moving&&gesture.id===u.id?{x:gesture.now.x-gesture.down.x,y:gesture.now.y-gesture.down.y}:{x:0,y:0};
-        const acting=fxFor(u.drawKey),bump=acting.some(f=>f.kind==='attack')?(u.team==='A'?16:-16):0;
+        const acting=fxFor(u.drawKey),attack=acting.find(f=>f.kind==='attack');
+        const bump=attack?(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*clamp01((nowMs()-attack.at)/(attack.until-attack.at))):0;
         const cx=p.x+shift.x+bump,cy=p.y+shift.y,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);
         c.save();if(gesture?.moving&&gesture.id===u.id)c.globalAlpha=.8;if(u.dead)c.globalAlpha=.22;
         c.beginPath();c.ellipse(cx,cy-5,75,20,0,0,2*Math.PI);c.fillStyle='#020b128e';c.fill();
         c.beginPath();c.ellipse(cx,cy-7,84,23,0,0,2*Math.PI);c.strokeStyle=visualTeam(u)==='A'?'#83d9e4a0':'#e8a7bda0';c.lineWidth=4;c.stroke();
         const mid=(bb[0]+bb[2])/2;
         c.save();c.translate(cx,cy);if(visualTeam(u)==='B')c.scale(-1,1);
-        if(acting.some(f=>f.kind==='hit'||f.kind==='crit')){c.shadowColor='#ff8c9b';c.shadowBlur=26;c.filter='brightness(1.23)';}
+        if(acting.some(f=>f.kind==='hit'||f.kind==='crit')){c.shadowColor='#ffb4c0';c.shadowBlur=9;c.filter='brightness(1.08)';}
         c.drawImage(im,-mid*scale,-bb[3]*scale,im.width*scale,im.height*scale);c.restore();
-        if(acting.some(f=>f.kind==='skill')){c.strokeStyle='#b4e6ffe0';c.lineWidth=8;c.beginPath();c.arc(cx,cy-105,90,0,Math.PI*2);c.stroke();}
+        // Skill burst is drawn by paintCinematicCanvas: avoid a second overlapping ring.
         if(combat)drawHpCanvas(c,u,{x:cx,y:cy});
         c.restore();
       }
