@@ -1,156 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#070c12">
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
+<meta content="#070c12" name="theme-color"/>
 <title>L.I.V.E. — M5 연구소 전장 실험실</title>
-<link rel="stylesheet" href="m5-preview.css">
+<link href="m5-preview.css" rel="stylesheet"/>
 </head>
 <body>
 <main class="lab-app">
-  <header class="lab-topbar">
-    <a class="lab-return" href="/" aria-label="기존 게임으로 돌아가기">← <span>기존 게임</span></a>
-    <div class="lab-identity">
-      <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
-      <strong>차세대 전투 · 온라인 실험실</strong>
-    </div>
-    <span class="lab-revision">M5-07 <i>ECONOMY LAB</i></span>
-  </header>
+<header class="lab-topbar">
+<a aria-label="기존 게임으로 돌아가기" class="lab-return" href="/">← <span>기존 게임</span></a>
+<div class="lab-identity">
+<span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
+<strong>차세대 전투 · 온라인 실험실</strong>
+</div>
+<span class="lab-revision">M5-08 <i>LIVE LAYOUT</i></span>
+</header>
+<section aria-label="전장 모드 및 테스트 설명" class="lab-hero">
+<div>
+<span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
+<h1>연구소 <em>01</em></h1>
+<p>이미지 전장 · 드래그 배치 · 오프라인 경제 / 2인 온라인 베타</p>
+</div>
+<div aria-label="보드 모드" class="lab-mode-switch" role="group"><select aria-label="전장 지역 미리보기" id="m5-region-select"><option value="lab">연구소</option><option value="hotel">호텔</option><option value="beach">모래사장</option><option value="alley">골목길</option><option value="forest">숲</option><option value="police">경찰서</option><option value="church">성당</option><option value="temple">절</option><option value="cemetery">묘지</option><option value="estate">고급주택가</option></select>
+<button aria-pressed="false" id="mode-combat" type="button"><span class="mode-dot"></span>전투 <small>3×6</small></button>
+<button aria-pressed="true" class="mode-selected" id="mode-prep" type="button"><span class="mode-dot"></span>준비 <small>3×3</small></button>
+</div>
+</section>
 
-  <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
-    <div>
-      <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
-      <h1>연구소 <em>01</em></h1>
-      <p>오프라인 경제·상점·벤치·배치 실험 / 2인 온라인 전투 베타</p>
-    </div>
-    <div class="lab-mode-switch" role="group" aria-label="보드 모드"><select id="m5-region-select" aria-label="전장 지역 미리보기"><option value="lab">연구소</option><option value="hotel">호텔</option><option value="beach">모래사장</option><option value="alley">골목길</option><option value="forest">숲</option><option value="police">경찰서</option><option value="church">성당</option><option value="temple">절</option><option value="cemetery">묘지</option><option value="estate">고급주택가</option></select>
-      <button id="mode-combat" type="button" aria-pressed="false"><span class="mode-dot"></span>전투 <small>3×6</small></button>
-      <button id="mode-prep" type="button" class="mode-selected" aria-pressed="true"><span class="mode-dot"></span>준비 <small>3×3</small></button>
-    </div>
-  </section>
+<div class="m5-live-layout"><aside aria-label="온라인 및 게임 정보" class="m5-live-rail m5-live-left"><section aria-label="M5 온라인 멀티플레이 실험실" class="m5-online-panel">
+<div class="lab-info-top"><span>REAL-TIME ONLINE / 2 PLAYER BETA</span><span id="m5-connection">오프라인</span></div>
+<div class="m5-online-banner"><b id="lab-round-state">오프라인 실험실</b><small>기존 M4 서비스와 같은 서버 API 사용 · 3명 고정 실험체 시험 편성</small></div>
+<div class="m5-online-section" id="m5-auth">
+<input aria-label="계정 아이디" autocomplete="username" id="m5-username" maxlength="20" placeholder="M4 계정 아이디"/>
+<input aria-label="비밀번호" autocomplete="current-password" id="m5-password" placeholder="비밀번호" type="password"/>
+<button id="m5-login">로그인</button><span id="m5-account"></span>
+</div>
+<div class="m5-online-section" hidden="" id="m5-lobby">
+<button class="combat-primary" id="m5-create">2인 방 만들기</button>
+<input aria-label="방 코드" id="m5-room-code" maxlength="6" placeholder="6자리 방 코드"/>
+<button id="m5-join">방 참가</button><button id="m5-logout">로그아웃</button>
+</div>
+<div hidden="" id="m5-room">
+<div class="m5-online-section"><b id="m5-room-title">ROOM</b><span id="m5-room-members"></span><button id="m5-room-ready">준비하기</button><button hidden="" id="m5-room-start">게임 시작</button><button id="m5-leave">방 나가기</button></div>
+<div class="m5-online-section"><button id="m5-round-ready">라운드 준비 완료</button><button hidden="" id="m5-farm-done">파밍 완료 보고</button><span id="m5-phase-info">대기 중</span></div>
+<div class="m5-supply" hidden="" id="m5-supply"><strong>보급 선택</strong><div class="m5-supply-choices" id="m5-supply-choices"></div></div>
+<div class="m5-chat"><div aria-live="off" class="m5-chat-log" id="m5-chat-log" role="log"></div><div class="m5-online-section"><input id="m5-chat-input" maxlength="240" placeholder="방 채팅"/><button id="m5-chat-send">전송</button></div></div>
+</div>
+<p aria-live="polite" class="lab-footnote" id="m5-online-notice">로그인하면 M4 서버에 실제 방을 만들 수 있어. M4 경제 데이터는 아직 M5로 가져오지 않아.</p>
+</section></aside><div class="m5-live-center"><section aria-label="인터랙티브 전장" class="lab-frame">
+<header class="lab-board-header">
+<div><span class="lab-tick"></span><b id="lab-region-name">연구소</b><span id="lab-region-effect">중앙 전장 · 지역 효과 없음</span></div>
+<div class="lab-board-header-right"><span aria-hidden="true" class="lab-dot"></span><span id="renderer-status">엔진 초기화 중</span><span class="lab-sep"></span><span id="mode-status">준비 모드</span></div>
+</header>
+<div aria-live="off" class="m5-tactical-hud" hidden="" id="m5-tactical-hud">
+<div class="m5-hud-side m5-hud-ally"><small>ALLY / 아군</small><strong id="m5-hud-ally">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-ally-hp"></i></div></div>
+<div class="m5-hud-center"><span>AGLAIA · BATTLE DATA</span><b id="m5-hud-phase">전투 진행 중</b><small id="m5-hud-counter">00:00</small></div>
+<div class="m5-hud-side m5-hud-enemy"><small>ENEMY / 상대</small><strong id="m5-hud-enemy">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-enemy-hp"></i></div></div>
+</div>
+<div class="lab-stage-space">
+<div class="lab-stage-wrap" id="stage-wrap" style="--board-ratio:1050 / 900">
+<div aria-label="연구소 전장, 실험체를 잡아 드래그해 배치할 수 있습니다" id="stage" role="application"></div>
+<div class="m5-battle-result" hidden="" id="m5-battle-result" role="status">
+<div class="m5-result-content"><small>AGLAIA / AFTER ACTION REPORT</small><strong id="m5-result-title">전투 종료</strong><p id="m5-result-sub">전투 결과를 분석하고 있어.</p><div class="m5-result-score" id="m5-result-score"></div><button id="m5-result-back" type="button">배치 화면으로 돌아가기</button></div>
+</div>
+</div>
+</div>
+<footer class="lab-board-footer">
+<div><span class="team-mark ally"></span> A 진영 <small>COL 01—03</small></div>
+<div class="lab-board-footer-center">원본 2100 × 900 <span>·</span> 배치 그리드 350 × 300</div>
+<div><small>COL 04—06</small> B 진영 <span class="team-mark enemy"></span></div>
+</footer>
+</section></div><aside aria-label="실험체 정보 및 전투 조작" class="m5-live-rail m5-live-right"><details class="m5-visual-details"><summary>화면·연출 설정</summary><section aria-label="전장 그래픽과 효과 설정" class="m5-presentation-bar">
+<div class="m5-preset"><span class="lab-eyebrow">VISUAL DIRECTOR</span><b>전투 연출 설정</b></div>
+<label class="m5-light-control">바닥 명도 <input id="m5-brightness" max="100" min="55" step="5" type="range" value="75"/><output id="m5-brightness-value">75%</output></label>
+<label class="m5-feature-check"><input checked="" id="m5-vfx" type="checkbox"/> 피격 · 치명타 연출</label>
+<label class="m5-feature-check"><input id="m5-sound" type="checkbox"/> 전투 효과음</label>
+<button id="m5-brightness-reset" type="button">화면 설정 초기화</button>
+</section></details><section aria-label="전장 상태 및 조작" class="lab-details">
+<div class="lab-info-panel lab-selection">
+<div class="lab-info-top"><span>SELECTED CELL</span><span class="lab-index">01 / 18</span></div>
+<div class="lab-selected-main"><strong id="cell-title">A · 후열 / 상단</strong><span id="cell-code">X 00 / Y 00</span></div>
+<div class="lab-coords"><span>중앙 접지점</span><code id="cell-position">175, 150</code></div>
+<div class="lab-footnote">클릭한 칸의 중심 좌표야. 캐릭터는 그보다 아래쪽의 접지점에 맞춰 서 있어.</div>
+</div>
+<div class="lab-info-panel lab-controls">
+<div class="lab-info-top"><span>INTERACTION TEST</span><span class="lab-live-chip">LIVE INPUT</span></div>
+<div class="lab-actions">
+<button aria-pressed="false" id="toggle-grid" type="button">격자 표시 <strong>OFF</strong></button>
+<button aria-pressed="false" id="toggle-points" type="button">접지점 표시 <strong>OFF</strong></button>
+<button id="select-next" type="button">다음 칸 선택 →</button><button id="reset-units" type="button">배치 초기화 ↺</button>
+</div>
+<div class="lab-viewport">화면 표시 크기 <span id="viewport-status">—</span></div>
+<p class="lab-footnote">별도 M5 실험실이야. 기존 엔진을 별도로 실행하며 상점·계정·M4 게임 데이터는 변경하지 않아.</p>
+</div>
+</section><section aria-label="실제 전투 엔진 테스트" class="lab-combat-panel">
+<div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
+<div class="lab-combat-row">
+<div class="lab-combat-seed"><label for="combat-seed">전투 시드</label><input id="combat-seed" max="2147483646" min="1" step="1" type="number" value="123456"/></div>
+<label class="m5-crit-toggle"><input checked="" id="m5-crit-demo" type="checkbox"/> 치명타 장비 시연</label><button class="combat-primary" id="combat-start" type="button">▶ 전투 시작</button>
+<button disabled="" id="combat-pause" type="button">Ⅱ 일시정지</button>
+<button id="combat-speed" type="button">속도 1×</button>
+<button disabled="" id="combat-stop" type="button">↺ 배치로 돌아가기</button>
+</div>
+<div class="lab-combat-state"><strong id="combat-live">배치 모드</strong><b id="combat-result"></b></div>
+<ol aria-label="전투 이벤트 기록" class="lab-combat-log" id="combat-log"></ol>
+<div class="m5-battle-analysis" hidden="" id="m5-battle-analysis"><div class="lab-info-top"><span>AFTER ACTION / 피해량 리포트</span><span id="m5-analysis-result"></span></div><div class="m5-battle-roster" id="m5-battle-roster"></div></div>
+</section></aside></div>
+
+<section aria-label="M5 상점과 벤치 경제 실험실" class="m5-economy-panel" id="m5-economy-panel"><div class="m5-dock-top"><button aria-expanded="true" id="m5-dock-toggle" type="button">▾ 상점 접기</button><span class="m5-dock-hint">벤치 → 전장 드래그 · 전장 → 벤치 회수</span></div>
+<div class="m5-economy-title"><div><small>MARKET / OFFLINE ECONOMY PROTOTYPE</small><h2>실험체 상점 · 벤치</h2><p>실제 M4 로스터·코스트·확률 규칙을 사용해. 구매한 실험체를 전장에 올려 직접 전투해 봐.</p></div>
+<div class="m5-wallet"><img alt="" src="assets/ui/credit.png"/><strong id="m5-credit-count">5</strong><span>CR</span></div></div>
+<div class="m5-market-toolbar"><button id="m5-shop-reroll" type="button">↻ 리롤 <b>2C</b></button><button id="m5-shop-lock" type="button">상점 고정</button><button id="m5-next-round" type="button">다음 라운드 (+수입)</button><button id="m5-econ-reset" type="button">경제 초기화</button><span id="m5-market-odds"></span></div>
+<div aria-label="상점 매물" class="m5-market-row" id="m5-shop-cards"></div>
+<div class="m5-bench-dock"><div class="m5-bench-heading"><strong>벤치 <span id="m5-bench-count">0 / 8</span></strong><span>잡아서 전장에 놓기 · 터치 시 선택 배치 지원</span></div><div aria-label="벤치 실험체" class="m5-bench-row" id="m5-bench-cards"></div></div>
+
+<div class="m5-econ-footer"><div><span>팀 숙련도</span><b id="m5-mastery-label">Lv.1</b><button id="m5-mastery-buy" type="button">경험치 투자 · 2C</button><small id="m5-mastery-exp">0 / 4 EXP</small></div><div><span>시너지</span><div id="m5-synergy-list"></div></div><div class="m5-econ-selection"><span id="m5-econ-selection">전장에 있는 실험체를 선택해 줘</span><div><button id="m5-econ-recall" type="button">벤치로 회수</button><button id="m5-econ-sell" type="button">판매</button></div></div></div>
+<p id="m5-econ-message" role="status">오프라인 전용 경제 실험실 · 온라인 방에서는 경제 조작이 비활성화돼.</p>
+</section>
 
 
-  <section class="m5-presentation-bar" aria-label="전장 그래픽과 효과 설정">
-    <div class="m5-preset"><span class="lab-eyebrow">VISUAL DIRECTOR</span><b>전투 연출 설정</b></div>
-    <label class="m5-light-control">바닥 명도 <input type="range" id="m5-brightness" min="55" max="100" step="5" value="75"><output id="m5-brightness-value">75%</output></label>
-    <label class="m5-feature-check"><input type="checkbox" id="m5-vfx" checked> 피격 · 치명타 연출</label>
-    <label class="m5-feature-check"><input type="checkbox" id="m5-sound"> 전투 효과음</label>
-    <button type="button" id="m5-brightness-reset">화면 설정 초기화</button>
-  </section>
-
-  <section class="lab-frame" aria-label="인터랙티브 전장">
-    <header class="lab-board-header">
-      <div><span class="lab-tick"></span><b id="lab-region-name">연구소</b><span id="lab-region-effect">중앙 전장 · 지역 효과 없음</span></div>
-      <div class="lab-board-header-right"><span class="lab-dot" aria-hidden="true"></span><span id="renderer-status">엔진 초기화 중</span><span class="lab-sep"></span><span id="mode-status">준비 모드</span></div>
-    </header>
-    <div class="m5-tactical-hud" id="m5-tactical-hud" hidden aria-live="off">
-      <div class="m5-hud-side m5-hud-ally"><small>ALLY / 아군</small><strong id="m5-hud-ally">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-ally-hp"></i></div></div>
-      <div class="m5-hud-center"><span>AGLAIA · BATTLE DATA</span><b id="m5-hud-phase">전투 진행 중</b><small id="m5-hud-counter">00:00</small></div>
-      <div class="m5-hud-side m5-hud-enemy"><small>ENEMY / 상대</small><strong id="m5-hud-enemy">3 / 3</strong><div class="m5-hud-track"><i id="m5-hud-enemy-hp"></i></div></div>
-    </div>
-    <div class="lab-stage-space">
-      <div class="lab-stage-wrap" id="stage-wrap" style="--board-ratio:1050 / 900">
-        <div id="stage" role="application" aria-label="연구소 전장, 실험체를 잡아 드래그해 배치할 수 있습니다"></div>
-        <div class="m5-battle-result" id="m5-battle-result" hidden role="status">
-          <div class="m5-result-content"><small>AGLAIA / AFTER ACTION REPORT</small><strong id="m5-result-title">전투 종료</strong><p id="m5-result-sub">전투 결과를 분석하고 있어.</p><div id="m5-result-score" class="m5-result-score"></div><button type="button" id="m5-result-back">배치 화면으로 돌아가기</button></div>
-        </div>
-      </div>
-    </div>
-    <footer class="lab-board-footer">
-      <div><span class="team-mark ally"></span> A 진영 <small>COL 01—03</small></div>
-      <div class="lab-board-footer-center">원본 2100 × 900 <span>·</span> 배치 그리드 350 × 300</div>
-      <div><small>COL 04—06</small> B 진영 <span class="team-mark enemy"></span></div>
-    </footer>
-  </section>
-
-  <section class="lab-details" aria-label="전장 상태 및 조작">
-    <div class="lab-info-panel lab-selection">
-      <div class="lab-info-top"><span>SELECTED CELL</span><span class="lab-index">01 / 18</span></div>
-      <div class="lab-selected-main"><strong id="cell-title">A · 후열 / 상단</strong><span id="cell-code">X 00 / Y 00</span></div>
-      <div class="lab-coords"><span>중앙 접지점</span><code id="cell-position">175, 150</code></div>
-      <div class="lab-footnote">클릭한 칸의 중심 좌표야. 캐릭터는 그보다 아래쪽의 접지점에 맞춰 서 있어.</div>
-    </div>
-    <div class="lab-info-panel lab-controls">
-      <div class="lab-info-top"><span>INTERACTION TEST</span><span class="lab-live-chip">LIVE INPUT</span></div>
-      <div class="lab-actions">
-        <button type="button" id="toggle-grid" aria-pressed="false">격자 표시 <strong>OFF</strong></button>
-        <button type="button" id="toggle-points" aria-pressed="false">접지점 표시 <strong>OFF</strong></button>
-        <button type="button" id="select-next">다음 칸 선택 →</button><button type="button" id="reset-units">배치 초기화 ↺</button>
-      </div>
-      <div class="lab-viewport">화면 표시 크기 <span id="viewport-status">—</span></div>
-      <p class="lab-footnote">별도 M5 실험실이야. 기존 엔진을 별도로 실행하며 상점·계정·M4 게임 데이터는 변경하지 않아.</p>
-    </div>
-  </section>
-  <section class="m5-economy-panel" id="m5-economy-panel" aria-label="M5 상점과 벤치 경제 실험실">
-    <div class="m5-economy-title"><div><small>MARKET / OFFLINE ECONOMY PROTOTYPE</small><h2>실험체 상점 · 벤치</h2><p>실제 M4 로스터·코스트·확률 규칙을 사용해. 구매한 실험체를 전장에 올려 직접 전투해 봐.</p></div>
-      <div class="m5-wallet"><img src="assets/ui/credit.png" alt=""><strong id="m5-credit-count">5</strong><span>CR</span></div></div>
-    <div class="m5-market-toolbar"><button type="button" id="m5-shop-reroll">↻ 리롤 <b>2C</b></button><button type="button" id="m5-shop-lock">상점 고정</button><button type="button" id="m5-next-round">다음 라운드 (+수입)</button><button type="button" id="m5-econ-reset">경제 초기화</button><span id="m5-market-odds"></span></div>
-    <div class="m5-market-row" id="m5-shop-cards" aria-label="상점 매물"></div>
-    <div class="m5-bench-heading"><strong>벤치 <span id="m5-bench-count">0 / 8</span></strong><span>드래그해서 아군 3×3에 놓기 · 모바일에서는 카드 선택 후 칸 터치</span></div>
-    <div class="m5-bench-row" id="m5-bench-cards" aria-label="벤치 실험체"></div>
-    <div class="m5-econ-footer"><div><span>팀 숙련도</span><b id="m5-mastery-label">Lv.1</b><button type="button" id="m5-mastery-buy">경험치 투자 · 2C</button><small id="m5-mastery-exp">0 / 4 EXP</small></div><div><span>시너지</span><div id="m5-synergy-list"></div></div><div class="m5-econ-selection"><span id="m5-econ-selection">전장에 있는 실험체를 선택해 줘</span><div><button type="button" id="m5-econ-recall">벤치로 회수</button><button type="button" id="m5-econ-sell">판매</button></div></div></div>
-    <p id="m5-econ-message" role="status">오프라인 전용 경제 실험실 · 온라인 방에서는 경제 조작이 비활성화돼.</p>
-  </section>
-  <section class="m5-online-panel" aria-label="M5 온라인 멀티플레이 실험실">
-    <div class="lab-info-top"><span>REAL-TIME ONLINE / 2 PLAYER BETA</span><span id="m5-connection">오프라인</span></div>
-    <div class="m5-online-banner"><b id="lab-round-state">오프라인 실험실</b><small>기존 M4 서비스와 같은 서버 API 사용 · 3명 고정 실험체 시험 편성</small></div>
-    <div id="m5-auth" class="m5-online-section">
-      <input id="m5-username" maxlength="20" autocomplete="username" placeholder="M4 계정 아이디" aria-label="계정 아이디">
-      <input id="m5-password" type="password" autocomplete="current-password" placeholder="비밀번호" aria-label="비밀번호">
-      <button id="m5-login">로그인</button><span id="m5-account"></span>
-    </div>
-    <div id="m5-lobby" class="m5-online-section" hidden>
-      <button id="m5-create" class="combat-primary">2인 방 만들기</button>
-      <input id="m5-room-code" placeholder="6자리 방 코드" maxlength="6" aria-label="방 코드">
-      <button id="m5-join">방 참가</button><button id="m5-logout">로그아웃</button>
-    </div>
-    <div id="m5-room" hidden>
-      <div class="m5-online-section"><b id="m5-room-title">ROOM</b><span id="m5-room-members"></span><button id="m5-room-ready">준비하기</button><button id="m5-room-start" hidden>게임 시작</button><button id="m5-leave">방 나가기</button></div>
-      <div class="m5-online-section"><button id="m5-round-ready">라운드 준비 완료</button><button id="m5-farm-done" hidden>파밍 완료 보고</button><span id="m5-phase-info">대기 중</span></div>
-      <div class="m5-supply" id="m5-supply" hidden><strong>보급 선택</strong><div id="m5-supply-choices" class="m5-supply-choices"></div></div>
-      <div class="m5-chat"><div id="m5-chat-log" class="m5-chat-log" role="log" aria-live="off"></div><div class="m5-online-section"><input id="m5-chat-input" maxlength="240" placeholder="방 채팅"><button id="m5-chat-send">전송</button></div></div>
-    </div>
-    <p id="m5-online-notice" class="lab-footnote" aria-live="polite">로그인하면 M4 서버에 실제 방을 만들 수 있어. M4 경제 데이터는 아직 M5로 가져오지 않아.</p>
-  </section>
-  <section class="lab-combat-panel" aria-label="실제 전투 엔진 테스트">
-    <div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
-    <div class="lab-combat-row">
-      <div class="lab-combat-seed"><label for="combat-seed">전투 시드</label><input type="number" min="1" max="2147483646" step="1" id="combat-seed" value="123456" /></div>
-      <label class="m5-crit-toggle"><input type="checkbox" id="m5-crit-demo" checked> 치명타 장비 시연</label><button type="button" id="combat-start" class="combat-primary">▶ 전투 시작</button>
-      <button type="button" id="combat-pause" disabled>Ⅱ 일시정지</button>
-      <button type="button" id="combat-speed">속도 1×</button>
-      <button type="button" id="combat-stop" disabled>↺ 배치로 돌아가기</button>
-    </div>
-    <div class="lab-combat-state"><strong id="combat-live">배치 모드</strong><b id="combat-result"></b></div>
-    <ol id="combat-log" class="lab-combat-log" aria-label="전투 이벤트 기록"></ol>
-    <div class="m5-battle-analysis" id="m5-battle-analysis" hidden><div class="lab-info-top"><span>AFTER ACTION / 피해량 리포트</span><span id="m5-analysis-result"></span></div><div class="m5-battle-roster" id="m5-battle-roster"></div></div>
-  </section>
-  <section class="lab-squad-panel" aria-label="실험체 배치 목록">
-    <div class="lab-squad-heading"><div><span class="lab-eyebrow">SPRITE PLACEMENT</span><strong>실험체 배치 테스트</strong></div><span id="lab-feedback" aria-live="polite"></span></div>
-    <div class="lab-unit-status"><strong id="unit-title">비앙카 · A팀</strong><span id="unit-location">X 2 / Y 2</span><small id="unit-help">A팀 실험체를 끌어서 이동하거나 서로 위치를 바꿀 수 있어.</small></div>
-    <div class="lab-squad-groups">
-      <div class="lab-squad-group"><span class="lab-squad-caption">A TEAM · 이동 가능</span><div class="lab-squad-members">
-        <button type="button" data-unit-id="aya" class="lab-unit-card"><img src="assets/characters/aya.png" alt=""><span>아야<small class="unit-pos">1열 · 1행</small></span></button>
-        <button type="button" data-unit-id="bianca" class="lab-unit-card picked"><img src="assets/characters/bianca.png" alt=""><span>비앙카<small class="unit-pos">2열 · 2행</small></span></button>
-        <button type="button" data-unit-id="isol" class="lab-unit-card"><img src="assets/characters/isol.png" alt=""><span>아이솔<small class="unit-pos">3열 · 3행</small></span></button>
-      </div></div>
-      <div class="lab-squad-group"><span class="lab-squad-caption enemy">B TEAM · 전투 모드에서 표시</span><div class="lab-squad-members">
-        <button type="button" data-unit-id="rozzi" class="lab-unit-card enemy"><img src="assets/characters/rozzi.png" alt=""><span>로지<small class="unit-pos">4열 · 1행</small></span></button>
-        <button type="button" data-unit-id="hart" class="lab-unit-card enemy"><img src="assets/characters/hart.png" alt=""><span>하트<small class="unit-pos">5열 · 2행</small></span></button>
-        <button type="button" data-unit-id="irem" class="lab-unit-card enemy"><img src="assets/characters/irem.png" alt=""><span>이렘<small class="unit-pos">6열 · 3행</small></span></button>
-      </div></div>
-    </div>
-  </section>
-  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-07 — MARKET & BENCH LAB</footer>
+<section aria-label="실험체 배치 목록" class="lab-squad-panel">
+<div class="lab-squad-heading"><div><span class="lab-eyebrow">SPRITE PLACEMENT</span><strong>실험체 배치 테스트</strong></div><span aria-live="polite" id="lab-feedback"></span></div>
+<div class="lab-unit-status"><strong id="unit-title">비앙카 · A팀</strong><span id="unit-location">X 2 / Y 2</span><small id="unit-help">A팀 실험체를 끌어서 이동하거나 서로 위치를 바꿀 수 있어.</small></div>
+<div class="lab-squad-groups">
+<div class="lab-squad-group"><span class="lab-squad-caption">A TEAM · 이동 가능</span><div class="lab-squad-members">
+<button class="lab-unit-card" data-unit-id="aya" type="button"><img alt="" src="assets/characters/aya.png"/><span>아야<small class="unit-pos">1열 · 1행</small></span></button>
+<button class="lab-unit-card picked" data-unit-id="bianca" type="button"><img alt="" src="assets/characters/bianca.png"/><span>비앙카<small class="unit-pos">2열 · 2행</small></span></button>
+<button class="lab-unit-card" data-unit-id="isol" type="button"><img alt="" src="assets/characters/isol.png"/><span>아이솔<small class="unit-pos">3열 · 3행</small></span></button>
+</div></div>
+<div class="lab-squad-group"><span class="lab-squad-caption enemy">B TEAM · 전투 모드에서 표시</span><div class="lab-squad-members">
+<button class="lab-unit-card enemy" data-unit-id="rozzi" type="button"><img alt="" src="assets/characters/rozzi.png"/><span>로지<small class="unit-pos">4열 · 1행</small></span></button>
+<button class="lab-unit-card enemy" data-unit-id="hart" type="button"><img alt="" src="assets/characters/hart.png"/><span>하트<small class="unit-pos">5열 · 2행</small></span></button>
+<button class="lab-unit-card enemy" data-unit-id="irem" type="button"><img alt="" src="assets/characters/irem.png"/><span>이렘<small class="unit-pos">6열 · 3행</small></span></button>
+</div></div>
+</div>
+</section>
+<footer class="lab-bottom">L.I.V.E. / M5-08 — LIVE LAYOUT · DRAG PLACEMENT LAB</footer>
 </main>
-<script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
-<script defer src="roster.js"></script>
-<script defer src="items.js"></script>
-<script defer src="combat-engine.js"></script>
-<script defer src="m5-visual-engine.js"></script>
-<script defer src="m5-preview.js"></script>
-<script defer src="m5-economy.js"></script>
-<script defer src="m5-online.js"></script>
+<script defer="" src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
+<script defer="" src="roster.js"></script>
+<script defer="" src="items.js"></script>
+<script defer="" src="combat-engine.js"></script>
+<script defer="" src="m5-visual-engine.js"></script>
+<script defer="" src="m5-preview.js"></script>
+<script defer="" src="m5-economy.js"></script>
+<script defer="" src="m5-online.js"></script>
 </body>
 </html>

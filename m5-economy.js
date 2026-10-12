@@ -105,13 +105,14 @@
     if(chosenBoard===o.uid)chosenBoard=null;
     syncBoard();render();message(`${name(o.characterId)} ${'★'.repeat(o.star)} 판매 · +${refunded}C`);return true;
   }
-  function recall(){
+  function recallUid(uid){
     if(!editable())return false;
-    const o=ownedByUid(chosenBoard);if(!o||o.location!=='board')return false;
+    const o=ownedByUid(uid);if(!o||o.location!=='board')return false;
     if(bench().length>=MAX_BENCH){message('벤치에 빈자리가 없어.');return false;}
     o.location='bench';o.x=o.y=null;chosenBench=o.uid;chosenBoard=null;
     syncBoard();render();message(`${name(o.characterId)} 벤치로 회수`);return true;
   }
+  function recall(){return recallUid(chosenBoard);}
   function deploy(uid,x,y){
     if(!editable()||!Number.isInteger(x)||!Number.isInteger(y)||x<0||x>=3||y<0||y>=3)return false;
     const o=ownedByUid(uid);if(!o||o.location!=='bench')return false;
@@ -155,7 +156,7 @@
   function benchCard(o,index){
     if(!o)return `<div class="m5-bench-slot m5-empty-slot"><b>${index+1}</b><small>EMPTY</small></div>`;
     const cid=o.characterId;
-    return `<button class="m5-bench-slot ${chosenBench===o.uid?'m5-picked':''}" type="button" draggable="true" data-bench="${o.uid}" aria-label="${name(cid)} ${o.star}성, 배치할 실험체 선택">
+    return `<button class="m5-bench-slot ${chosenBench===o.uid?'m5-picked':''}" type="button" draggable="false" data-bench="${o.uid}" aria-label="${name(cid)} ${o.star}성, 배치할 실험체 선택">
       <img src="assets/characters/${cid}.png" alt=""><span class="m5-bench-star">${'★'.repeat(o.star)}</span><strong>${name(cid)}</strong>
     </button>`;
   }
@@ -196,12 +197,51 @@
     const buy=e.target.closest('[data-buy]');if(buy){purchase(Number(buy.dataset.buy));return;}
     const seat=e.target.closest('[data-bench]');if(seat){chosenBench=Number(seat.dataset.bench);chosenBoard=null;render();message('벤치 실험체 선택됨 · 원하는 아군 칸을 터치하거나 드래그해 배치해.');}
   });
-  panel.addEventListener('dragstart',e=>{
-    const seat=e.target.closest('[data-bench]');if(!seat||!editable())return;
-    dragUid=Number(seat.dataset.bench);chosenBench=dragUid;chosenBoard=null;
-    e.dataTransfer.setData('text/plain','m5-bench:'+dragUid);e.dataTransfer.effectAllowed='move';
+  // Unified mouse/pen/touch drag with a real character-image ghost. HTML5
+  // native drag is deliberately disabled (no mobile support, opaque preview).
+  let benchGesture=null;
+  const removeGhost=()=>{benchGesture?.ghost?.remove();document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');};
+  const placeGhost=(g,x,y)=>{if(!g.ghost)return;g.ghost.style.left=x+'px';g.ghost.style.top=y+'px';};
+  panel.addEventListener('dragstart',e=>{if(e.target.closest('[data-bench]'))e.preventDefault();});
+  panel.addEventListener('pointerdown',e=>{
+    const seat=e.target.closest('[data-bench]');
+    if(!seat||!editable()||(e.pointerType==='mouse'&&e.button!==0))return;
+    const uid=Number(seat.dataset.bench),o=ownedByUid(uid);if(!o)return;
+    benchGesture={uid,pointerId:e.pointerId,x:e.clientX,y:e.clientY,active:false,ghost:null};
+    if(e.pointerType!=='mouse')e.preventDefault();
   });
-  panel.addEventListener('dragend',()=>{dragUid=null;});
+  document.addEventListener('pointermove',e=>{
+    const g=benchGesture;if(!g||g.pointerId!==e.pointerId)return;
+    if(!g.active&&Math.hypot(e.clientX-g.x,e.clientY-g.y)>=8){
+      g.active=true;dragUid=g.uid;
+      const o=ownedByUid(g.uid);if(!o){benchGesture=null;dragUid=null;return;}
+      g.ghost=document.createElement('div');g.ghost.className='m5-drag-ghost';
+      const img=document.createElement('img');img.src=`assets/characters/${o.characterId}.png`;img.alt='';
+      const txt=document.createElement('span');txt.textContent=name(o.characterId);
+      g.ghost.append(img,txt);document.body.appendChild(g.ghost);
+      document.body.classList.add('m5-is-dragging');
+    }
+    if(!g.active)return;
+    e.preventDefault();placeGhost(g,e.clientX,e.clientY);
+    const cell=live.cellFromClient?.(e.clientX,e.clientY);
+    g.ghost.classList.toggle('m5-over-board',!!cell);
+    $('stage')?.classList.toggle('m5-stage-drop-active',!!cell);
+  },{passive:false});
+  document.addEventListener('pointerup',e=>{
+    const g=benchGesture;if(!g||g.pointerId!==e.pointerId)return;
+    const dragged=g.active;removeGhost();benchGesture=null;dragUid=null;
+    if(dragged){
+      const target=live.cellFromClient?.(e.clientX,e.clientY);
+      if(target)deploy(g.uid,target.x,target.y);
+      else message('아군 3×3 칸에 놓아야 배치할 수 있어.');
+      // Do not fire synthetic click on the bench slot after dragging.
+      g.suppressClick=true;
+      suppressBenchClickUntil=performance.now()+260;
+    }
+  });
+  document.addEventListener('pointercancel',e=>{if(benchGesture?.pointerId===e.pointerId){removeGhost();benchGesture=null;dragUid=null;}});
+  let suppressBenchClickUntil=0;
+  panel.addEventListener('click',e=>{if(e.target.closest('[data-bench]')&&performance.now()<suppressBenchClickUntil){e.preventDefault();e.stopImmediatePropagation();}},true);
   $('m5-shop-reroll').addEventListener('click',reroll);
   $('m5-shop-lock').addEventListener('click',lock);
   $('m5-next-round').addEventListener('click',nextRound);
@@ -215,6 +255,7 @@
     setOnline,
     onCellTap:(x,y)=>{if(!chosenBench)return false;deploy(chosenBench,x,y);return true;},
     hasDrag:()=>dragUid!==null,
+    recallDraggedUnit:(id)=>recallUid(Number(String(id).replace(/^owned-/,''))),
     drop:(x,y)=>{if(dragUid!==null){const uid=dragUid;dragUid=null;return deploy(uid,x,y);}return false;},
     syncBoardPositions,syncSelection,
     getState:()=>JSON.parse(JSON.stringify(data)),

@@ -127,7 +127,7 @@
     if(!space)return;
     const padding=window.innerWidth<=760?20:40;
     const maxWidth=Math.max(120,space.clientWidth-padding);
-    const maxHeight=Math.max(250,Math.min(680,window.innerHeight-280));
+    const maxHeight=Math.max(270,Math.min(620,window.innerHeight-(window.innerWidth<=760?260:565)));
     const width=Math.min(maxWidth,maxHeight*viewW()/H);
     const height=width*H/viewW();
     wrap.style.width=`${(width+2).toFixed(2)}px`;
@@ -216,12 +216,12 @@
     canvas.addEventListener('pointerdown',e=>{
       if(e.button!==0&&e.pointerType==='mouse')return;
       const p=pointerWorld(e);if(!p?.valid)return;
-      if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.onCellTap?.(p.cellX,p.cellY))return;
       const unit=unitAt(p.cellX,p.cellY);
-      selectCell(p.cellX,p.cellY);
-      // To make a drag possible even when the player grabs the head extending
-      // past a cell, prefer a nearby sprite's actual visible rectangle.
+      // A selected bench unit must NOT steal pointerdown from a unit already on
+      // the board. This was the reason board dragging regressed in M5-07.
       const picked=renderer.pick?.(p.x,p.y) || unit;
+      if(!picked&&state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.onCellTap?.(p.cellX,p.cellY))return;
+      selectCell(p.cellX,p.cellY);
       if(picked&&isOwn(picked)&&state.mode==='prep'&&!combat){
         state.activeUnitId=picked.id;state.x=picked.x;state.y=picked.y;render();
         gesture={id:picked.id,pointerId:e.pointerId,down:p,now:p,moving:false};
@@ -240,6 +240,13 @@
       const g=gesture;gesture=null;state.hover=null;
       const p=pointerWorld(e);
       if(g.moving){
+        // Dropping an owned battlefield unit into the M4-style bench dock
+        // recalls that exact UID, rather than whichever card was last clicked.
+        const benchRect=$('m5-bench-cards')?.getBoundingClientRect();
+        const onBench=benchRect&&e.clientX>=benchRect.left&&e.clientX<=benchRect.right&&e.clientY>=benchRect.top&&e.clientY<=benchRect.bottom;
+        if(onBench&&state.onlineSlot===null&&window.M5Economy?.recallDraggedUnit?.(g.id)){
+          renderer.positions();render();feedback('벤치로 회수했어.');return;
+        }
         const valid=p?.valid&&p.cellX<3;
         const original=units.find(u=>u.id===g.id);
         const other=valid?unitAt(p.cellX,p.cellY):null;
@@ -849,9 +856,17 @@
     window.LIVEM5=Object.freeze({
     sandboxApplyRoster,onlineSetup,onlineSyncTeams,onlineTeamForServer,onlineStart,onlineRoundPrep,onlineLeave,updateOnlineHud,setRegion,
     getState:()=>({...state,units:units.map(u=>({...u})),viewWidth:viewW(),cellWidth:CW,cellHeight:CH}),
+    cellFromClient:(clientX,clientY)=>{if(!renderer?.canvas)return null;const p=pointerWorld({clientX,clientY});return p?.valid&&state.mode==='prep'&&!combat&&state.onlineSlot===null&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;},
     selectCell,setMode,moveUnit,resetUnits,toggleGrid:()=>toggle('grid'),
     startCombat,stopCombat,pauseCombat,changeSpeed,
     getCombatState:()=>combat?{time:combat.snapshot.time,battleOver:combat.snapshot.battleOver,outcome:combat.snapshot.outcome,consistent:combat.consistent,serverMatch:combat.serverMatch,paused:combat.paused,criticalHits:combat.critCount,units:combat.snapshot.units.map(u=>({id:u.id,x:u.x,y:u.y,hp:u.hp,maxHp:u.maxHp,dead:u.dead}))}:null
+  });
+  const dockToggle=$('m5-dock-toggle');
+  dockToggle?.addEventListener('click',()=>{
+    const dock=$('m5-economy-panel'),collapsed=dock.classList.toggle('m5-dock-collapsed');
+    dockToggle.setAttribute('aria-expanded',String(!collapsed));
+    dockToggle.textContent=collapsed?'▴ 상점 펼치기':'▾ 상점 접기';
+    requestAnimationFrame(updateSize);
   });
   updateInfo();updateCombatUI();boot();
 })();
