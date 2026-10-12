@@ -18,13 +18,41 @@
     hart:   {name:'하트',    bounds:[44,78,709,1158]},
     irem:   {name:'이렘',    bounds:[22,97,769,1163]},
     wild_boar:{name:'멧돼지',bounds:[0,0,800,1200]},wild_dog:{name:'들개',bounds:[0,0,800,1200]},
-    wild_wolf:{name:'늑대',bounds:[0,0,800,1200]},wild_bear:{name:'곰',bounds:[0,0,800,1200]}
+    wild_wolf:{name:'늑대',bounds:[59,57,829,1182]},wild_bear:{name:'곰',bounds:[72,111,764,1081]},
+    'abigail':{bounds:[83, 29, 669, 1189]},
+    'adela':{bounds:[114, 32, 719, 1203]},
+    'bernice':{bounds:[66, 65, 708, 1195]},
+    'cathy':{bounds:[178, 45, 629, 1204]},
+    'charlotte':{bounds:[51, 44, 748, 1172]},
+    'chloe':{bounds:[43, 47, 786, 1201]},
+    'dailin':{bounds:[88, 82, 685, 1156]},
+    'debi-marlene':{bounds:[27, 137, 825, 1129]},
+    'garnet':{bounds:[69, 53, 760, 1174]},
+    'hyunwoo':{bounds:[78, 44, 777, 1183]},
+    'ian':{bounds:[59, 108, 749, 1183]},
+    'jenny':{bounds:[78, 26, 685, 1195]},
+    'johann':{bounds:[46, 0, 1100, 1353]},
+    'justina':{bounds:[53, 30, 754, 1192]},
+    'kenneth':{bounds:[112, 86, 626, 1159]},
+    'laura':{bounds:[56, 114, 797, 1159]},
+    'leny':{bounds:[30, 37, 804, 1188]},
+    'marcus':{bounds:[163, 13, 867, 1494]},
+    'mirka':{bounds:[79, 71, 721, 1172]},
+    'nadine':{bounds:[25, 16, 803, 1172]},
+    'nicky':{bounds:[107, 12, 666, 1186]},
+    'nina':{bounds:[37, 25, 804, 1194]},
+    'rio':{bounds:[20, 35, 810, 1182]},
+    'shurin':{bounds:[64, 89, 806, 1188]},
+    'sua':{bounds:[34, 58, 776, 1184]},
+    'yuki':{bounds:[121, 90, 707, 1163]},
+    'yumin':{bounds:[208, 105, 564, 1127]},
   });
   const originals = [
     {id:'aya',team:'A',x:0,y:0}, {id:'bianca',team:'A',x:1,y:1}, {id:'isol',team:'A',x:2,y:2},
     {id:'rozzi',team:'B',x:3,y:0}, {id:'hart',team:'B',x:4,y:1}, {id:'irem',team:'B',x:5,y:2}
   ];
   const units = originals.map(u => ({...u}));
+  const charId = u => u.characterId || u.id;
   const src = id => `assets/characters/${id}.png`;
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
   const state = {brightness:.75, vfx:true, sound:false, mode:'prep', x:1, y:1, grid:false, points:false, engine:'loading', activeUnitId:'bianca', hover:null, onlineSlot:null, onlinePhase:'', round:0, region:'lab'};
@@ -65,7 +93,7 @@
     while(combatEffects.length>FX_LIMIT)combatEffects.shift();
   }
   function hpTop(u,p){
-    const bb=(portraits[u.characterId||u.id]||OTHER_BOUNDS).bounds;
+    const bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds;
     const sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);
     return Math.max(18,p.y-(bb[3]-bb[1])*sc-32);
   }
@@ -125,11 +153,11 @@
     wrap.style.setProperty('--board-ratio',`${viewW()} / ${H}`);
     wrap.dataset.boardMode=state.mode;
     const picked=selectedUnit();
-    $('unit-title').textContent=picked?`${(portraits[picked.id]||window.ERRoster?.byId?.[picked.id]||{name:picked.id}).name} · ${visualTeam(picked)}팀`:'실험체를 선택해 줘';
+    $('unit-title').textContent=picked?`${(portraits[charId(picked)]?.name || window.ERRoster?.byId?.[charId(picked)]?.name || charId(picked))} ${'★'.repeat(picked.star||1)} · ${visualTeam(picked)}팀`:'실험체를 선택해 줘';
     $('unit-location').textContent=picked?`X ${viewX(picked.x)+1} / Y ${picked.y+1}`:'—';
     $('unit-help').textContent=combat?'실제 전투 엔진의 위치·체력·상태를 재생하는 중이야.':state.mode==='prep'?'A팀 실험체를 끌어서 이동하거나 서로 위치를 바꿀 수 있어.':'배치 확인 모드야. 전투 시작 버튼으로 실전을 재생해 봐.';
     document.querySelectorAll('[data-unit-id]').forEach(el=>{
-      const id=el.dataset.unitId,u=units.find(e=>e.id===id);
+      const id=el.dataset.unitId,u=units.find(e=>e.id===id || (state.onlineSlot===null && charId(e)===id));
       el.classList.toggle('picked',id===state.activeUnitId);
       el.querySelector('.unit-pos').textContent=u?`${viewX(u.x)+1}열 · ${u.y+1}행`:'전장 미배치';
     });
@@ -141,6 +169,7 @@
     state.x=x;state.y=y;
     const occupant=unitAt(x,y);
     if(occupant)state.activeUnitId=occupant.id;
+    window.M5Economy?.syncSelection?.(occupant?.id||null);
     render();return true;
   }
   function setMode(mode){
@@ -163,9 +192,11 @@
     state.activeUnitId=id;state.x=x;state.y=y;
     renderer?.positions();render();
     if(state.onlineSlot!==null)window.M5Online?.sendTeam?.();
+    else window.M5Economy?.syncBoardPositions?.(units.filter(u=>u.team==='A'));
     return true;
   }
   function resetUnits(){
+    if(state.onlineSlot===null&&window.M5Economy?.enabled?.())return window.M5Economy.reset();
     if(combat){feedback('전투 중에는 배치를 초기화할 수 없어.');return false;}
     gesture=null;state.hover=null;
     units.splice(0,units.length,...originals.map(u=>({...u})));
@@ -185,6 +216,7 @@
     canvas.addEventListener('pointerdown',e=>{
       if(e.button!==0&&e.pointerType==='mouse')return;
       const p=pointerWorld(e);if(!p?.valid)return;
+      if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.onCellTap?.(p.cellX,p.cellY))return;
       const unit=unitAt(p.cellX,p.cellY);
       selectCell(p.cellX,p.cellY);
       // To make a drag possible even when the player grabs the head extending
@@ -212,18 +244,20 @@
         const original=units.find(u=>u.id===g.id);
         const other=valid?unitAt(p.cellX,p.cellY):null;
         const result=valid&&moveUnit(g.id,p.cellX,p.cellY);
-        if(result&&original){feedback(other&&other!==original?`${portraits[original.id].name} ↔ ${portraits[other.id].name} 자리 교환`:`${portraits[original.id].name} 배치 이동 완료`);}
+        if(result&&original){feedback(other&&other!==original?`${(portraits[charId(original)]?.name||window.ERRoster?.byId?.[charId(original)]?.name||charId(original))} ↔ ${(portraits[charId(other)]?.name||window.ERRoster?.byId?.[charId(other)]?.name||charId(other))} 자리 교환`:`${(portraits[charId(original)]?.name||window.ERRoster?.byId?.[charId(original)]?.name||charId(original))} 배치 이동 완료`);}
         else{renderer.positions();render();feedback('아군 3×3 안쪽으로만 배치할 수 있어.');}
       }else{renderer.positions();render();}
     };
+    canvas.addEventListener('dragover',e=>{if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.hasDrag?.()){e.preventDefault();e.dataTransfer.dropEffect='move';}});
+    canvas.addEventListener('drop',e=>{if(state.mode!=='prep'||combat||state.onlineSlot!==null)return;const p=pointerWorld(e);if(p?.valid&&p.cellX<3){e.preventDefault();window.M5Economy?.drop?.(p.cellX,p.cellY);}});
     canvas.addEventListener('pointerup',end);
     canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;renderer.positions();render();}});
     canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;renderer.positions();render();}});
   }
   function buildCombatConfig(seed){
-    const toEntry=u=>({characterId:u.id,star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:state.onlineSlot===null&&$('m5-crit-demo')?.checked&&u.team==='A'&&u.id==='aya'?['운명의 주사위','레가투스']:u.items||[]});
+    const toEntry=u=>({characterId:charId(u),star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:state.onlineSlot===null&&$('m5-crit-demo')?.checked&&u.team==='A'&&charId(u)==='aya'?['운명의 주사위','레가투스']:u.items||[]});
     return {teamA:units.filter(u=>u.team==='A').map(toEntry),teamB:units.filter(u=>u.team==='B').map(toEntry),
-      masteryA:1,masteryB:1,moveInterval:.5,seed,arenaRegion:state.region};
+      masteryA:state.onlineSlot===null?(window.M5Economy?.getState?.()?.level||1):1,masteryB:1,moveInterval:.5,seed,arenaRegion:state.region};
   }
   function updateTacticalHud(){
     const bar=$('m5-tactical-hud');if(!bar)return;
@@ -510,22 +544,23 @@
       this.fxLayer=new P.Graphics();this.app.stage.addChild(this.fxLayer);
       this.labels=new P.Container();this.app.stage.addChild(this.labels);this.textPool=[];
       this.sprites=new Map();this.textureCache=new Map();
-      const results=await Promise.allSettled(units.map(async u=>[u.id,await P.Assets.load(src(u.id))]));
+      const initialUnits=units.map(u=>({...u}));
+      const results=await Promise.allSettled(initialUnits.map(async u=>[charId(u),await P.Assets.load(src(charId(u)))]));
       for(let i=0;i<results.length;i++){
-        if(results[i].status!=='fulfilled')throw Error(`${units[i].id} 캐릭터 PNG 불러오기 실패`);
+        if(results[i].status!=='fulfilled')throw Error(`${initialUnits[i].id} 캐릭터 PNG 불러오기 실패`);
         const [id,texture]=results[i].value,meta=portraits[id]||OTHER_BOUNDS,bb=meta.bounds;this.textureCache.set(id,texture);
         const node=new P.Container();
         const shadow=new P.Graphics().ellipse(0,-5,73,17).fill({color:0x02080e,alpha:.54});
-        const ring=new P.Graphics().ellipse(0,-7,84,23).stroke({width:4,color:units[i].team==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
+        const ring=new P.Graphics().ellipse(0,-7,84,23).stroke({width:4,color:initialUnits[i].team==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
         node.addChild(shadow,ring);
         const sprite=new P.Sprite(texture);
         const naturalWidth=texture.width,naturalHeight=texture.height;
         sprite.anchor.set((bb[0]+bb[2])/2/naturalWidth,bb[3]/naturalHeight);
         const sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]));
-        sprite.scale.set(units[i].team==='B'?-sc:sc,sc);
+        sprite.scale.set(initialUnits[i].team==='B'?-sc:sc,sc);
         sprite.position.set(0,0);node.addChild(sprite);
         const hp=new P.Graphics();node.addChild(hp);
-        this.pieces.addChild(node);this.sprites.set(id,{node,sprite});
+        this.pieces.addChild(node);this.sprites.set(initialUnits[i].team+':'+initialUnits[i].id,{node,sprite});
       }
       this.mode();
     }
@@ -546,13 +581,13 @@
       this.paint();
     }
     mode(){this.app.renderer.resize(viewW(),H);this.positions(true);this.paint();}
-    positions(){for(const u of units){const obj=this.sprites.get(u.id);if(!obj)continue;const p=spritePoint(u);obj.node.position.set(p.x,p.y);obj.node.zIndex=p.y;obj.node.visible=state.mode==='combat'||isOwn(u);obj.node.alpha=1;}}
-    drag(g){const o=this.sprites.get(g.id);if(!o)return;const u=units.find(x=>x.id===g.id),p=spritePoint(u);o.node.position.set(p.x+g.now.x-g.down.x,p.y+g.now.y-g.down.y);o.node.zIndex=2000;o.node.alpha=.8;}
+    positions(){for(const u of units){const obj=this.sprites.get(u.team+':'+u.id);if(!obj)continue;const p=spritePoint(u);obj.node.position.set(p.x,p.y);obj.node.zIndex=p.y;obj.node.visible=state.mode==='combat'||isOwn(u);obj.node.alpha=1;}}
+    drag(g){const o=this.sprites.get('A:'+g.id);if(!o)return;const u=units.find(x=>x.id===g.id),p=spritePoint(u);o.node.position.set(p.x+g.now.x-g.down.x,p.y+g.now.y-g.down.y);o.node.zIndex=2000;o.node.alpha=.8;}
     pick(x,y){
       // Hit regions follow the visible alpha bounds/ground-contact positions,
       // allowing the upper half of a sprite to be grabbed over an adjacent cell.
       return units.filter(u=>state.mode==='combat'||isOwn(u)).slice().reverse().find(u=>{
-        const p=spritePoint(u),bb=(portraits[u.id]||OTHER_BOUNDS).bounds,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]));
+        const p=spritePoint(u),bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]));
         return Math.abs(x-p.x)<(bb[2]-bb[0])*scale*.5 && y<=p.y+10 && y>=p.y-(bb[3]-bb[1])*scale;
       })||null;
     }
@@ -573,7 +608,7 @@
         obj.node.visible=state.mode==='combat'||isOwn(u);
         obj.node.alpha=u.dead?.22:1;
         obj.sprite.tint=acting.some(f=>f.kind==='hit'||f.kind==='crit')?0xffd8de:0xffffff;
-        const bb=(portraits[u.id]||OTHER_BOUNDS).bounds,sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);obj.sprite.scale.set(visualTeam(u)==='B'?-sc:sc,sc);
+        const bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds,sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);obj.sprite.scale.set(visualTeam(u)==='B'?-sc:sc,sc);
         obj.node.children[1].alpha=combat?.35:state.activeUnitId===u.id?1:.60;const ring=obj.node.children[1];ring.clear().ellipse(0,-7,84,23).stroke({width:4,color:visualTeam(u)==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
         const h=obj.node.children[3];h.clear();
         if(combat){
@@ -612,11 +647,12 @@
       this.canvas=document.createElement('canvas');this.canvas.setAttribute('aria-label','실험체 배치 가능한 Canvas 전장');
       root.replaceChildren(this.canvas);
       this.ctx=this.canvas.getContext('2d',{alpha:false});
-      const files=await Promise.all([FLOOR_URL,...new Set([...units.map(u=>src(u.id)),...Object.keys(portraits).map(id=>src(id))])].map(url=>new Promise((resolve,reject)=>{
+      const preloadIds=[...new Set(units.map(u=>charId(u)))];
+      const files=await Promise.all([FLOOR_URL,...preloadIds.map(id=>src(id))].map(url=>new Promise((resolve,reject)=>{
         const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(Error(`이미지 로드 실패: ${url}`));im.src=url;
       })));
       this.floor=files.shift();if(this.floor.naturalWidth!==W||this.floor.naturalHeight!==H)throw Error('바닥 원본은 2100×900이어야 해');
-      const ids=[...new Set([...units.map(u=>u.id),...Object.keys(portraits)])];this.images=new Map(ids.map((id,i)=>[id,files[i]]));
+      this.images=new Map(preloadIds.map((id,i)=>[id,files[i]]));
       this.mode();
     }
     async setFloor(url){if(this.activeFloor===url)return;const image=await new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src=url});this.floor=image;this.activeFloor=url;this.paint();}
@@ -625,7 +661,7 @@
     positions(){this.paint();}
     drag(){this.paint();}
     pick(x,y){return units.filter(u=>state.mode==='combat'||isOwn(u)).slice().reverse().find(u=>{
-      const p=spritePoint(u),bb=(portraits[u.id]||OTHER_BOUNDS).bounds,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]));
+      const p=spritePoint(u),bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]));
       return Math.abs(x-p.x)<(bb[2]-bb[0])*scale*.5&&y<=p.y+10&&y>=p.y-(bb[3]-bb[1])*scale;
     })||null;}
     paint(){
@@ -639,7 +675,7 @@
       if(!combat)canvasRectangle(c,state.x,state.y,state.x<3?'#8ae1eb':'#f2b8c9');
       if(state.hover)canvasRectangle(c,state.hover.x,state.hover.y,'#a3ffcc');
       const ordered=getDrawUnits().filter(u=>state.mode==='combat'||isOwn(u)).slice().sort((a,b)=>a.y-b.y||a.x-b.x);
-      for(const u of ordered){const meta=portraits[u.id]||OTHER_BOUNDS,bb=meta.bounds,im=this.images.get(u.id),p=combat?visual.get(u.drawKey)||spritePoint(u):spritePoint(u);
+      for(const u of ordered){const meta=portraits[charId(u)]||OTHER_BOUNDS,bb=meta.bounds,im=this.images.get(charId(u)),p=combat?visual.get(u.drawKey)||spritePoint(u):spritePoint(u);
         const shift=gesture?.moving&&gesture.id===u.id?{x:gesture.now.x-gesture.down.x,y:gesture.now.y-gesture.down.y}:{x:0,y:0};
         const acting=fxFor(u.drawKey),attack=acting.find(f=>f.kind==='attack');
         const bump=attack?(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*clamp01((nowMs()-attack.at)/(attack.until-attack.at))):0;
@@ -694,7 +730,7 @@
   });
   $('reset-units').addEventListener('click',resetUnits);
   document.querySelectorAll('[data-unit-id]').forEach(btn=>btn.addEventListener('click',()=>{
-    const u=units.find(x=>x.id===btn.dataset.unitId);if(!u)return;
+    const u=units.find(x=>x.id===btn.dataset.unitId || charId(x)===btn.dataset.unitId);if(!u)return;
     if(state.mode==='prep'&&!isOwn(u)){feedback('준비 모드에서는 내 팀만 선택할 수 있어.');return;}
     state.activeUnitId=u.id;state.x=viewX(u.x);state.y=u.y;render();
   }));
@@ -719,7 +755,22 @@
     await renderer?.setFloor?.(FLOOR_URL);
     return true;
   }
+
+  async function sandboxApplyRoster(entries){
+    if(state.onlineSlot!==null||combat)return false;
+    const enemy=units.filter(u=>u.team==='B');
+    const own=entries.map(o=>({id:'owned-'+o.uid,characterId:o.characterId,team:'A',x:o.x,y:o.y,star:o.star,items:[]}));
+    units.splice(0,units.length,...own,...enemy);
+    if(!units.some(u=>u.id===state.activeUnitId))state.activeUnitId=own[0]?.id||null;
+    if(renderer){
+      await renderer.prepareBattleSprites?.(own.map(u=>({id:'A:'+u.id,characterId:u.characterId,team:'A'})));
+      renderer.positions();render();
+    }
+    return true;
+  }
+
   function onlineSetup(slot){
+    window.M5Economy?.setOnline?.(true);
     if(combat)stopCombat();
     state.onlineSlot=slot;state.onlinePhase='prep';
     state.mode='prep';state.x=1;state.y=1;state.activeUnitId=slot===1?'hart':'bianca';
@@ -734,7 +785,15 @@
         next.push({id:t.characterId,team:p.slot===0?'A':'B',x:p.slot===0?t.x:5-t.x,y:t.y,star:t.star||1,items:t.items||[]});
       }
     }
-    if(next.length){units.splice(0,units.length,...next);renderer?.positions();render();}
+    if(next.length){
+      units.splice(0,units.length,...next);
+      // Online formations may differ from the offline economy sandbox.
+      // Load the actual synchronized sprites before presenting the stage.
+      Promise.resolve(renderer?.prepareBattleSprites?.(next.map(u=>({
+        id:u.team+':'+u.id,characterId:charId(u),team:u.team
+      })))).then(()=>{renderer?.positions();render();}).catch(e=>feedback('온라인 스프라이트: '+e.message));
+      renderer?.positions();render();
+    }
   }
   function onlineTeamForServer(){
     const team=state.onlineSlot===1?'B':'A';
@@ -777,6 +836,8 @@
     if(combat)stopCombat();state.onlineSlot=null;state.onlinePhase='';state.round=0;
     units.splice(0,units.length,...originals.map(u=>({...u})));
     state.mode='prep';renderer?.mode();renderer?.positions();render();
+    // Restore the isolated sandbox AFTER resetting online units.
+    window.M5Economy?.setOnline?.(false);
   }
   function updateOnlineHud(room,slot){
     const g=room?.game;const title=$('lab-round-state');if(!title)return;
@@ -786,7 +847,7 @@
     title.textContent=`ROUND ${g.round} · ${phases[g.phase]||g.phase} · ${seconds}초 · 나 ${g.hp?.[slot]??100} / 상대 ${g.hp?.[1-slot]??100}`;
   }
     window.LIVEM5=Object.freeze({
-    onlineSetup,onlineSyncTeams,onlineTeamForServer,onlineStart,onlineRoundPrep,onlineLeave,updateOnlineHud,setRegion,
+    sandboxApplyRoster,onlineSetup,onlineSyncTeams,onlineTeamForServer,onlineStart,onlineRoundPrep,onlineLeave,updateOnlineHud,setRegion,
     getState:()=>({...state,units:units.map(u=>({...u})),viewWidth:viewW(),cellWidth:CW,cellHeight:CH}),
     selectCell,setMode,moveUnit,resetUnits,toggleGrid:()=>toggle('grid'),
     startCombat,stopCombat,pauseCombat,changeSpeed,

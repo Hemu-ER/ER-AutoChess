@@ -15,14 +15,14 @@
       <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
       <strong>차세대 전투 · 온라인 실험실</strong>
     </div>
-    <span class="lab-revision">M5-06 <i>CINEMATIC LAB</i></span>
+    <span class="lab-revision">M5-07 <i>ECONOMY LAB</i></span>
   </header>
 
   <section class="lab-hero" aria-label="전장 모드 및 테스트 설명">
     <div>
       <span class="lab-eyebrow">BATTLEFIELD · LABORATORY</span>
       <h1>연구소 <em>01</em></h1>
-      <p>2인 온라인 전투 · 실전 스프라이트 전장 · 시네마틱 타격/스킬/결과 연출</p>
+      <p>오프라인 경제·상점·벤치·배치 실험 / 2인 온라인 전투 베타</p>
     </div>
     <div class="lab-mode-switch" role="group" aria-label="보드 모드"><select id="m5-region-select" aria-label="전장 지역 미리보기"><option value="lab">연구소</option><option value="hotel">호텔</option><option value="beach">모래사장</option><option value="alley">골목길</option><option value="forest">숲</option><option value="police">경찰서</option><option value="church">성당</option><option value="temple">절</option><option value="cemetery">묘지</option><option value="estate">고급주택가</option></select>
       <button id="mode-combat" type="button" aria-pressed="false"><span class="mode-dot"></span>전투 <small>3×6</small></button>
@@ -82,6 +82,16 @@
       <p class="lab-footnote">별도 M5 실험실이야. 기존 엔진을 별도로 실행하며 상점·계정·M4 게임 데이터는 변경하지 않아.</p>
     </div>
   </section>
+  <section class="m5-economy-panel" id="m5-economy-panel" aria-label="M5 상점과 벤치 경제 실험실">
+    <div class="m5-economy-title"><div><small>MARKET / OFFLINE ECONOMY PROTOTYPE</small><h2>실험체 상점 · 벤치</h2><p>실제 M4 로스터·코스트·확률 규칙을 사용해. 구매한 실험체를 전장에 올려 직접 전투해 봐.</p></div>
+      <div class="m5-wallet"><img src="assets/ui/credit.png" alt=""><strong id="m5-credit-count">5</strong><span>CR</span></div></div>
+    <div class="m5-market-toolbar"><button type="button" id="m5-shop-reroll">↻ 리롤 <b>2C</b></button><button type="button" id="m5-shop-lock">상점 고정</button><button type="button" id="m5-next-round">다음 라운드 (+수입)</button><button type="button" id="m5-econ-reset">경제 초기화</button><span id="m5-market-odds"></span></div>
+    <div class="m5-market-row" id="m5-shop-cards" aria-label="상점 매물"></div>
+    <div class="m5-bench-heading"><strong>벤치 <span id="m5-bench-count">0 / 8</span></strong><span>드래그해서 아군 3×3에 놓기 · 모바일에서는 카드 선택 후 칸 터치</span></div>
+    <div class="m5-bench-row" id="m5-bench-cards" aria-label="벤치 실험체"></div>
+    <div class="m5-econ-footer"><div><span>팀 숙련도</span><b id="m5-mastery-label">Lv.1</b><button type="button" id="m5-mastery-buy">경험치 투자 · 2C</button><small id="m5-mastery-exp">0 / 4 EXP</small></div><div><span>시너지</span><div id="m5-synergy-list"></div></div><div class="m5-econ-selection"><span id="m5-econ-selection">전장에 있는 실험체를 선택해 줘</span><div><button type="button" id="m5-econ-recall">벤치로 회수</button><button type="button" id="m5-econ-sell">판매</button></div></div></div>
+    <p id="m5-econ-message" role="status">오프라인 전용 경제 실험실 · 온라인 방에서는 경제 조작이 비활성화돼.</p>
+  </section>
   <section class="m5-online-panel" aria-label="M5 온라인 멀티플레이 실험실">
     <div class="lab-info-top"><span>REAL-TIME ONLINE / 2 PLAYER BETA</span><span id="m5-connection">오프라인</span></div>
     <div class="m5-online-banner"><b id="lab-round-state">오프라인 실험실</b><small>기존 M4 서비스와 같은 서버 API 사용 · 3명 고정 실험체 시험 편성</small></div>
@@ -132,7 +142,7 @@
       </div></div>
     </div>
   </section>
-  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-06 — CINEMATIC ONLINE LAB</footer>
+  <footer class="lab-bottom">L.I.V.E. / GRAPHICS MIGRATION <span>●</span> M5-07 — MARKET & BENCH LAB</footer>
 </main>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer src="roster.js"></script>
@@ -140,6 +150,7 @@
 <script defer src="combat-engine.js"></script>
 <script defer src="m5-visual-engine.js"></script>
 <script defer src="m5-preview.js"></script>
+<script defer src="m5-economy.js"></script>
 <script defer src="m5-online.js"></script>
 </body>
 </html>
