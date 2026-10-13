@@ -61,6 +61,7 @@
   const root = $('stage'), wrap = $('stage-wrap');
   let renderer = null, gesture = null, toastTimer = 0;
   let combat = null, raf = null, lastFrame = 0, lag = 0, lastStatus = 0;
+  let farmSession=null, boardGhost=null;
   const visual = new Map();
   const floaters = [], flashes = [], combatEffects=[];
   // A separate queue per actual combat unit. Nearby units must never share a
@@ -231,16 +232,33 @@
         try{canvas.setPointerCapture(e.pointerId);}catch{}
       }
     });
+    const removeBoardGhost=()=>{boardGhost?.remove();boardGhost=null;document.body.classList.remove('m5-board-dragging');window.M5Economy?.clearSalePreview?.();};
+    const moveBoardGhost=(unit,x,y)=>{
+      if(!boardGhost){
+        boardGhost=document.createElement('div');boardGhost.className='m5-drag-ghost m5-board-drag-ghost';
+        const im=document.createElement('img');im.src=src(charId(unit));im.alt='';
+        const label=document.createElement('span');label.textContent=portraits[charId(unit)]?.name||window.ERRoster?.byId?.[charId(unit)]?.name||charId(unit);
+        boardGhost.append(im,label);document.body.appendChild(boardGhost);
+        document.body.classList.add('m5-board-dragging');
+      }
+      boardGhost.style.left=x+'px';boardGhost.style.top=y+'px';
+      const sale=state.onlineSlot===null&&window.M5Economy?.dragSalePreview?.(x,y,unit.id);
+      boardGhost.classList.toggle('m5-over-sell',!!sale);
+      const bench=$('m5-bench-cards')?.getBoundingClientRect();
+      boardGhost.classList.toggle('m5-over-bench',!!(bench&&x>=bench.left&&x<=bench.right&&y>=bench.top&&y<=bench.bottom));
+    };
     canvas.addEventListener('pointermove',e=>{
       if(!gesture||e.pointerId!==gesture.pointerId)return;
       const p=pointerWorld(e);if(!p)return;
       gesture.now=p;
       if(!gesture.moving&&Math.hypot(p.x-gesture.down.x,p.y-gesture.down.y)>8)gesture.moving=true;
-      if(gesture.moving){state.hover=p.valid&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;renderer.drag(gesture);renderer.paint();}
+      if(gesture.moving){state.hover=p.valid&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;const chosen=units.find(u=>u.id===gesture.id);if(chosen)moveBoardGhost(chosen,e.clientX,e.clientY);renderer.drag(gesture);renderer.paint();}
     });
     const end=e=>{
       if(!gesture||e.pointerId!==gesture.pointerId)return;
-      const g=gesture;gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');
+      const g=gesture;const wasSell=!!(boardGhost&&window.M5Economy?.dragSalePreview?.(e.clientX,e.clientY,g.id));
+      gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');removeBoardGhost();
+      if(g.moving&&wasSell&&state.onlineSlot===null&&window.M5Economy?.sellDraggedUnit?.(g.id)){renderer.positions();render();feedback('실험체 판매 완료');return;}
       const p=pointerWorld(e);
       if(g.moving){
         // Dropping an owned battlefield unit into the M4-style bench dock
@@ -261,8 +279,8 @@
     canvas.addEventListener('dragover',e=>{if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.hasDrag?.()){e.preventDefault();e.dataTransfer.dropEffect='move';}});
     canvas.addEventListener('drop',e=>{if(state.mode!=='prep'||combat||state.onlineSlot!==null)return;const p=pointerWorld(e);if(p?.valid&&p.cellX<3){e.preventDefault();window.M5Economy?.drop?.(p.cellX,p.cellY);}});
     canvas.addEventListener('pointerup',end);
-    canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
-    canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
+    canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){removeBoardGhost();gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
+    canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){removeBoardGhost();gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
   }
   function buildCombatConfig(seed){
     const toEntry=u=>({characterId:charId(u),star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:state.onlineSlot===null&&$('m5-crit-demo')?.checked&&u.team==='A'&&charId(u)==='aya'?['운명의 주사위','레가투스']:u.items||[]});
@@ -340,6 +358,7 @@
       engine.start();
       const snapshot=engine.getResult();
       combat={engine,config:cfg,expected,snapshot,paused:false,finished:false,consistent:null,speed:1,logs:[],critCount:0};
+      window.M5Systems?.refreshSynergies?.();
       visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;
       damageLanes.clear();lastImpactFx.clear();recapRendered=false;
       $('m5-battle-result').hidden=true;$('m5-battle-analysis').hidden=true;
@@ -431,6 +450,11 @@
       b.serverMatch=!b.serverOutcome||b.serverOutcome===y.outcome;
       b.consistent=x.outcome===y.outcome&&Math.abs(x.time-y.time)<1e-7&&x.units.length===y.units.length&&x.units.every((u,i)=>u.id===y.units[i].id&&Math.abs(u.hp-y.units[i].hp)<.001&&u.x===y.units[i].x&&u.y===y.units[i].y);
       b.logs.push(`[${y.time.toFixed(1)}] ${y.outcome} · 재현 검증 ${b.consistent?'일치':'불일치'}`);
+      if(farmSession && !farmSession.paid && state.onlineSlot===null){
+        farmSession.paid=true;
+        const killed=y.units.filter(u=>u.team==='B'&&u.dead&&window.ERRoster?.byId?.[u.characterId]?.pveOnly);
+        window.M5Systems?.rewardFarm?.(farmSession.round,killed);
+      }
     }
   }
   function combatFrame(now){
@@ -456,6 +480,7 @@
   function changeSpeed(){if(!combat)return false;combat.speed=combat.speed===1?2:1;updateCombatUI();return combat.speed;}
   function stopCombat(){
     if(!combat)return false;
+    farmSession=null;
     if(raf!==null)cancelAnimationFrame(raf);raf=null;
     combat=null;lag=0;visual.clear();floaters.length=0;flashes.length=0;combatEffects.length=0;
     damageLanes.clear();lastImpactFx.clear();recapRendered=false;
@@ -765,9 +790,25 @@
     $('lab-region-name').textContent=REGIONS[id];
     $('lab-region-effect').textContent=window.ERCombat?.ARENA_REGIONS?.[id]?.detail||'지역 정보';
     await renderer?.setFloor?.(FLOOR_URL);
+    window.M5Systems?.refreshSynergies?.();
     return true;
   }
 
+  function startFarm(round){
+    if(state.onlineSlot!==null||combat||![1,3].includes(round))return false;
+    const own=units.filter(u=>u.team==='A').map(u=>({characterId:charId(u),x:u.x,y:u.y,star:u.star||1,items:u.items||[]}));
+    if(!own.length){feedback('파밍할 실험체를 1명 이상 배치해.');return false;}
+    const animals=(WILD[round]||[]).map(([characterId,x,y])=>({characterId,x,y,star:1}));
+    farmSession={round,paid:false};
+    const seed=Number($('combat-seed').value)||123456;
+    const config={teamA:own,teamB:animals,masteryA:window.M5Economy?.getState?.()?.level||1,masteryB:1,moveInterval:.5,seed,arenaRegion:state.region};
+    const active=startCombat(config);
+    if(!active){farmSession=null;return false;}
+    $('m5-farm-report').textContent=`R${round} 파밍 진행 중 · 야생동물 ${animals.length}마리 · 처치한 개체만 보상`;
+    feedback(`R${round} 야생동물 파밍 시작`);return true;
+  }
+  $('m5-farm-r1')?.addEventListener('click',()=>startFarm(1));
+  $('m5-farm-r3')?.addEventListener('click',()=>startFarm(3));
   async function sandboxApplyRoster(entries){
     if(state.onlineSlot!==null||combat)return false;
     const enemy=units.filter(u=>u.team==='B');
@@ -867,7 +908,7 @@
     dragPreviewAt:(clientX,clientY)=>{if(!renderer?.canvas||combat||state.mode!=='prep')return null;const p=pointerWorld({clientX,clientY});const target=p?.valid&&p.cellX<3?{x:p.cellX,y:p.cellY}:null;state.hover=target;renderer.paint();return target;},
     clearDragPreview:()=>{state.hover=null;renderer?.paint();},
     selectCell,setMode,moveUnit,resetUnits,toggleGrid:()=>toggle('grid'),
-    startCombat,stopCombat,pauseCombat,changeSpeed,
+    startCombat,startFarm,stopCombat,pauseCombat,changeSpeed,
     getCombatState:()=>combat?{time:combat.snapshot.time,battleOver:combat.snapshot.battleOver,outcome:combat.snapshot.outcome,consistent:combat.consistent,serverMatch:combat.serverMatch,paused:combat.paused,criticalHits:combat.critCount,units:combat.snapshot.units.map(u=>({id:u.id,x:u.x,y:u.y,hp:u.hp,maxHp:u.maxHp,dead:u.dead}))}:null
   });
   const dockToggle=$('m5-dock-toggle');

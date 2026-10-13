@@ -214,3 +214,21 @@ body.m5-is-dragging{user-select:none}.m5-drag-ghost{position:fixed;z-index:21474
 /* Top-left synergy is a real rail panel, never painted over units or HP HUD. */
 .m5-live-left>.m5-board-synergy{position:relative;left:auto;top:auto;z-index:auto;max-width:none;width:100%;padding:10px;pointer-events:auto;background:#0d1720;box-shadow:none}
 .m5-live-left>.m5-board-synergy #m5-synergy-list{display:flex;flex-wrap:wrap}
+
+/* M5-10: genuine drop targets, all-pointer drag preview, accessible tooltips */
+#m5-econ-sell{border:1px solid #b76874;background:#3a1b26;color:#ffced1;transition:background .12s,border-color .12s,box-shadow .12s;min-height:34px}
+#m5-econ-sell.m5-sell-hover{background:#873744;border:2px solid #ffc0b4;box-shadow:0 0 18px #ed6a778a;color:#fff}
+.m5-drag-ghost.m5-over-sell{border-color:#ffc0c0;background:#58222adc;box-shadow:0 0 27px #f76f81aa}
+.m5-drag-ghost.m5-over-bench{border-color:#8eddeb}
+.m5-board-drag-ghost{position:fixed!important;z-index:2147483646!important;pointer-events:none!important;width:94px;height:118px;overflow:hidden;background:#0c1b22b0}
+body.m5-board-dragging,body.m5-board-dragging *{user-select:none!important}
+.m5-region-tip{background:transparent;border:0;color:#bdd6d8;text-align:left;padding:4px 6px;cursor:help;font-size:11px;white-space:normal}
+.m5-region-tip:hover,.m5-region-tip:focus-visible{color:#f1e2ba;text-decoration:underline}
+#m5-synergy-list .m5-aff-chip{cursor:help;display:inline-flex;align-items:center;gap:4px;padding:4px 7px;background:#15232b;border:1px solid #49616a;border-radius:5px;color:#b1c5ce;font-size:11px}
+#m5-synergy-list .m5-aff-chip.m5-synergy-active{color:#bafbe3;border-color:#59b897;background:#193e36}
+.m5-role-synergies{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}.m5-role-synergies button{background:#12232a;color:#b7cad0;font-size:10px;border:1px solid #3d5460;border-radius:4px;padding:4px;cursor:help}
+.m5-synergy-popup{position:fixed;z-index:2147483646;pointer-events:none;max-width:min(315px,80vw);padding:11px 13px;border:1px solid #6795a0;border-radius:8px;background:#101c25f4;color:#e1f7f7;box-shadow:0 10px 35px #000b;font-size:12px;line-height:1.65;white-space:pre-line}
+.m5-synergy-popup strong{display:block;color:#b9fae1;margin-bottom:5px}.m5-synergy-popup small{display:block;color:#c1d4d8}
+.m5-farm-qa{border:1px solid #48625d;padding:8px;margin:6px 0 10px;border-radius:7px;background:#10221f;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.m5-farm-qa span{font-weight:bold;font-size:11px;color:#b4e9d5;flex-basis:100%}.m5-farm-qa button{font-size:11px;padding:7px;border:1px solid #699a8b;background:#1a3532;color:#e2fbf0;border-radius:5px;cursor:pointer}.m5-farm-qa small{width:100%;color:#94b8b1;font-size:10px}
+#m5-item-inventory .m5-item-owned{background:#162e33;border:1px solid #659a96;padding:3px;text-align:center;display:grid;place-items:center;cursor:help;overflow:hidden}.m5-item-owned strong{font-size:10px;white-space:normal;overflow-wrap:anywhere;line-height:1.15}.m5-item-owned small{font-size:8px;color:#b9e8d2}

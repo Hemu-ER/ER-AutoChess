@@ -95,11 +95,11 @@
     if(!data.locked)rollShop();
     render();message(`오프라인 라운드 R${data.round} · 수입 5C + 이자 ${interest}C · 숙련도 EXP +4`);
   }
+  function sellValue(o){const base=(meta(o.characterId)?.cost||1)*copyValue(o.star);return o.star===1?base:Math.ceil(base*.5);}
   function canSell(o){return Boolean(o)&&editable();}
   function sell(uid){
     const o=ownedByUid(uid);if(!canSell(o))return false;
-    const base=(meta(o.characterId)?.cost||1)*copyValue(o.star);
-    const refunded=o.star===1?base:Math.ceil(base*.5);
+    const refunded=sellValue(o);
     data.credits+=refunded;
     data.owned=data.owned.filter(x=>x!==o);
     if(chosenBench===o.uid)chosenBench=null;
@@ -191,8 +191,10 @@
     const types=new Map();
     for(const o of board())for(const aff of meta(o.characterId)?.affiliations||[]){const set=types.get(aff)||new Set();set.add(o.characterId);types.set(aff,set);}
     const sym=$('m5-synergy-list');sym.replaceChildren();
+    if(window.M5Systems?.renderSynergies){window.M5Systems.renderSynergies(board());}else{
     for(const [a,v] of [...types].sort((a,b)=>b[1].size-a[1].size||a[0].localeCompare(b[0],'ko'))){const chip=document.createElement('span');chip.textContent=`${a} ${v.size}`;chip.className=v.size>=2?'m5-synergy-active':'';sym.appendChild(chip);}
     if(!types.size)sym.textContent='실험체를 배치해 시너지 확인';
+    }
     const selected=ownedByUid(chosenBench)||ownedByUid(chosenBoard);
     $('m5-econ-selection').textContent=selected?`${name(selected.characterId)} ${'★'.repeat(selected.star)} · ${selected.location==='bench'?'벤치 선택됨 · 칸 터치로 배치':'전장 배치 중'}`:`전장 또는 벤치의 실험체를 선택해 줘`;
     $('m5-econ-recall').disabled=!editable()||selected?.location!=='board';
@@ -216,8 +218,20 @@
   // Unified mouse/pen/touch drag with a real character-image ghost. HTML5
   // native drag is deliberately disabled (no mobile support, opaque preview).
   let benchGesture=null;
-  const removeGhost=()=>{benchGesture?.ghost?.remove();document.querySelectorAll('.m5-bench-grabbed').forEach(x=>x.classList.remove('m5-bench-grabbed'));document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');live.clearDragPreview?.();};
+  const removeGhost=()=>{sellHover(-1,-1,null);benchGesture?.ghost?.remove();document.querySelectorAll('.m5-bench-grabbed').forEach(x=>x.classList.remove('m5-bench-grabbed'));document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');live.clearDragPreview?.();};
+  const sellButton=$('m5-econ-sell');
+  const inside=(r,x,y)=>r&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+  const overSell=(x,y)=>inside(sellButton?.getBoundingClientRect(),x,y);
+  const sellHover=(x,y,uid)=>{
+    const target=overSell(x,y)&&editable();
+    sellButton?.classList.toggle('m5-sell-hover',!!target);
+    if(sellButton)sellButton.textContent=target?`판매하고 +${sellValue(ownedByUid(uid))}C 받기`:'판매 · 여기로 드래그';
+    return target;
+  };
   const placeGhost=(g,x,y)=>{if(!g.ghost)return;g.ghost.style.left=x+'px';g.ghost.style.top=y+'px';};
+  const createGhost=(o)=>{
+    const ghost=createGhost(o);return ghost;
+  };
   panel.addEventListener('dragstart',e=>{if(e.target.closest('[data-bench]'))e.preventDefault();});
   panel.addEventListener('pointerdown',e=>{
     const seat=e.target.closest('[data-bench]');
@@ -242,15 +256,18 @@
     placeGhost(g,e.clientX,e.clientY);
     if(!g.active)return;
     e.preventDefault();
-    const cell=live.dragPreviewAt?.(e.clientX,e.clientY);
+    const selling=sellHover(e.clientX,e.clientY,g.uid);
+    const cell=selling?null:live.dragPreviewAt?.(e.clientX,e.clientY);
+    g.ghost.classList.toggle('m5-over-sell',!!selling);
     g.ghost.classList.toggle('m5-over-board',!!cell);
     g.ghost.classList.toggle('m5-invalid-drop',!cell);
     $('stage')?.classList.toggle('m5-stage-drop-active',!!cell);
   },{passive:false});
   document.addEventListener('pointerup',e=>{
     const g=benchGesture;if(!g||g.pointerId!==e.pointerId)return;
-    const dragged=g.active;removeGhost();benchGesture=null;dragUid=null;
+    const dragged=g.active;const selling=overSell(e.clientX,e.clientY);removeGhost();benchGesture=null;dragUid=null;
     if(dragged){
+      if(selling){sell(g.uid);suppressBenchClickUntil=performance.now()+260;return;}
       const target=live.cellFromClient?.(e.clientX,e.clientY);
       if(target)deploy(g.uid,target.x,target.y);
       else message('아군 3×3 칸에 놓아야 배치할 수 있어.');
@@ -279,6 +296,10 @@
     drop:(x,y)=>{if(dragUid!==null){const uid=dragUid;dragUid=null;return deploy(uid,x,y);}return false;},
     syncBoardPositions,syncSelection,
     getState:()=>JSON.parse(JSON.stringify(data)),
+    sellDraggedUnit:id=>sell(Number(String(id).replace(/^owned-/,''))),
+    saleValue:id=>{const o=ownedByUid(Number(String(id).replace(/^owned-/,'')));return o?sellValue(o):0;},
+    dragSalePreview:(x,y,id)=>sellHover(x,y,Number(String(id).replace(/^owned-/,''))),
+    clearSalePreview:()=>sellHover(-1,-1,null),
     buy:purchase,reroll,deploy,sell,recall,nextRound,invest
   });
   document.body.classList.add('m5-economy-enabled');
