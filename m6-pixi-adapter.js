@@ -14,9 +14,46 @@
  const floorPath=`assets/m5/floor/${floorId}.png`;
  let activeFloor=false;
  const nodes=new Map(), loading=new Map();
+ const hits=[], lastBasic=new Map(), motions=new Map();
+ let motionFrame=0;
+ const clock=()=>performance.now();
+ function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
+  const at=clock();hits.push({id:String(e.unitId),amount:Number(e.amount),at,critical:!!e.critical});
+  while(hits.length>65)hits.shift();motions.set(String(e.unitId),{kind:'hit',at});startMotion();
+ }
+ function combatSnapshot(units){if(!ready||!Array.isArray(units))return;
+  const present=new Set();const at=clock();
+  for(const u of units){const id=String(u.id);present.add(id);const n=Number(u.basicCount||0),old=lastBasic.get(id);
+   if(old!==undefined&&n>old)motions.set(id,{kind:'attack',at});lastBasic.set(id,n);
+  }
+  for(const id of lastBasic.keys())if(!present.has(id))lastBasic.delete(id);
+  startMotion();
+ }
+ function startMotion(){if(motionFrame||!ready)return;motionFrame=requestAnimationFrame(animateMotion)}
+ function animateMotion(){motionFrame=0;if(!ready||!app)return;
+  const now=clock();let active=false;
+  for(const [id,entry] of nodes){const m=motions.get(id);let dx=0,dy=0;
+   if(m){const age=now-m.at,duration=m.kind==='attack'?170:220;
+    if(age<duration){const t=age/duration,k=Math.sin(Math.PI*t);dx=m.kind==='attack'?(entry.team==='B'?-1:1)*9*k:0;dy=m.kind==='hit'?4*k:0;
+     entry.sprite.tint=m.kind==='hit'?0xffb9bf:0xffffff;active=true;
+    }else{motions.delete(id);entry.sprite.tint=0xffffff;}}
+   entry.container.position.set(entry.baseX+dx,entry.baseY+dy);
+  }
+  const gfx=app.stage.getChildByLabel?.('m6-floats');
+  if(gfx){gfx.removeChildren().forEach(c=>c.destroy?.());for(const h of hits){const age=now-h.at;if(age>1050)continue;
+   const ent=nodes.get(h.id);if(!ent)continue;active=true;
+   const color=h.critical?0xffdc91:0xffb6bd;
+   const t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:color,stroke:{color:0x101016,width:4}}});
+   t.anchor.set(.5,.5);const lane=hits.filter(v=>v.id===h.id&&Math.abs(v.at-h.at)<200).indexOf(h);
+   t.position.set(ent.baseX+(lane%3-1)*23,ent.baseY-83-age*.055);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
+  }}
+  for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050)hits.splice(i,1);
+  if(active)startMotion();
+ }
+
  const P=()=>window.PIXI;
  const queue=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
- function fallback(){ready=false;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();}
+ function fallback(){ready=false;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
  async function init(){
   if(app||busy||!P()?.Application)return;
   busy=true;
@@ -28,7 +65,7 @@
    const tex=await px.Assets.load(floorPath);
    floorSprite=new px.Sprite(tex);floorSprite.tint=0xb5b5b5;app.stage.addChild(floorSprite);
    effects=new px.Graphics();app.stage.addChild(effects);
-   layer=new px.Container();app.stage.addChild(layer);
+   layer=new px.Container();app.stage.addChild(layer);const floats=new px.Container();floats.label="m6-floats";app.stage.addChild(floats);
    activeFloor=true;ready=true;queue();
    shell.dataset.m6Pixi='active';
    const tag=document.getElementById('m6-field-label')||document.createElement('div');
@@ -73,7 +110,8 @@
    const footX=rect.left-outer.left+rect.width/2,footY=rect.bottom-outer.top-rect.height*.10;
    const scale=Math.min(rect.height*1.78/Math.max(1,t.height),rect.width*1.35/Math.max(1,t.width));
    sprite.scale.set(v.unit.classList.contains('B')?-scale:scale,scale);
-   container.position.set(footX,footY);container.zIndex=footY;
+   entry.baseX=footX;entry.baseY=footY;entry.team=v.unit.classList.contains('B')?'B':'A';
+   if(!motions.has(v.id))container.position.set(footX,footY);container.zIndex=footY;
    container.alpha=v.unit.classList.contains('dead')?.3:1;
    ring.clear();
   });
@@ -87,5 +125,5 @@
  // PixiJS CDN failure must not affect M4. Stop polling after 10 seconds.
  let attempts=0;const begin=()=>{if(P()?.Application)init();else if(++attempts<30)setTimeout(begin,300);};
  begin();
- window.M6PixiAdapter={refresh:queue,disable:fallback};
+ window.M6PixiAdapter={refresh:queue,disable:fallback,impact,combatSnapshot};
 })();
