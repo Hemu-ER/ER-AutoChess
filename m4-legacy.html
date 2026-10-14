@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>L.I.V.E. — M4 레거시 UI</title>
+<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="live-gate.css" />
+<link rel="stylesheet" href="battlefield.css" />
+<style id="test-board-width-hotfix">
+/* QA/test mode must always use the full 3x6 battlefield.
+   Game PREP may use the centered 3x3 formation board. */
+body[data-app-mode="test"] #board,
+body[data-app-mode="test"] #board.formation-board,
+body[data-app-mode="test"] #board.combat-board {
+  width: 100% !important;
+  margin-inline: 0 !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+body[data-app-mode="test"] #board .cell {
+  display: block !important;
+}
+body[data-app-mode="test"] .field-a {
+  left: 25% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+body[data-app-mode="test"] .field-b {
+  display: block !important;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="eyebrow">AGLAIA // COMBAT LAB</span>
+      <h1>ER AUTO CHESS</h1>
+      <span class="version">M4 LEGACY · <a href="/" style="color:inherit;text-decoration:underline">M6 메인으로 이동 ↗</a></span>
+    </div>
+    <div class="controls">
+      <button id="start" class="primary">▶ 전투 시작</button>
+      <button id="pause">Ⅱ 일시정지</button>
+      <button id="step">+0.1초</button>
+      <button id="reset">↻ 초기화</button>
+      <select id="speed" aria-label="전투 속도"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option></select>
+    </div>
+  </header>
+
+  <section class="team-builder" aria-label="자유 팀 편성">
+    <div id="teamA" class="team-panel team-a"></div>
+    <div id="teamB" class="team-panel team-b"></div>
+  </section>
+
+  <main>
+    <section class="arena-card">
+      <div class="arena-top">
+        <div class="battle-state"><b id="status">배치 단계</b><span id="clock">0.0s</span></div>
+        <div class="legend"><i class="a"></i>A TEAM <i class="b"></i>B TEAM</div>
+      </div>
+      <div class="board-shell">
+        <div class="field-mark field-a">A</div><div class="field-mark field-b">B</div>
+        <div id="board" class="board"></div>
+      </div>
+      <p class="hint">팀별 3×3 배치 · 전투 시 3×6 결합 · 행 = same y / 열 = same x</p>
+    </section>
+
+    <aside class="dev-rail">
+      <details class="panel" open>
+        <summary>DEV / QA CONTROL</summary>
+        <div class="panel-body">
+          <label>숙련도 A <input id="masteryA" type="number" min="1" max="20" value="8"></label>
+          <label>숙련도 B <input id="masteryB" type="number" min="1" max="20" value="8"></label>
+          <label>이동 간격 <input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"></label>
+          <label class="check"><input id="fixedSeed" type="checkbox" checked> RNG seed 고정</label>
+          <label>Seed <input id="seed" type="number" value="24004"></label>
+          <button id="batch">100회 자동전투</button>
+          <div id="batchResult" class="result">아직 실행 안 함</div>
+        </div>
+      </details>
+      <details class="panel" open>
+        <summary>COMBAT LOG</summary>
+        <div id="log" class="log"></div>
+      </details>
+    </aside>
+  </main>
+
+  <section class="meters">
+    <div><h2>A TEAM // DAMAGE</h2><div id="meterA"></div></div>
+    <div><h2>B TEAM // DAMAGE</h2><div id="meterB"></div></div>
+  </section>
+
+  <footer>32 EXPERIMENT SUBJECTS · SD ASSET SLOTS READY · PENDING SKILLS USE BASIC COMBAT ONLY</footer>
+</div>
+<script src="roster.js"></script>
+<script src="items.js"></script>
+<script src="combat-engine.js"></script>
+<script src="game.js"></script>
+<script src="live-intro.js"></script>
+<script src="multiplayer.js"></script>
+<script src="battlefield.js"></script>
+</body>
+</html>
