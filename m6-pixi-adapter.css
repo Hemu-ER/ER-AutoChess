@@ -1,0 +1,6 @@
+/* Overlay canvas never intercepts the existing M4 pointer/drag/tooltip handlers. */
+.board-shell{position:relative}
+.m6-pixi-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
+/* Only substitute sprite pixels after successful texture load; retain M4 HUD/interactions. */
+#board.m6-pixi-active .sd-slot img.sd-image{opacity:0!important}
+/* Drag ghost retains original M4 image when moved outside the board. */
