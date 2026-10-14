@@ -102,5 +102,18 @@ body[data-app-mode="test"] .field-b {
 <script src="battlefield.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer src="m6-pixi-adapter.js"></script>
+<script>
+/* M6-07 QA quick entrance: appears in development; never bypasses live authentication. */
+(()=>{
+ const query=new URLSearchParams(location.search);
+ const devHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+ if(!devHost&&query.get('devqa')!=='1')return;
+ const a=document.createElement('a');
+ a.href='qa-combat.html';a.textContent='⚒ 전투 QA 바로가기';
+ a.setAttribute('aria-label','로그인 없이 전투 QA 실험실 열기');
+ a.style.cssText='position:fixed;right:16px;bottom:16px;z-index:100020;padding:11px 16px;border:1px solid #83d9e4;border-radius:9px;background:#0b1b26f2;color:#d7faff;font:700 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 3px 24px #000b';
+ document.body.appendChild(a);
+})();
+</script>
 </body>
 </html>

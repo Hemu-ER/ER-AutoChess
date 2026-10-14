@@ -116,6 +116,13 @@
    const scale=Math.min(heightLimit/Math.max(1,t.height),widthLimit/Math.max(1,t.width));
    sprite.scale.set(v.unit.classList.contains('B')?-scale:scale,scale);
    entry.baseX=footX;entry.baseY=footY;entry.visualHeight=t.height*scale;entry.team=v.unit.classList.contains('B')?'B':'A';
+   // Sync HUD to the actual PIXI sprite's head, not to an arbitrary grid-cell percentage.
+   // Read from unit coordinates because the HUD is absolutely positioned within .unit.
+   const unitRect=v.unit.getBoundingClientRect();
+   const spriteHead=footY-t.height*scale;
+   const nextHudTop=Math.round(spriteHead-(unitRect.top-outer.top)-12);
+   if(v.unit.style.getPropertyValue('--m6-hud-top')!==nextHudTop+'px')
+     v.unit.style.setProperty('--m6-hud-top',nextHudTop+'px');
    if(!motions.has(v.id))container.position.set(footX,footY);container.zIndex=footY;
    container.alpha=v.unit.classList.contains('dead')?.3:1;
    ring.clear();
