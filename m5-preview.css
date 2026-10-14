@@ -294,3 +294,7 @@ body.m5-board-dragging,body.m5-board-dragging *{user-select:none!important}
 .m5-codex-entry{padding:14px;border:1px solid #465e64;background:#142329;color:#dfe9eb;border-radius:7px;min-width:0}
 .m5-codex-entry h4{font-size:16px;margin:0 0 8px}.m5-codex-entry p{font-size:12px;line-height:1.6;margin:5px 0}.m5-codex-entry b{font-size:12px;color:#9ee0e5}.m5-codex-entry small{font-size:11px;color:#a9bdc0}
 .m5-codex-character{display:flex;gap:12px}.m5-codex-character>img{width:76px;height:120px;object-fit:contain;flex-shrink:0;align-self:start}.m5-codex-character>div{min-width:0}
+/* M5-15 online economy editor */
+.m5-online-economy{position:relative;max-width:1230px;margin:8px auto;padding:12px;border:1px solid #4c6675;background:#101b24;color:#edf4f6;border-radius:10px;font-size:13px}
+.m5-online-economy[hidden]{display:none}.m5-online-economy button{border:1px solid #54717b;background:#1c3440;color:#e9f4f6;border-radius:5px;padding:7px;cursor:pointer}
+.m5-oe-title,.m5-oe-actions,.m5-oe-shop,.m5-oe-units,.m5-oe-unit>div{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}.m5-oe-title{justify-content:space-between}.m5-oe-shop button{flex:1;min-width:130px}.m5-oe-unit{border:1px solid #34515f;padding:8px;flex:1;min-width:180px;display:grid;gap:4px}.m5-oe-unit small{color:#b0c9d0}.m5-oe-items{margin-top:9px}.m5-oe-items button{margin:3px}#m5-oe-status{color:#bddce1}

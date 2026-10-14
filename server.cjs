@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const {CombatEngine,pickArenaRegion}=require('./combat-engine.js');
 const {roster:supplyRoster}=require('./roster.js');
 const LIVEItems=require('./items.js');
+const OnlineEconomy=require('./m5-online-economy.cjs');
 const BASIC_REWARDS=Object.keys(LIVEItems.all).filter(k=>LIVEItems.all[k].basic);
 const COMPLETE_REWARDS=Object.keys(LIVEItems.all).filter(k=>!LIVEItems.all[k].basic);
 const validRoster=new Map(supplyRoster.filter(u=>!u.pveOnly).map(u=>[u.id,u]));
@@ -54,7 +55,7 @@ const validNickname=v=>{const n=cleanName(v);return n.length>=2&&n.length<=16&&!
 const nickOf=username=>accounts[username]?.nickname||username;
 // M5-14: server-owned supply transaction. Never grant the same round's reward twice.
 const EXP_STEPS={1:4,2:4,3:4,4:4,5:4,6:4,7:5,8:5,9:5,10:5,11:5,12:5,13:6,14:6,15:6,16:6,17:6,18:6,19:6};
-function ensureAssets(p){return p.assets||(p.assets={credits:5,level:1,exp:0,items:[],reserves:[],sales:0,grants:[]});}
+function ensureAssets(p){return OnlineEconomy.init(p.assets||(p.assets={credits:5,level:1,exp:0,items:[],reserves:[],sales:0,grants:[]}));}
 function grantSupply(p,round,reward){
  const a=ensureAssets(p),key='supply:'+round;
  if(a.grants.includes(key))return false;
@@ -67,7 +68,7 @@ function grantSupply(p,round,reward){
  if(reward.type==='unit'){
   const unit=validRoster.get(reward.value);
   if(!unit||![1,2].includes(unit.cost))throw Error('invalid supply unit');
-  if(a.reserves.length<8)a.reserves.push({characterId:reward.value,star:1,items:[]});
+  if(a.owned.filter(o=>o.location==='bench').length<8)OnlineEconomy.addUnit(a,reward.value);
   else a.credits+=unit.cost;
  }
  if(reward.type==='basic'||reward.type==='complete'){
@@ -133,11 +134,21 @@ if(url.pathname==='/api/supply-pick'){
  if(!options||!Number.isInteger(choice)||choice<0||choice>=3)return reply(res,400,{error:'잘못된 보상 선택'});
  grantSupply(p,r.game.round,options[choice]);r.game.supplyResolved[slot]=options[choice];refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
 }
+if(url.pathname==='/api/economy'){
+ if(!r.game||r.game.phase!=='prep')return reply(res,409,{error:'경제 조작은 준비 단계만 가능해.'});
+ const a=ensureAssets(p);try{OnlineEconomy.action(a,body.action,body);p.team=OnlineEconomy.team(a);p.mastery=a.level;p.roundReady=false;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});}
+ catch(e){return reply(res,400,{error:e.message});}
+}
 if(url.pathname==='/api/farm-done'){if(!r.game||r.game.phase!=='combat'||!r.game.pve)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
-if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;r.game={round:1,phase:"prep",endsAt:Date.now()+60000,hp:[100,100],version:1,seed:0,battle:null,earlyEndsAt:null};for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});for(const member of r.players.values()){
+ const a=ensureAssets(member);
+ if(a.owned.length===0){for(const t of member.team){if(!validRoster.has(t.characterId))continue;const o=OnlineEconomy.addUnit(a,t.characterId);o.star=1;o.items=[];o.location='board';o.x=t.x;o.y=t.y;}}
+ member.team=OnlineEconomy.team(a);member.mastery=a.level;
+ }
+ r.started=true;r.game={round:1,phase:"prep",endsAt:Date.now()+60000,hp:[100,100],version:1,seed:0,battle:null,earlyEndsAt:null};for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/advance'){return reply(res,403,{error:'라운드 변경은 서버가 관리해.'})}
-if(url.pathname==='/api/team'){const rows=body.team;if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});const used=new Set();for(const u of rows){if(typeof u.characterId!=='string'||!/^[a-z-]{1,32}$/.test(u.characterId)||!Number.isInteger(u.x)||u.x<0||u.x>2||!Number.isInteger(u.y)||u.y<0||u.y>2||!Number.isInteger(u.star)||u.star<1||u.star>3)return reply(res,400,{error:'잘못된 배치'});const key=`${u.x},${u.y}`;if(used.has(key))return reply(res,400,{error:'중복 배치'});used.add(key);if(!validRoster.has(u.characterId))return reply(res,400,{error:'존재하지 않는 실험체'});if(u.items!==undefined&&(!Array.isArray(u.items)||u.items.length>3||u.items.some(item=>typeof item!=='string'||!LIVEItems.all[item])))return reply(res,400,{error:'잘못된 장비'})}if(r.game&&r.game.phase!=='prep')return reply(res,409,{error:'준비 시간에만 배치 변경 가능'});p.team=rows.map(({characterId,x,y,star,items})=>({characterId,x,y,star,items:Array.isArray(items)?items.slice(0,3):[]}));p.mastery=r.started?ensureAssets(p).level:(Number.isInteger(body.mastery)?Math.min(20,Math.max(1,body.mastery)):1);p.ready=false;if(r.game?.phase==='prep'){p.roundReady=false;refreshEarlyFinish(r)}broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/team'){const rows=body.team;if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});const used=new Set();for(const u of rows){if(typeof u.characterId!=='string'||!/^[a-z-]{1,32}$/.test(u.characterId)||!Number.isInteger(u.x)||u.x<0||u.x>2||!Number.isInteger(u.y)||u.y<0||u.y>2||!Number.isInteger(u.star)||u.star<1||u.star>3)return reply(res,400,{error:'잘못된 배치'});const key=`${u.x},${u.y}`;if(used.has(key))return reply(res,400,{error:'중복 배치'});used.add(key);if(!validRoster.has(u.characterId))return reply(res,400,{error:'존재하지 않는 실험체'});if(u.items!==undefined&&(!Array.isArray(u.items)||u.items.length>3||u.items.some(item=>typeof item!=='string'||!LIVEItems.all[item])))return reply(res,400,{error:'잘못된 장비'})}if(r.game&&r.game.phase!=='prep')return reply(res,409,{error:'준비 시간에만 배치 변경 가능'});if(r.started)return reply(res,409,{error:'온라인 편성은 경제 시스템을 통해 변경해.'});p.team=rows.map(({characterId,x,y,star,items})=>({characterId,x,y,star,items:Array.isArray(items)?items.slice(0,3):[]}));p.mastery=r.started?ensureAssets(p).level:(Number.isInteger(body.mastery)?Math.min(20,Math.max(1,body.mastery)):1);p.ready=false;if(r.game?.phase==='prep'){p.roundReady=false;refreshEarlyFinish(r)}broadcast(r);return reply(res,200,{ok:true})}
 return reply(res,404,{error:'요청 없음'});
 }
 function join(r,res,body){const slot=Array.from({length:r.maxPlayers},(_,i)=>i).find(i=>![...r.players.values()].some(p=>p.slot===i));const username=authAccount({headers:{'x-live-session':body.session}},body);const p={id:id(),token:id(),room:r.code,username,name:nickOf(username),slot,ready:false,connected:false,team:[]};r.players.set(p.id,p);r.messages.push({system:true,text:`${p.name} 입장`,at:Date.now()});broadcast(r);reply(res,200,{token:p.token,playerId:p.id,room:publicRoom(r)})}
@@ -173,7 +184,7 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   if(g.hp.some(x=>x<=0)){
    g.phase='finished';g.endsAt=Date.now();g.endReason='elimination';
    g.winnerSlot=g.hp[0]<=0&&g.hp[1]<=0?null:(g.hp[0]<=0?1:0);
-  }else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}}
+  }else{g.round++;g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.supplyOptions=null;g.supplyResolved=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false;OnlineEconomy.roundIncome(ensureAssets(member),g.round);member.mastery=ensureAssets(member).level}}
   g.version++;broadcast(r);
  }
 }

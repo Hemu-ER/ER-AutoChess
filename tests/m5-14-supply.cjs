@@ -6,7 +6,7 @@ const begin=src.indexOf('const EXP_STEPS='),end=src.indexOf('const publicRoom=r=
 assert(begin>=0&&end>begin);
 const items=require('../items.js');
 const roster=require('../roster.js').roster;
-const context={LIVEItems:items,BASIC_REWARDS:items.baseNames,COMPLETE_REWARDS:Object.keys(items.all).filter(n=>!items.all[n].basic),validRoster:new Map(roster.filter(u=>!u.pveOnly).map(u=>[u.id,u])),crypto};
+const context={LIVEItems:items,BASIC_REWARDS:items.baseNames,COMPLETE_REWARDS:Object.keys(items.all).filter(n=>!items.all[n].basic),validRoster:new Map(roster.filter(u=>!u.pveOnly).map(u=>[u.id,u])),crypto,OnlineEconomy:require('../m5-online-economy.cjs')};
 vm.createContext(context);vm.runInContext(src.slice(begin,end)+';globalThis.test={grantSupply,ensureAssets};',context);
 const {grantSupply,ensureAssets}=context.test;
 const player={mastery:1};
@@ -17,7 +17,7 @@ assert.equal(ensureAssets(player).credits,15);
 const expPlayer={};grantSupply(expPlayer,5,{type:'exp',value:10});assert(ensureAssets(expPlayer).level>1);
 const itemPlayer={};grantSupply(itemPlayer,5,{type:'basic',value:0});assert.equal(ensureAssets(itemPlayer).items[0],items.baseNames[0]);
 const completed={};grantSupply(completed,5,{type:'complete',value:27});assert.equal(ensureAssets(completed).items.length,1);
-const unitPlayer={};grantSupply(unitPlayer,5,{type:'unit',value:roster.find(u=>!u.pveOnly&&u.cost===1).id});assert.equal(ensureAssets(unitPlayer).reserves.length,1);
+const unitPlayer={};grantSupply(unitPlayer,5,{type:'unit',value:roster.find(u=>!u.pveOnly&&u.cost===1).id});assert.equal(ensureAssets(unitPlayer).owned.length,1);
 const overflow={assets:{credits:5,level:1,exp:0,items:Array(12).fill(items.baseNames[0]),reserves:[],sales:0,grants:[]}};
 grantSupply(overflow,5,{type:'basic',value:1});assert.equal(overflow.assets.items.length,12);assert.equal(overflow.assets.sales,1);
 console.log('PASS: supply grant, idempotency, exp, basic/complete, unit, overflow (7 groups)');

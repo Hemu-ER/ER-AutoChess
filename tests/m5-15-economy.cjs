@@ -1,0 +1,15 @@
+'use strict';
+const assert=require('node:assert/strict');
+const E=require('../m5-online-economy.cjs');
+const a={credits:100,level:1,exp:0,items:[],grants:[],owned:[],nextUid:1};
+E.init(a);assert.equal(a.shop.length,5);
+let cid=a.shop.find(Boolean),i=a.shop.indexOf(cid);assert.ok(cid);
+E.action(a,'buy',{index:i});assert.equal(a.owned.length,1);assert.equal(a.owned[0].characterId,cid);
+const uid=a.owned[0].uid;E.action(a,'deploy',{uid,x:1,y:2});assert.equal(E.team(a).length,1);assert.equal(E.team(a)[0].y,2);
+E.action(a,'recall',{uid});assert.equal(E.team(a).length,0);
+assert.throws(()=>E.action(a,'deploy',{uid,x:9,y:2}),/좌표/);
+E.action(a,'invest');assert.equal(a.credits<100,true);
+const after=a.credits;E.roundIncome(a,2);const now=a.credits;E.roundIncome(a,2);assert.equal(a.credits,now);assert.ok(now>after);
+a.items.push('검집');E.action(a,'equip',{uid,item:'검집'});assert.equal(a.owned[0].items.length,1);assert.throws(()=>E.action(a,'sell',{uid}),/장착/);a.items.push('검집');E.action(a,'equip',{uid,item:'검집'});assert.equal(a.owned[0].items[0],'오토-암즈');
+assert.throws(()=>E.action(a,'buy',{index:99}),/선택/);
+console.log('PASS M5-15 online economy scenarios');

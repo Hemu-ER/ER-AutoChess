@@ -21,7 +21,7 @@
     $('m5-room').hidden=!room;
     $('m5-connection').textContent=room?(connected?'● LIVE':'○ 재연결 중'):identity?`${identity} 로그인`:'오프라인';
     $('m5-region-select').disabled=!!room;
-    if(!room)return;
+    if(!room){window.M5OnlineEconomy?.hide();return;}
     $('m5-room-title').textContent=`ROOM ${room.code}`;
     $('m5-room-members').textContent=room.players.map(p=>`${p.name}${p.id===playerId?' (나)':''} ${p.connected?'●':'○'} ${p.ready?'✓':''}`).join('  ·  ');
     const inGame=!!room.started,g=game(),me=own();
@@ -36,7 +36,7 @@
     $('m5-phase-info').textContent=g?`R${g.round} ${g.phase==='combat'&&g.pve?'파밍':names[g.phase]||g.phase} · 서버 동기화 ${g.remaining??'-'}초`:'방 대기 중';
     $('m5-room-code').value=room.code;
     window.LIVEM5?.updateOnlineHud?.(room,slot());
-    supplyView();chatView();
+    supplyView();chatView();window.M5OnlineEconomy?.draw(me,g);
   }
   function chatView(){
     const messages=room?.messages||[],marker=messages.map(x=>x.id||x.at).join(':');if(marker===previousChat)return;
@@ -81,7 +81,8 @@
     if(g.phase==='prep'){
       window.LIVEM5.onlineRoundPrep(roomSnapshot,selfSlot);
       // During preparation M5 uses the server's existing team roster.
-      if(g.round!==1&&g.round!==3)await sendTeam();
+      // Server-owned roster is authoritative once the match starts.
+      window.LIVEM5.onlineSyncTeams(roomSnapshot);
       const region=window.ERCombat?.pickArenaRegion?.(roomSnapshot.code,g.round)||'lab';
       await window.LIVEM5.setRegion(region);
     }else if(g.phase==='combat'){
@@ -99,7 +100,7 @@
     }
   }
   function serverEvent(next){
-    room=next;stateView();
+    room=next;stateView();if(room?.started&&game()?.phase==='prep')window.LIVEM5?.onlineSyncTeams?.(room);
     if(!room?.started||!game())return;
     const g=game(),marker=`${g.round}:${g.version}:${g.phase}`;
     if(marker!==currentVersion){currentVersion=marker;phasePending=phasePending.then(()=>onPhase(next)).catch(e=>{notice('화면 재생 오류: '+e.message);console.error(e)});}
@@ -145,6 +146,7 @@
     currentVersion='';lastTeam='';lastFarmReported=0;
     window.LIVEM5?.onlineLeave?.();stateView();notice('온라인 방에서 나왔어.');
   }
+  window.M5OnlineEconomy?.attach((action,payload)=>api('economy',{action,...payload}));
   const bind=(id,fn)=>{$(id).addEventListener('click',()=>Promise.resolve(fn()).catch(e=>notice(e.message)))};
   bind('m5-login',async()=>{
     const data=await api('login',{username:$('m5-username').value,password:$('m5-password').value});
