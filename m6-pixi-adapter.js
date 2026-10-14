@@ -10,8 +10,27 @@
  const FLOORS=['lab','alley','beach','cemetery','church','estate','forest','hotel','police','temple'];
  const params=new URLSearchParams(location.search);
  const chosen=params.get('m6floor');
- const floorId=FLOORS.includes(chosen)?chosen:'lab';
- const floorPath=`assets/m5/floor/${floorId}.png`;
+ let floorId=FLOORS.includes(chosen)?chosen:'lab';
+ let floorPath=`assets/m5/floor/${floorId}.png`;
+ let floorRequest=0;
+ function desiredFloor(){
+  const net=window.LIVEMultiplayer?.getRoom?.()?.game;
+  const playing=net?.phase==='combat' && !net.pve;
+  const raw=playing?net.region:(net?null:(window.M6VisualRegion||null));
+  return playing && FLOORS.includes(raw)?raw:null;
+ }
+ async function syncFloor(){
+  if(!ready||!floorSprite)return;
+  const desired=desiredFloor();
+  const key=desired||'lab';
+  if(floorId===key && activeFloor===(!!desired))return;
+  const ticket=++floorRequest;
+  if(desired){try{const tex=await texture(`assets/m5/floor/${key}.png`);if(ticket!==floorRequest||!ready)return;floorSprite.texture=tex;floorSprite.visible=true;floorId=key;activeFloor=true;}
+    catch(e){console.warn('[M6 Pixi] 지역 이미지 로드 실패',e);return;}}
+  else{floorSprite.visible=false;floorId=key;activeFloor=false;}
+  document.getElementById('m6-field-label')?.replaceChildren(document.createTextNode(desired?`전장 · ${desired.toUpperCase()}`:''));
+ }
+ 
  let activeFloor=false;
  const nodes=new Map(), loading=new Map();
  const hits=[], lastBasic=new Map(), motions=new Map();
@@ -45,7 +64,7 @@
    const color=h.critical?0xffdc91:0xffb6bd;
    const t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:color,stroke:{color:0x101016,width:4}}});
    t.anchor.set(.5,.5);const lane=hits.filter(v=>v.id===h.id&&Math.abs(v.at-h.at)<200).indexOf(h);
-   t.position.set(ent.baseX+(lane%3-1)*17,ent.baseY-Math.max(32,ent.visualHeight*.85)-age*.055);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
+   t.position.set(ent.baseX+ent.visualHeight*.34+(lane%4)*9,ent.baseY-Math.max(32,ent.visualHeight*.86)-(lane%4)*13-age*.05);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
   }}
   for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050)hits.splice(i,1);
   if(active)startMotion();
@@ -66,7 +85,7 @@
    floorSprite=new px.Sprite(tex);floorSprite.tint=0xb5b5b5;app.stage.addChild(floorSprite);
    effects=new px.Graphics();app.stage.addChild(effects);
    layer=new px.Container();app.stage.addChild(layer);const floats=new px.Container();floats.label="m6-floats";app.stage.addChild(floats);
-   activeFloor=true;ready=true;queue();
+   activeFloor=false;floorSprite.visible=false;ready=true;queue();
    shell.dataset.m6Pixi='active';
    const tag=document.getElementById('m6-field-label')||document.createElement('div');
    tag.id='m6-field-label';tag.textContent=`L.I.V.E.  /  M6 PIXI FIELD  /  ${floorId.toUpperCase()}`;shell.appendChild(tag);
@@ -75,6 +94,7 @@
  async function texture(url){if(loading.has(url))return loading.get(url);const task=P().Assets.load(url);loading.set(url,task);return task;}
  async function draw(){
   if(!ready||!app||!layer)return;
+  await syncFloor();
   const w=Math.max(1,shell.clientWidth),h=Math.max(1,shell.clientHeight);
   if(app.renderer.width!==w||app.renderer.height!==h)app.renderer.resize(w,h);
   const outer=shell.getBoundingClientRect(),seen=new Set(),list=[];
@@ -139,5 +159,6 @@
  // PixiJS CDN failure must not affect M4. Stop polling after 10 seconds.
  let attempts=0;const begin=()=>{if(P()?.Application)init();else if(++attempts<30)setTimeout(begin,300);};
  begin();
+ setInterval(()=>{if(ready && desiredFloor()!== (activeFloor?floorId:null))queue();},350);
  window.M6PixiAdapter={refresh:queue,disable:fallback,impact,combatSnapshot};
 })();

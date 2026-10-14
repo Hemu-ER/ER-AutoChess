@@ -138,7 +138,7 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
    g.version++;broadcast(r);return;
   }
   g.prepNotice=null;
-  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;g.region=pickArenaRegion(r.code,g.round);
+  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;g.region=pve?null:pickArenaRegion(r.code,g.round);
   const a=players[0],b=players[1];let battle=null,duration=3;
   if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
   if(!pve&&(battle?.error||battle?.time===0)){
@@ -147,7 +147,7 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
    console.warn('[M6-05] Invalid PvP simulation', {room:r.code,round:g.round,teamA:a.team.length,teamB:b.team.length,battle});
    g.version++;broadcast(r);return;
   }
-  g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
+  g.phase='combat';g.combatStartedAt=Date.now();g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
  }
  if(g.phase==='supply'){for(const p of r.players.values())if(!g.supplyResolved[p.slot])g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;}
  if(g.phase==='combat'){

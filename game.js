@@ -150,7 +150,7 @@ function showInspector(u,rOverride=null,starOverride=null){
 document.addEventListener('click',e=>{const btn=e.target.closest?.('.inspect-detail-toggle');if(!btn)return;e.preventDefault();e.stopPropagation();const id=btn.dataset.detailId;if(expandedSkillDetails.has(id))expandedSkillDetails.delete(id);else expandedSkillDetails.add(id);const u=units.find(x=>x.characterId===id)||null;const r=byId[id];if(r)showInspector(u,r)});
 
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A.map(e=>({...e,items:[...(gameState.owned.find(o=>o.uid===e.ownedId)?.equipment||[])]})),teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value,arenaRegion:appMode==='game'?(window.LIVEMultiplayer?.getRoom()?.game?.region||ERCombat.pickArenaRegion(window.LIVEMultiplayer?.getRoom()?.code||'local',roundState.round)):undefined}}
+function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A.map(e=>({...e,items:[...(gameState.owned.find(o=>o.uid===e.ownedId)?.equipment||[])]})),teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value,arenaRegion:appMode==='game'&&![1,3].includes(roundState.round)?(window.LIVEMultiplayer?.getRoom()?.game?.region||ERCombat.pickArenaRegion(window.LIVEMultiplayer?.getRoom()?.code||'local',roundState.round)):undefined}}
 function showError(e){$("#status").textContent=e.message}
 function statusLabel(r){return r.implemented?"SKILL READY":"SKILL PENDING"}
 function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affiliations:[r[field]]))]}
@@ -484,7 +484,7 @@ function renderRoundUI(){
  const kind=liveRoundKind(roundState.round);
  const activeRegion=window.LIVEMultiplayer?.getRoom()?.game?.region||ERCombat.pickArenaRegion(window.LIVEMultiplayer?.getRoom()?.code||'local',roundState.round);
  const arenaData=ERCombat.ARENA_REGIONS[activeRegion];
- const arenaSummary=arenaData&&kind!=='보급'&&['prep','combat','result'].includes(roundState.phase)?`<div class="live-arena-region-bar" title="${esc(arenaData.detail)}"><b>전장 · ${esc(arenaData.name)}</b><span>${esc(arenaData.detail)}</span></div>`:'';
+ const arenaSummary=arenaData&&![1,3].includes(roundState.round)&&kind!=='보급'&&['prep','combat','result'].includes(roundState.phase)?`<div class="live-arena-region-bar" title="${esc(arenaData.detail)}"><b>전장 · ${esc(arenaData.name)}</b><span>${esc(arenaData.detail)}</span></div>`:'';
  p.innerHTML=`<div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds"><b>다음</b>${nextRounds}</span></div>${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy"><div class="round-side-line"><b>${opp}</b><strong>${oppHp}</strong><span>HP</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
  const newlyRenderedReady=p.querySelector('#roundOnlineReady');
  if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
@@ -502,7 +502,7 @@ function renderRoundUI(){
  p.querySelector('#roundSkip')?.addEventListener('click',()=>{if(window.LIVEMultiplayer?.getRoom()?.started){$('#status').textContent='온라인 준비 · 서버가 동시에 전투를 시작해.';return}beginRoundCombat()})
 }
 function creditHtml(amount,cls='credit-price'){
- return `<span class="${cls}"><img src="assets/ui/credit-m6.jpg?v=20261014" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
+ return `<span class="${cls}"><img src="assets/ui/credit.png?v=m608" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
 }
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
@@ -687,7 +687,7 @@ function liveSupplyUi(net,slot){
  if(el.hidden){liveSupplyCollapsed=false;el.classList.remove('supply-collapsed');if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
  const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
  const describe=t=>{
-  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit-m6.jpg',visual:'coin',badge:'+10 C'};
+  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png?v=m608',visual:'coin',badge:'+10 C'};
   if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:'+10 EXP',subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:'LEVEL UP'};
   if(t.type==='unit'){
    const r=byId[t.value];
@@ -1018,10 +1018,26 @@ function start(){
 }
 function loop(now){
  if(!running){frame=null;return}
- const elapsed=Math.min(.15,(now-last)/1000)*speed;last=now;
+ const elapsed=Math.min(document.hidden?1.5:.35,Math.max(0,(now-last)/1000))*speed;last=now;
  if(!paused){accumulator+=elapsed;while(accumulator+1e-9>=DT&&running){battle.step();accumulator-=DT;if(battle.getResult().battleOver)break}sync()}
- frame=running?requestAnimationFrame(loop):null;
+ frame=running&&!document.hidden?requestAnimationFrame(loop):null;
 }
+// Background-safe replay: server controls phase/end time; this only catches up visuals.
+let m6BackgroundTick=null;
+function m6ResumeReplay(){
+ if(!running||paused||!battle)return;
+ const net=window.LIVEMultiplayer?.getRoom?.()?.game;
+ if(net?.phase==='combat'&&net.combatStartedAt){
+  const target=Math.min(60,Math.max(0,(Date.now()-net.combatStartedAt)/1000));
+  let count=0;
+  while(running&&!battle.getResult().battleOver && battle.getResult().time+0.0001<target && count++<1250)battle.step();
+  sync();
+ }
+ last=performance.now();
+ if(!document.hidden&&running&&frame===null)frame=requestAnimationFrame(loop);
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(frame!==null){cancelAnimationFrame(frame);frame=null;}}else m6ResumeReplay()});
+m6BackgroundTick=setInterval(()=>{if(document.hidden)m6ResumeReplay();},1000);
 function batch(){try{const counts={"A팀 승리":0,"B팀 승리":0,"무승부":0},base=+$("#seed").value;for(let i=0;i<100;i++)counts[new CombatEngine(config(base+i)).run().outcome]++;$("#batchResult").textContent=`A팀 ${counts["A팀 승리"]}% · B팀 ${counts["B팀 승리"]}% · 무승부 ${counts["무승부"]}%`}catch(e){showError(e)}}
 $("#start").onclick=()=>{if(roundState.active){$("#status").textContent="라운드 모드에서는 준비 완료 버튼으로 전투를 시작해.";return}start()};$("#pause").onclick=()=>{if(!running)return;paused=!paused;$("#pause").textContent=paused?"▶ 재개":"Ⅱ 일시정지"};
 $("#step").onclick=()=>{if(!running&&!start())return;paused=true;$("#pause").textContent="▶ 재개";battle.step();battle.step();sync()};
