@@ -232,3 +232,40 @@ body.m5-board-dragging,body.m5-board-dragging *{user-select:none!important}
 .m5-farm-qa{border:1px solid #48625d;padding:8px;margin:6px 0 10px;border-radius:7px;background:#10221f;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .m5-farm-qa span{font-weight:bold;font-size:11px;color:#b4e9d5;flex-basis:100%}.m5-farm-qa button{font-size:11px;padding:7px;border:1px solid #699a8b;background:#1a3532;color:#e2fbf0;border-radius:5px;cursor:pointer}.m5-farm-qa small{width:100%;color:#94b8b1;font-size:10px}
 #m5-item-inventory .m5-item-owned{background:#162e33;border:1px solid #659a96;padding:3px;text-align:center;display:grid;place-items:center;cursor:help;overflow:hidden}.m5-item-owned strong{font-size:10px;white-space:normal;overflow-wrap:anywhere;line-height:1.15}.m5-item-owned small{font-size:8px;color:#b9e8d2}
+
+/* M5-11: Item inventory / equipment workbench. All item art is the existing item sprite asset. */
+.m5-equipment-workbench{max-height:min(670px,78vh);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#41626e #102027}
+.m5-equipment-workbench .m5-panel-head{margin-bottom:7px}
+#m5-codex-toggle{background:#1b3640;color:#c5f1e8;border:1px solid #55737c;padding:5px 6px;border-radius:5px;font-size:10px;cursor:pointer}
+#m5-item-inventory{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+#m5-item-inventory .m5-item-placeholder{height:53px;min-width:0}
+#m5-item-inventory .m5-item-owned{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;gap:1px;cursor:grab;touch-action:none}
+#m5-item-inventory .m5-item-owned img{max-width:100%;width:33px;height:33px;object-fit:contain;pointer-events:none}
+#m5-item-inventory .m5-item-owned small{font-size:8px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c2e8e2;pointer-events:none}
+#m5-item-inventory .m5-item-selected{border:2px solid #b8f8e3!important;box-shadow:0 0 12px #79ecd35a}
+#m5-item-inventory .m5-item-craft-target{border:2px solid #e8c87a!important;background:#483d24!important}
+.m5-item-controls{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin:8px 0 5px}
+.m5-item-controls button{font-size:10px;padding:6px 7px;border:1px solid #4d6c75;border-radius:5px;color:#dbf5f5;background:#19303a;cursor:pointer}
+.m5-item-controls button:disabled{cursor:default;opacity:.45}
+.m5-item-controls #m5-item-sell{border-color:#925a62;color:#f5c4c8;background:#39232a}
+.m5-item-controls small{font-size:9px;color:#9aafb4}
+.m5-item-craft-hint{border-top:1px solid #2a4750;color:#9dc7c0;font-size:10px;line-height:1.5;margin-top:7px;padding-top:6px;min-height:21px}
+.m5-item-gear{margin:9px 0 0;padding:8px 5px;border:1px solid #304d57;background:#0b1c26;border-radius:6px;display:grid;gap:6px}
+.m5-item-gear>label{font-size:10px;color:#b6d6d7;font-weight:650}
+#m5-item-target{max-width:100%;width:100%;background:#1b3039;border:1px solid #536c75;border-radius:4px;color:#eef3f5;font-size:11px;padding:6px 4px}
+.m5-item-equipped{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.m5-equip-slot{height:64px;background:#101f29;border:1px dashed #4b6873;border-radius:6px;color:#8ba8af;padding:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;min-width:0}
+.m5-equip-slot b{font-size:20px;font-weight:400}
+.m5-equip-slot img{height:38px;max-width:100%;object-fit:contain}
+.m5-equip-slot small{font-size:9px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m5-equip-filled{border:1px solid #69a49e;background:#1b3437;color:#d7fff3;cursor:default}
+.m5-item-equip-hover,.m5-equip-slot:not(.m5-equip-filled):hover{outline:2px solid #8befd3;outline-offset:1px}
+.m5-item-gear>small{font-size:9px;color:#86a5aa;line-height:1.4}
+#m5-item-codex{margin-top:9px;padding-top:7px;border-top:1px solid #47616a}
+#m5-item-recipes{max-height:265px;overflow-y:auto;display:grid;gap:4px;scrollbar-width:thin}
+.m5-recipe-card{display:grid;grid-template-columns:31px minmax(0,1fr) 40px;align-items:center;gap:6px;border:1px solid #344d56;border-radius:5px;padding:4px;text-align:left;background:#10222c;color:#d8e9eb;cursor:pointer}
+.m5-recipe-card:hover{background:#1a3540}.m5-recipe-card img{width:31px;height:31px;object-fit:contain}.m5-recipe-card span{display:grid;gap:2px;min-width:0}.m5-recipe-card strong{font-size:10px}.m5-recipe-card small{font-size:9px;white-space:normal;color:#92b1b5}.m5-recipe-card>b{font-size:10px;font-weight:600;color:#9af1c8}
+.m5-item-drag-ghost{position:fixed;z-index:2147483647;pointer-events:none;transform:translate(-50%,-95%);width:84px;display:grid;place-items:center;gap:2px;background:#0b202adf;border:1px solid #8edcca;border-radius:8px;box-shadow:0 7px 22px #000b;padding:5px;touch-action:none}
+.m5-item-drag-ghost img{width:52px;height:52px;object-fit:contain}.m5-item-drag-ghost small{color:#e1f4ed;font-size:10px;text-align:center}.m5-item-drag-ghost.m5-item-pending{opacity:.55;transform:translate(-50%,-95%) scale(.85)}
+.m5-bench-equip-count{position:absolute;right:2px;bottom:2px;padding:2px 4px;font-size:9px;border-radius:4px;color:#dff3e4;background:#0d3034d9;pointer-events:none}
+@media(max-width:760px){.m5-equipment-workbench{max-height:none}#m5-item-inventory{grid-template-columns:repeat(6,minmax(0,1fr))}.m5-item-gear{max-width:100%}}

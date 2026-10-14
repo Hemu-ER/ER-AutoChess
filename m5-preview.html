@@ -16,7 +16,7 @@
 <span class="lab-overline">AGLAIA / L.I.V.E. · RENDER TEST</span>
 <strong>차세대 전투 · 온라인 실험실</strong>
 </div>
-<span class="lab-revision">M5-10 <i>REGIONS · FARM · SYNERGY</i></span>
+<span class="lab-revision">M5-11 <i>EQUIPMENT · CRAFT · FARM</i></span>
 </header>
 <section aria-label="전장 모드 및 테스트 설명" class="lab-hero">
 <div>
@@ -72,7 +72,16 @@
 <div class="lab-board-footer-center">원본 2100 × 900 <span>·</span> 배치 그리드 350 × 300</div>
 <div><small>COL 04—06</small> B 진영 <span class="team-mark enemy"></span></div>
 </footer>
-</section></div><aside aria-label="실험체 정보 및 전투 조작" class="m5-live-rail m5-live-right"><section aria-label="아이템 인벤토리" class="m5-items-preview"><div class="m5-panel-head"><strong>아이템 <span id="m5-item-count">0/12</span></strong><small>파밍 시험 보상 · 장착은 후속 작업</small></div><div id="m5-item-inventory" class="m5-items-preview-grid"></div><p id="m5-item-notice">R1/R3 파밍에서 야생동물을 처치하면 보상이 쌓여.</p></section><section aria-label="실제 전투 엔진 테스트" class="lab-combat-panel">
+</section></div><aside aria-label="실험체 정보 및 전투 조작" class="m5-live-rail m5-live-right"><section aria-label="아이템 관리" class="m5-items-preview m5-equipment-workbench">
+<div class="m5-panel-head"><strong>아이템 <span id="m5-item-count">0/12</span></strong><button type="button" id="m5-codex-toggle" aria-expanded="false">조합 도감 ▸</button></div>
+<div id="m5-item-inventory" class="m5-items-preview-grid" aria-label="기본 및 완성 아이템 12칸"></div>
+<p id="m5-item-notice">파밍 보상을 클릭하거나 드래그해서 장착할 수 있어.</p>
+<div class="m5-item-controls"><button id="m5-item-equip" type="button">선택 장비 장착</button><button id="m5-item-sell" type="button">선택 아이템 판매</button><small>기본 +2C · 완성 +5C</small></div>
+<div class="m5-item-craft-hint" id="m5-item-craft-hint">아이템을 다른 기본 아이템에 드래그하면 조합돼.</div>
+<div class="m5-item-gear"><label for="m5-item-target">장비 대상</label><select id="m5-item-target" aria-label="장비할 실험체 선택"></select>
+<div id="m5-item-equipped" class="m5-item-equipped" aria-label="선택 실험체의 장비 3칸"></div><small>3칸 제한 · 장착 후 임의 해제 불가 · 실험체 판매·성급 합성 시 반환</small></div>
+<div id="m5-item-codex" class="m5-item-codex" hidden aria-label="아이템 조합 도감"><div class="m5-panel-head"><strong>완성 아이템 28종</strong><small>재료 2개 조합 · 보유 시 제작 가능</small></div><div id="m5-item-recipes"></div></div>
+</section><section aria-label="실제 전투 엔진 테스트" class="lab-combat-panel">
 <div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
 <div class="m5-farm-qa" id="m5-farm-qa"><span>오프라인 파밍 시험</span><button type="button" id="m5-farm-r1">R1 들개·멧돼지</button><button type="button" id="m5-farm-r3">R3 늑대·멧돼지</button><small id="m5-farm-report">처치 시 기본 아이템 1개 · 추가 5% · 인벤토리 최대 12칸</small></div><div class="lab-combat-row">
 <div class="lab-combat-seed"><label for="combat-seed">전투 시드</label><input id="combat-seed" max="2147483646" min="1" step="1" type="number" value="123456"/></div>
@@ -126,7 +135,7 @@
 </div></div>
 </div>
 </section>
-<footer class="lab-bottom">L.I.V.E. / M5-10 — INTERACTIVE ECONOMY · REAL EFFECTS · FARM QA</footer>
+<footer class="lab-bottom">L.I.V.E. / M5-11 — ITEM EQUIPMENT · CRAFTING · FARM REWARDS</footer>
 </main>
 <script defer="" src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer="" src="roster.js"></script>

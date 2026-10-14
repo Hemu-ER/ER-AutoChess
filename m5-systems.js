@@ -74,23 +74,156 @@ document.addEventListener('keydown',e=>{if(e.key==='Shift'&&hoverTarget){window.
 document.addEventListener('keyup',e=>{if(e.key==='Shift'){window.M5ShowDetailedTip=false;if(hoverTarget){const r=hoverTarget.getBoundingClientRect();showTip(hoverTarget,r.left,r.bottom)}}});
 function regionDetails(){const region=window.LIVEM5?.getState?.()?.region||'lab';const r=regions()[region];const t=$('m5-region-tip');if(t&&r){t.dataset.tip=`지역 · ${r.name}\n${r.detail}\n실제 전투 엔진에 적용되는 효과. ${region==='forest'?'양 팀 각 1명만 피해를 받음.':'지역은 전투 시작 시 확정됨.'}`;t.dataset.full='지역 효과는 M4 전투 엔진에서 계산하며 M5는 동일한 판정 결과를 재생함.';}}
 function refreshSynergies(){const o=window.M5Economy?.getState?.();if(o)renderSynergies((o.owned||[]).filter(u=>u.location==='board'));regionDetails();}
-function itemRender(){const root=$('m5-item-inventory');if(!root)return;root.replaceChildren();
- for(let i=0;i<12;i++){const name=state.items[i],box=document.createElement('div');if(name){box.className='m5-item-placeholder m5-item-owned';const b=document.createElement('strong');b.textContent=name;const sm=document.createElement('small');sm.textContent='기본';box.append(b,sm);box.title=name+' · 장착은 후속 패치';}else{box.className='m5-item-placeholder';const n=document.createElement('small');n.textContent=String(i+1).padStart(2,'0');box.appendChild(n)}root.appendChild(box)}
+// M5-11: one inventory (12 slots), one authoritative equipped array per owned unit.
+const ICON_ALIASES={'방탄 조끼':'방탄조끼','슈팅스타의 자켓':'슈팅스타 자켓'};
+const ITEM_EFFECT_HINTS={"오토-암즈": "기본 공격력 +10%", "블레이드 부츠": "스킬 적중 시 2초간 공격 속도 +15%", "스펙터": "매초 인접 적에게 ATK 20% 피해", "아오자이": "받는 피해 20%를 3초 동안 지연", "미스릴 퀴버": "기본 공격 3회마다 최대 HP 6% 보호막 (1초)", "레이더": "기본 공격 3회마다 ATK 비례 추가 피해 및 회복", "서슬가시 체인": "피해 대상 회복량 -20% (5초)", "임세티": "스킬 증폭 +15%", "레버넌트": "매초 인접 적에게 AMP 25% 피해", "요명월": "액티브 사용 시 인접 적에게 AMP 60% 피해", "텔루리안 타임피스": "기본 공격마다 AMP 20% 추가 피해", "천룡잠": "치명타 시 액티브 피해 +2%, 최대 5중첩", "용의 비늘": "퍼센트 방어 관통 +15%p", "미스릴 크롭": "체력 +20%", "배틀 슈트": "공격자 거리 1/2/3에 따라 피해 감소 5/10/15%", "팬텀 자켓": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 체력 +10%", "타이탄 아머": "2초마다 다음 기본 공격에 추가 체력 비례 피해", "유령 신부의 드레스": "주변 1칸 적 방어력 -10% 오라", "가디언 슈트": "방어력 +10%", "길리 슈트": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 방어력 +10%", "화령장": "치명타 적중 시 받는 피해 -2%, 최대 5중첩", "슈팅스타의 자켓": "기본 공격 대상 방어력 -5%, 최대 2중첩", "살라딘의 화살통": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 적응형 +5%", "레가투스": "치명타 시 ATK·AS +5%, 최대 3중첩", "블래스터 헬멧": "5초마다 다음 기본 공격에 ATK 100% 추가 피해", "운명의 주사위": "치명타 피해 +10%p", "프시케의 칼날": "적 실험체 처치 시 +1C", "아이언 메이든": "퍼센트 방어 관통 +15%"};
+const ITEM_STAT_LABELS={atk:'공격력',amp:'스킬 증폭',hp:'체력',def:'방어력',as:'공격 속도',crit:'치명타 확률',penFlat:'고정 방어 관통'};
+const itemIcon=name=>`assets/items/${encodeURIComponent(ICON_ALIASES[name]||name)}.webp`;
+const itemStats=name=>Object.entries(window.LIVEItems?.all?.[name]?.stats||{}).map(([key,value])=>`${ITEM_STAT_LABELS[key]||key} +${['as','crit'].includes(key)?Math.round(value*100)+'%':value}`).join(' · ');
+const itemDetails=name=>`${name}\n${itemStats(name)}${ITEM_EFFECT_HINTS[name]?'\n고유 효과: '+ITEM_EFFECT_HINTS[name]+' (동일 장비 중복 장착 시 고유 효과는 1회만 적용)':''}`;
+const iconHtml=name=>`<img src="${itemIcon(name)}" alt="" draggable="false" loading="lazy">`;
+const canAcceptItems=(n=1)=>state.items.length+n<=12;
+let itemSelectedIndex=null,itemTargetUid=null,itemGesture=null,itemSuppressClickUntil=0;
+const itemWorkbench=$('m5-item-inventory');
+function addItems(names,{silent=false}={}){
+ if(!Array.isArray(names)||!names.every(n=>window.LIVEItems?.all?.[n])||!canAcceptItems(names.length))return false;
+ state.items.push(...names);
+ if(!silent)itemRender();return true;
+}
+function itemReport(msg){state.report=msg;itemRender();}
+function setInventoryTarget(uid){const u=Number(uid);if(!Number.isInteger(u))return;window.M5Economy?.selectEquipmentTarget?.(u);}
+function renderEquipment(owned,selectedUid){
+ const targetSel=$('m5-item-target'),box=$('m5-item-equipped');if(!targetSel||!box)return;
+ const units=Array.isArray(owned)?owned:[];
+ if(selectedUid!=null&&units.some(o=>o.uid===Number(selectedUid)))itemTargetUid=Number(selectedUid);
+ if(!units.some(o=>o.uid===itemTargetUid))itemTargetUid=(units.find(o=>o.location==='board')||units[0])?.uid||null;
+ const previous=targetSel.value;
+ targetSel.replaceChildren(...units.map(o=>{
+  const el=document.createElement('option');el.value=o.uid;el.textContent=`${window.ERRoster?.byId?.[o.characterId]?.name||o.characterId} ${'★'.repeat(o.star)} · ${o.location==='board'?'전장':'벤치'}`;return el;
+ }));
+ targetSel.value=itemTargetUid==null?'':String(itemTargetUid);
+ const unit=units.find(o=>o.uid===itemTargetUid),eq=unit?.equipment||[];
+ box.innerHTML=[0,1,2].map(i=>eq[i]
+ ?`<div class="m5-equip-slot m5-equip-filled" title="${itemDetails(eq[i]).replace(/"/g,'&quot;')}\n장착 후 임의 해제 불가 · 실험체 판매/성급 합성 시 반환">${iconHtml(eq[i])}<small>${eq[i]}</small></div>`
+ :`<button type="button" class="m5-equip-slot" data-equip-drop="${i}" title="비어 있는 장비 슬롯 · 아이템을 여기에 드래그"><b>＋</b><small>${i+1} / 3</small></button>`).join('');
+}
+function itemRender(){
+ const root=$('m5-item-inventory');if(!root)return;
+ root.innerHTML=Array.from({length:12},(_,i)=>{
+  const name=state.items[i];return name?
+   `<button type="button" data-item-index="${i}" class="m5-item-placeholder m5-item-owned ${i===itemSelectedIndex?'m5-item-selected':''}" title="${itemDetails(name).replace(/"/g,'&quot;')}" aria-label="${name}">${iconHtml(name)}<small>${name}</small></button>`:
+   `<div class="m5-item-placeholder m5-item-empty"><small>${String(i+1).padStart(2,'0')}</small></div>`;
+ }).join('');
  $('m5-item-count').textContent=`${state.items.length}/12`;
  $('m5-item-notice').textContent=state.report;
+ const sell=$('m5-item-sell'),equip=$('m5-item-equip');
+ if(sell){sell.disabled=itemSelectedIndex==null||!state.items[itemSelectedIndex]||!window.M5Economy?.canModify?.();sell.textContent=state.items[itemSelectedIndex]?`선택 아이템 판매 · +${window.LIVEItems.all[state.items[itemSelectedIndex]].basic?2:5}C`:'선택 아이템 판매';}
+ if(equip){equip.disabled=itemSelectedIndex==null||!state.items[itemSelectedIndex]||!itemTargetUid||!window.M5Economy?.canModify?.();}
+ updateCraftHint();updateCodex();
 }
-function rewardFarm(round,dead){const basic=window.LIVEItems?.baseNames||[];let got=[],bonus=0,overflow=0;
- for(const animal of dead){const count=1+(Math.random()<.05?1:0);if(count===2)bonus++;for(let j=0;j<count;j++){
-  const name=basic[Math.floor(Math.random()*basic.length)];if(!name)continue;
-  if(state.items.length>=12){overflow++;continue}state.items.push(name);got.push(name);
- }}
+function updateCraftHint(targetIndex=null){
+ const el=$('m5-item-craft-hint');if(!el)return;
+ const a=state.items[itemSelectedIndex],b=state.items[targetIndex],result=a&&b&&window.LIVEItems.craft(a,b);
+ el.textContent=result?`${a} + ${b} → ${result}`:a?`${a} 선택 · 장착 버튼 / 아이템 간 드래그 조합 / 도감에서 재료 확인`:'아이템을 선택한 뒤 장착하거나, 기본 아이템 2개를 겹쳐 조합해.';
+}
+function equipItemAt(i,uid=itemTargetUid){
+ const item=state.items[i];if(!item||uid==null)return false;
+ const answer=window.M5Economy?.equip?.(uid,item);
+ if(!answer?.ok){itemReport(answer?.message||'장착할 수 없어.');return false;}
+ state.items.splice(i,1);itemSelectedIndex=null;itemReport(answer.message);return true;
+}
+function craftByIndex(a,b){
+ if(a===b||!window.M5Economy?.canModify?.())return false;
+ const name=window.LIVEItems?.craft?.(state.items[a],state.items[b]);if(!name)return false;
+ const fromA=state.items[a],fromB=state.items[b];
+ for(const i of [a,b].sort((x,y)=>y-x))state.items.splice(i,1);
+ state.items.push(name);itemSelectedIndex=null;itemReport(`${fromA} + ${fromB} → ${name} 조합 완료`);return true;
+}
+function craftByNames(a,b){
+ const i=state.items.indexOf(a);if(i<0)return false;
+ const j=state.items.findIndex((v,k)=>k!==i&&v===b);if(j<0)return false;
+ return craftByIndex(i,j);
+}
+function sellItemAt(i){
+ if(!window.M5Economy?.canModify?.())return itemReport('준비 단계에서만 판매할 수 있어.');
+ const name=state.items[i],entry=window.LIVEItems?.all?.[name];if(!entry)return false;
+ if(!window.M5Economy.addCredits(entry.basic?2:5))return false;
+ state.items.splice(i,1);itemSelectedIndex=null;itemReport(`${name} 판매 · +${entry.basic?2:5}C`);return true;
+}
+function updateCodex(){
+ const root=$('m5-item-recipes');if(!root||$('m5-item-codex')?.hidden)return;
+ const recipes=Object.values(window.LIVEItems?.all||{}).filter(e=>!e.basic);
+ root.innerHTML=recipes.map(r=>{
+  const [a,b]=r.materials||[],possible=a&&b&&(a===b?state.items.filter(x=>x===a).length>=2:state.items.includes(a)&&state.items.includes(b));
+  return `<button type="button" data-craft-name="${r.name}" class="m5-recipe-card" ${possible&&!window.M5Economy?.canModify?.()?'disabled':''} title="${itemDetails(r.name).replace(/"/g,'&quot;')}">${iconHtml(r.name)}<span><strong>${r.name}</strong><small>${a} + ${b}</small><small>${itemStats(r.name)}</small></span><b>${possible?'제작':'재료 부족'}</b></button>`;
+ }).join('');
+}
+function targetUidAt(x,y){
+ const cell=window.LIVEM5?.cellFromClient?.(x,y);if(!cell)return null;
+ return window.M5Economy?.getState?.()?.owned?.find(u=>u.location==='board'&&u.x===cell.x&&u.y===cell.y)?.uid||null;
+}
+const itemGhostRemove=()=>{itemGesture?.ghost?.remove();itemGesture=null;document.querySelectorAll('.m5-item-craft-target,.m5-item-equip-hover').forEach(n=>n.classList.remove('m5-item-craft-target','m5-item-equip-hover'));};
+itemWorkbench?.addEventListener('pointerdown',e=>{
+ const b=e.target.closest('[data-item-index]');if(!b||!window.M5Economy?.canModify?.()||(e.pointerType==='mouse'&&e.button!==0))return;
+ const i=Number(b.dataset.itemIndex),name=state.items[i];if(!name)return;
+ const ghost=document.createElement('div');ghost.className='m5-item-drag-ghost';ghost.innerHTML=iconHtml(name)+`<small>${name}</small>`;document.body.appendChild(ghost);ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';
+ itemGesture={pointerId:e.pointerId,i,name,x:e.clientX,y:e.clientY,moving:false,ghost};
+ if(e.pointerType!=='mouse')e.preventDefault();
+});
+document.addEventListener('pointermove',e=>{
+ const g=itemGesture;if(!g||e.pointerId!==g.pointerId)return;
+ g.ghost.style.left=e.clientX+'px';g.ghost.style.top=e.clientY+'px';
+ if(!g.moving&&Math.hypot(e.clientX-g.x,e.clientY-g.y)>5)g.moving=true;
+ g.ghost.classList.toggle('m5-item-pending',!g.moving);
+ if(!g.moving)return;
+ e.preventDefault();
+ document.querySelectorAll('.m5-item-craft-target,.m5-item-equip-hover').forEach(n=>n.classList.remove('m5-item-craft-target','m5-item-equip-hover'));
+ const hit=document.elementFromPoint(e.clientX,e.clientY),target=hit?.closest?.('[data-item-index]');
+ if(target&&Number(target.dataset.itemIndex)!==g.i){const ci=Number(target.dataset.itemIndex);if(window.LIVEItems.craft(g.name,state.items[ci])){target.classList.add('m5-item-craft-target');updateCraftHint(ci);}}
+ else if(hit?.closest?.('#m5-item-equipped, [data-bench], #stage, #m5-item-target'))hit.closest('#m5-item-equipped, [data-bench], #stage, #m5-item-target').classList.add('m5-item-equip-hover');
+},{passive:false});
+document.addEventListener('pointerup',e=>{
+ const g=itemGesture;if(!g||e.pointerId!==g.pointerId)return;
+ const moving=g.moving;itemGhostRemove();if(!moving)return;
+ itemSuppressClickUntil=performance.now()+300;
+ const hit=document.elementFromPoint(e.clientX,e.clientY),target=hit?.closest?.('[data-item-index]');
+ if(target&&Number(target.dataset.itemIndex)!==g.i&&craftByIndex(g.i,Number(target.dataset.itemIndex)))return;
+ if(hit?.closest?.('#m5-item-sell')){sellItemAt(g.i);return;}
+ const bench=hit?.closest?.('[data-bench]');
+ const uid=bench?Number(bench.dataset.bench):hit?.closest?.('#m5-item-equipped,[data-equip-drop],[data-equip-uid],#m5-item-target')?itemTargetUid:targetUidAt(e.clientX,e.clientY);
+ if(uid!=null){equipItemAt(g.i,uid);return;}
+ updateCraftHint();
+});
+document.addEventListener('pointercancel',e=>{if(itemGesture?.pointerId===e.pointerId)itemGhostRemove()});
+itemWorkbench?.addEventListener('click',e=>{
+ if(performance.now()<itemSuppressClickUntil){e.preventDefault();return;}
+ const b=e.target.closest('[data-item-index]');if(!b)return;const i=Number(b.dataset.itemIndex);
+ if(itemSelectedIndex!==null&&itemSelectedIndex!==i&&craftByIndex(itemSelectedIndex,i))return;
+ itemSelectedIndex=itemSelectedIndex===i?null:i;itemRender();
+});
+$('m5-item-equip')?.addEventListener('click',()=>{if(itemSelectedIndex!=null)equipItemAt(itemSelectedIndex)});
+$('m5-item-sell')?.addEventListener('click',()=>{if(itemSelectedIndex!=null)sellItemAt(itemSelectedIndex)});
+$('m5-item-equipped')?.addEventListener('click',e=>{if(e.target.closest('[data-equip-drop]')&&itemSelectedIndex!=null)equipItemAt(itemSelectedIndex)});
+$('m5-item-target')?.addEventListener('change',e=>setInventoryTarget(e.target.value));
+$('m5-codex-toggle')?.addEventListener('click',()=>{const root=$('m5-item-codex');root.hidden=!root.hidden;$('m5-codex-toggle').setAttribute('aria-expanded',String(!root.hidden));$('m5-codex-toggle').textContent=root.hidden?'조합 도감 ▸':'조합 도감 ▾';updateCodex()});
+$('m5-item-recipes')?.addEventListener('click',e=>{
+ const b=e.target.closest('[data-craft-name]');if(!b)return;
+ const name=b.dataset.craftName,entry=window.LIVEItems.all[name];
+ if(!craftByNames(...entry.materials))itemReport(`${name} · ${entry.materials.join(' + ')} 재료가 부족해.`);
+});
+
+function rewardFarm(round,dead){
+ const basic=window.LIVEItems?.baseNames||[];let got=[],bonus=0,overflow=0;
+ for(const animal of dead){const count=1+(Math.random()<.05?1:0);if(count===2)bonus++;
+   for(let j=0;j<count;j++){const name=basic[Math.floor(Math.random()*basic.length)];if(!name)continue;
+     if(!canAcceptItems(1)){overflow++;continue}state.items.push(name);got.push(name);
+   }
+ }
  state.report=`R${round} · 처치 ${dead.length}마리 · 보상 ${got.length}개${bonus?' (추가 드롭 '+bonus+'회)':''}${overflow?' · 가방 초과 '+overflow+'개 미획득':''}`;
- $('m5-farm-report').textContent=state.report;
- itemRender();return {got,bonus,overflow};
+ $('m5-farm-report').textContent=state.report;itemRender();return {got,bonus,overflow};
 }
-function resetItems(){state.items.length=0;state.report='인벤토리 초기화 완료';itemRender()}
-$('m5-item-inventory')?.addEventListener('click',e=>{const item=e.target.closest('.m5-item-owned');if(!item)return;item.title=item.title+' (장착 구현 예정)'});
+function resetItems(){state.items.length=0;itemSelectedIndex=null;state.report='인벤토리 초기화 완료';itemRender()}
 $('m5-farm-r1')?.addEventListener('click',()=>{if(window.M5Online?.active?.()){alert('오프라인 시험 모드에서 이용해 줘.')}});
-window.M5Systems=Object.freeze({renderSynergies,refreshSynergies,rewardFarm,resetItems,inventory:()=>[...state.items],preview:entries=>snapshotForPreview(entries)});
-document.addEventListener('DOMContentLoaded',()=>{itemRender();refreshSynergies()});
+window.M5Systems=Object.freeze({renderSynergies,refreshSynergies,rewardFarm,resetItems,inventory:()=>[...state.items],canAcceptItems,addItems,renderEquipment,itemRender,craftByIndex,equipItemAt,preview:entries=>snapshotForPreview(entries)});
+document.addEventListener('DOMContentLoaded',()=>{itemRender();refreshSynergies();const e=window.M5Economy?.getState?.();if(e)renderEquipment(e.owned,e.owned.find(o=>o.location==='board')?.uid||null)});
 })();

@@ -25,10 +25,11 @@
   const odds=()=>{const row=ODDS.find(r=>data.level>=r[0]&&data.level<=r[1])||ODDS.at(-1);return {1:row[2],2:row[3],3:row[4]};};
   const message=t=>{ $('m5-econ-message').textContent=t; };
   const editable=()=>!busyOnline && !live.getCombatState();
-  const makeOwned=(characterId,where='bench',x=null,y=null,star=1)=>({uid:data.nextUid++,characterId,star,location:where,x,y});
+  const makeOwned=(characterId,where='bench',x=null,y=null,star=1)=>({uid:data.nextUid++,characterId,star,location:where,x,y,equipment:[]});
   function initial(){
     clearPlacementEcho();
     data={credits:5,round:1,level:1,exp:0,locked:false,nextUid:1,shop:[],owned:[]};
+    window.M5Systems?.resetItems?.();
     data.owned=defaultTeam.map(([c,x,y])=>makeOwned(c,'board',x,y));
     rollShop();chosenBench=null;chosenBoard=data.owned[1]?.uid||null;dragUid=null;
     syncBoard();render();message('M4와 분리된 경제 실험실이야. 시작 5C · 5칸 상점 · 8칸 벤치.');
@@ -64,7 +65,11 @@
       }
       if(!group)break;
       const three=group.sort((a,b)=>sortPriority(a)-sortPriority(b)).slice(0,3);
+      const returns=three.flatMap(o=>o.equipment||[]);
+      if(!window.M5Systems?.canAcceptItems?.(returns.length))continue;
       const survivor=three[0];
+      if(returns.length)window.M5Systems.addItems(returns,{silent:true});
+      survivor.equipment=[];
       data.owned=data.owned.filter(o=>o===survivor||!three.includes(o));
       survivor.star++;
       notes.push(name(survivor.characterId)+' '+ '★'.repeat(survivor.star));
@@ -78,7 +83,7 @@
     const cid=data.shop[i],r=meta(cid);if(!r)return;
     if(data.credits<r.cost)return message('크레딧이 부족해.');
     const immediateMerge=data.owned.filter(o=>o.characterId===cid&&o.star===1).length>=2;
-    if(bench().length>=MAX_BENCH&&!immediateMerge)return message('벤치가 8칸 모두 찼어.');
+    if(bench().length>=MAX_BENCH&&(!immediateMerge||!window.M5Systems?.canAcceptItems?.(data.owned.filter(o=>o.characterId===cid&&o.star===1).slice(0,2).reduce((n,o)=>n+(o.equipment||[]).length,0))))return message('벤치 또는 인벤토리 공간이 부족해.');
     data.credits-=r.cost;data.owned.push(makeOwned(cid));data.shop[i]=null;
     const merged=autoMerge();
     message(merged.length?`${name(cid)} 구매 · ${merged.join(', ')} 합성 완료!`:`${name(cid)} 구매 · 벤치에 보관했어.`);
@@ -99,6 +104,9 @@
   function canSell(o){return Boolean(o)&&editable();}
   function sell(uid){
     const o=ownedByUid(uid);if(!canSell(o))return false;
+    const returns=o.equipment||[];
+    if(returns.length&&!window.M5Systems?.canAcceptItems?.(returns.length))return message('인벤토리 공간이 부족해서 판매할 수 없어.');
+    if(returns.length)window.M5Systems.addItems(returns,{silent:true});
     const refunded=sellValue(o);
     data.credits+=refunded;
     data.owned=data.owned.filter(x=>x!==o);
@@ -173,7 +181,7 @@
     if(!o)return `<div class="m5-bench-slot m5-empty-slot"><b>${index+1}</b><small>EMPTY</small></div>`;
     const cid=o.characterId;
     return `<button class="m5-bench-slot ${chosenBench===o.uid?'m5-picked':''}" type="button" draggable="false" data-bench="${o.uid}" aria-label="${name(cid)} ${o.star}성, 배치할 실험체 선택">
-      <img src="assets/characters/${cid}.png" alt=""><span class="m5-bench-star">${'★'.repeat(o.star)}</span><strong>${name(cid)}</strong>
+      <img src="assets/characters/${cid}.png" alt=""><span class="m5-bench-star">${'★'.repeat(o.star)}</span><strong>${name(cid)}</strong>${o.equipment?.length?`<span class="m5-bench-equip-count">장비 ${o.equipment.length}/3</span>`:''}
     </button>`;
   }
   function render(){
@@ -196,6 +204,8 @@
     if(!types.size)sym.textContent='실험체를 배치해 시너지 확인';
     }
     const selected=ownedByUid(chosenBench)||ownedByUid(chosenBoard);
+    window.M5Systems?.renderEquipment?.(data.owned, selected?.uid||null);
+    window.M5Systems?.itemRender?.();
     $('m5-econ-selection').textContent=selected?`${name(selected.characterId)} ${'★'.repeat(selected.star)} · ${selected.location==='bench'?'벤치 선택됨 · 칸 터치로 배치':'전장 배치 중'}`:`전장 또는 벤치의 실험체를 선택해 줘`;
     $('m5-econ-recall').disabled=!editable()||selected?.location!=='board';
     $('m5-econ-sell').disabled=!editable()||!selected;
@@ -204,6 +214,34 @@
     $('m5-next-round').disabled=!editable();
     $('m5-econ-reset').disabled=!editable();
     panel.querySelectorAll('[data-buy]').forEach(el=>el.disabled ||=!editable());
+  }
+  // M5-11: Equipment belongs to a *specific owned copy*, not to character ID.
+  function equipmentTarget(uid){return ownedByUid(uid)}
+  function equip(uid,item){
+    if(!editable())return {ok:false,message:'준비 단계에서만 장착할 수 있어.'};
+    const o=ownedByUid(uid),db=window.LIVEItems?.all||{},entry=db[item];
+    if(!o||!entry)return {ok:false,message:'장비나 실험체를 찾지 못했어.'};
+    const eq=o.equipment||(o.equipment=[]);
+    const basicIndex=entry.basic?eq.findIndex(v=>db[v]?.basic):-1;
+    if(basicIndex>=0){
+      const made=window.LIVEItems.craft(eq[basicIndex],item);
+      if(!made)return {ok:false,message:'기본 아이템 조합이 올바르지 않아.'};
+      eq[basicIndex]=made;
+      if(o.location==='board'){chosenBoard=o.uid;chosenBench=null}else{chosenBench=o.uid;chosenBoard=null}
+      syncBoard();render();return {ok:true,message:`${name(o.characterId)} · ${made} 완성!`,craft:made};
+    }
+    if(eq.length>=3)return {ok:false,message:'장착 슬롯은 실험체당 최대 3칸이야.'};
+    eq.push(item);
+    if(o.location==='board'){chosenBoard=o.uid;chosenBench=null}else{chosenBench=o.uid;chosenBoard=null}
+    syncBoard();render();
+    const copies=eq.filter(v=>v===item).length;
+    return {ok:true,message:`${name(o.characterId)} · ${item} 장착${copies>1&&!entry.basic?' (고유 효과는 중첩되지 않음)':''}`};
+  }
+  function selectEquipmentTarget(uid){
+    const o=ownedByUid(uid);if(!o)return false;
+    if(o.location==='bench'){chosenBench=o.uid;chosenBoard=null}
+    else{chosenBoard=o.uid;chosenBench=null}
+    render();return true;
   }
   function setOnline(on){
     busyOnline=Boolean(on);clearPlacementEcho();panel.hidden=busyOnline;
@@ -229,9 +267,6 @@
     return target;
   };
   const placeGhost=(g,x,y)=>{if(!g.ghost)return;g.ghost.style.left=x+'px';g.ghost.style.top=y+'px';};
-  const createGhost=(o)=>{
-    const ghost=createGhost(o);return ghost;
-  };
   panel.addEventListener('dragstart',e=>{if(e.target.closest('[data-bench]'))e.preventDefault();});
   panel.addEventListener('pointerdown',e=>{
     const seat=e.target.closest('[data-bench]');
@@ -296,6 +331,8 @@
     drop:(x,y)=>{if(dragUid!==null){const uid=dragUid;dragUid=null;return deploy(uid,x,y);}return false;},
     syncBoardPositions,syncSelection,
     getState:()=>JSON.parse(JSON.stringify(data)),
+    equipmentTarget, equip, selectEquipmentTarget, canModify:editable,
+    addCredits:(amount)=>{if(!editable())return false;data.credits+=amount;render();return true;},
     sellDraggedUnit:id=>sell(Number(String(id).replace(/^owned-/,''))),
     saleValue:id=>{const o=ownedByUid(Number(String(id).replace(/^owned-/,'')));return o?sellValue(o):0;},
     dragSalePreview:(x,y,id)=>sellHover(x,y,Number(String(id).replace(/^owned-/,''))),

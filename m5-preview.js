@@ -283,7 +283,7 @@
     canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){removeBoardGhost();gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
   }
   function buildCombatConfig(seed){
-    const toEntry=u=>({characterId:charId(u),star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:state.onlineSlot===null&&$('m5-crit-demo')?.checked&&u.team==='A'&&charId(u)==='aya'?['운명의 주사위','레가투스']:u.items||[]});
+    const toEntry=u=>({characterId:charId(u),star:u.star||1,x:u.team==='A'?u.x:5-u.x,y:u.y,items:u.items||[]});
     return {teamA:units.filter(u=>u.team==='A').map(toEntry),teamB:units.filter(u=>u.team==='B').map(toEntry),
       masteryA:state.onlineSlot===null?(window.M5Economy?.getState?.()?.level||1):1,masteryB:1,moveInterval:.5,seed,arenaRegion:state.region};
   }
@@ -812,7 +812,7 @@
   async function sandboxApplyRoster(entries){
     if(state.onlineSlot!==null||combat)return false;
     const enemy=units.filter(u=>u.team==='B');
-    const own=entries.map(o=>({id:'owned-'+o.uid,characterId:o.characterId,team:'A',x:o.x,y:o.y,star:o.star,items:[]}));
+    const own=entries.map(o=>({id:'owned-'+o.uid,characterId:o.characterId,team:'A',x:o.x,y:o.y,star:o.star,items:[...(o.equipment||[])]}));
     units.splice(0,units.length,...own,...enemy);
     if(!units.some(u=>u.id===state.activeUnitId))state.activeUnitId=own[0]?.id||null;
     if(renderer){
