@@ -31,7 +31,7 @@ const SYNERGY_EFFECT_TEXT={
 
 const state={items:[],report:'파밍 시험 전',lastFarm:null};
 function snapshotForPreview(entries){
- const teamA=entries.map(o=>({characterId:o.characterId,x:o.x,y:o.y,star:o.star,items:[]}));
+ const teamA=entries.map(o=>({characterId:o.characterId,x:o.x,y:o.y,star:o.star,items:[...(o.equipment||[])]}));
  if(!teamA.length)return null;
  const now=window.LIVEM5?.getState?.();
  const enemies=(now?.units||[]).filter(u=>u.team==='B' && roster()[u.characterId||u.id] && !roster()[u.characterId||u.id].pveOnly).slice(0,3).map(u=>({characterId:u.characterId||u.id,star:u.star||1,x:5-u.x,y:u.y}));

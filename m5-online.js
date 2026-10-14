@@ -115,9 +115,10 @@
     if(!room||!token||pendingTeam||room.started&&game()?.phase!=='prep')return false;
     const team=window.LIVEM5?.onlineTeamForServer?.()||[];
     if(!team.length)return false;
-    const stamp=JSON.stringify(team);if(!force&&stamp===lastTeam)return true;
+    const mastery=window.M5Economy?.getState?.()?.level||1;
+    const stamp=JSON.stringify([team,mastery]);if(!force&&stamp===lastTeam)return true;
     pendingTeam=true;
-    try{await api('team',{team,mastery:1});lastTeam=stamp;return true;}
+    try{await api('team',{team,mastery});lastTeam=stamp;return true;}
     catch(e){notice('배치 동기화 실패: '+e.message);return false}
     finally{pendingTeam=false}
   }

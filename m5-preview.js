@@ -862,12 +862,12 @@
       const beasts=(WILD[g.round]||WILD[3]).map(([characterId,x,y])=>({characterId,star:1,x,y}));
       // Farming battles are individual: own side is simulation team A.
       units.splice(0,units.length,...own.map(u=>({id:u.characterId,team:'A',x:u.x,y:u.y,star:u.star||1,items:u.items||[]})),...beasts.map(u=>({id:u.characterId,team:'B',x:5-u.x,y:u.y,star:1})));
-      return {teamA:own,teamB:beasts,seed:g.seed,masteryA:1,masteryB:1,moveInterval:.5,arenaRegion:g.region};
+      return {teamA:own,teamB:beasts,seed:g.seed,masteryA:room.players.find(p=>p.slot===slot)?.mastery||1,masteryB:1,moveInterval:.5,arenaRegion:g.region};
     }
     state.onlinePhase='pvp';
     const sorted=room.players.slice().sort((a,b)=>a.slot-b.slot);
     units.splice(0,units.length,...sorted.flatMap(p=>(p.team||[]).map(u=>({id:u.characterId,team:p.slot===0?'A':'B',x:p.slot===0?u.x:5-u.x,y:u.y,star:u.star||1,items:u.items||[]}))));
-    return {teamA:sorted[0]?.team||[],teamB:sorted[1]?.team||[],seed:g.seed,masteryA:1,masteryB:1,moveInterval:.5,arenaRegion:g.region};
+    return {teamA:sorted[0]?.team||[],teamB:sorted[1]?.team||[],seed:g.seed,masteryA:sorted[0]?.mastery||1,masteryB:sorted[1]?.mastery||1,moveInterval:.5,arenaRegion:g.region};
   }
   async function onlineStart(room,slot){
     if(!room?.game)return false;
