@@ -45,7 +45,7 @@
    const color=h.critical?0xffdc91:0xffb6bd;
    const t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:color,stroke:{color:0x101016,width:4}}});
    t.anchor.set(.5,.5);const lane=hits.filter(v=>v.id===h.id&&Math.abs(v.at-h.at)<200).indexOf(h);
-   t.position.set(ent.baseX+(lane%3-1)*23,ent.baseY-83-age*.055);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
+   t.position.set(ent.baseX+(lane%3-1)*17,ent.baseY-Math.max(32,ent.visualHeight*.85)-age*.055);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
   }}
   for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050)hits.splice(i,1);
   if(active)startMotion();
@@ -95,8 +95,8 @@
    const img=unit.querySelector('.sd-slot img.sd-image');if(!img?.getAttribute('src'))continue;
    const cell=unit.closest('.cell');if(!cell||getComputedStyle(cell).display==='none')continue;
    const id=unit.dataset.id||String(list.length),src=img.getAttribute('src');
-   const rect=cell.getBoundingClientRect();if(!rect.width||!rect.height)continue;
-   list.push({id,src,rect,unit,cell});
+   const rect=cell.getBoundingClientRect(),slot=unit.querySelector('.sd-slot')?.getBoundingClientRect(),hud=unit.querySelector('.unit-hud')?.getBoundingClientRect();if(!rect.width||!rect.height)continue;
+   list.push({id,src,rect,slot,hud,unit,cell});
   }
   // Only enable sprite substitution if every visible unit texture loaded.
   const loaded=await Promise.allSettled(list.map(v=>texture(v.src)));
@@ -107,10 +107,15 @@
    if(!entry){const container=new (P().Container)();const ring=new (P().Graphics)();const sprite=new (P().Sprite)(t);sprite.anchor.set(.5,1);container.addChild(ring,sprite);layer.addChild(container);entry={container,ring,sprite,src:v.src};nodes.set(v.id,entry);}
    if(entry.src!==v.src){entry.sprite.texture=t;entry.src=v.src;}
    const {container,sprite,ring}=entry,rect=v.rect;
-   const footX=rect.left-outer.left+rect.width/2,footY=rect.bottom-outer.top-rect.height*.10;
-   const scale=Math.min(rect.height*1.78/Math.max(1,t.height),rect.width*1.35/Math.max(1,t.width));
+   const footX=rect.left-outer.left+rect.width/2;
+   // Keep sprite shoes on the M4 ground-ring line and place the health bar near the body, not in the feet.
+   const footY=rect.bottom-outer.top-rect.height*.10;
+   // Deliberately cap visual size below one grid cell: tall silhouettes must never cover the next row.
+   const heightLimit=Math.min(rect.height*.92,(v.slot?.height||rect.height)*.84);
+   const widthLimit=rect.width*.64;
+   const scale=Math.min(heightLimit/Math.max(1,t.height),widthLimit/Math.max(1,t.width));
    sprite.scale.set(v.unit.classList.contains('B')?-scale:scale,scale);
-   entry.baseX=footX;entry.baseY=footY;entry.team=v.unit.classList.contains('B')?'B':'A';
+   entry.baseX=footX;entry.baseY=footY;entry.visualHeight=t.height*scale;entry.team=v.unit.classList.contains('B')?'B':'A';
    if(!motions.has(v.id))container.position.set(footX,footY);container.zIndex=footY;
    container.alpha=v.unit.classList.contains('dead')?.3:1;
    ring.clear();
@@ -119,6 +124,8 @@
   for(const [id,entry] of nodes)if(!seen.has(id)){layer.removeChild(entry.container);entry.container.destroy({children:true});nodes.delete(id);}
   board.classList.add('m6-pixi-active');
  }
+ // Catch geometry changes caused by CSS/round mode, without altering M4 game state.
+ const resizeObserver=window.ResizeObserver?new ResizeObserver(queue):null;resizeObserver?.observe(shell);resizeObserver?.observe(board);
  const observer=new MutationObserver(queue);
  observer.observe(board,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
  window.addEventListener('resize',queue,{passive:true});

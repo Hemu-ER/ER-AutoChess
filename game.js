@@ -502,7 +502,7 @@ function renderRoundUI(){
  p.querySelector('#roundSkip')?.addEventListener('click',()=>{if(window.LIVEMultiplayer?.getRoom()?.started){$('#status').textContent='온라인 준비 · 서버가 동시에 전투를 시작해.';return}beginRoundCombat()})
 }
 function creditHtml(amount,cls='credit-price'){
- return `<span class="${cls}"><img src="assets/ui/credit.png?v=20261010-1" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
+ return `<span class="${cls}"><img src="assets/ui/credit-m6.jpg?v=20261014" alt="크레딧"><b>${Number(amount)||0}</b></span>`;
 }
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
@@ -687,7 +687,7 @@ function liveSupplyUi(net,slot){
  if(el.hidden){liveSupplyCollapsed=false;el.classList.remove('supply-collapsed');if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
  const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
  const describe=t=>{
-  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png',visual:'coin',badge:'+10 C'};
+  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit-m6.jpg',visual:'coin',badge:'+10 C'};
   if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:'+10 EXP',subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:'LEVEL UP'};
   if(t.type==='unit'){
    const r=byId[t.value];
@@ -794,7 +794,7 @@ window.LIVEApplyGame=function(net,slot,players){
    $('#status').textContent=net.hp[slot]<=0?'게임 종료 · 패배':'게임 종료 · 승리';
   }
  }
- roundState.remaining=rem;renderRoundUI();
+ roundState.remaining=rem;renderRoundUI();if(net.phase==='prep'&&net.prepNotice){const status=document.querySelector('#status');if(status)status.textContent=net.prepNotice;}
  const display=document.querySelector('.round-center strong');
  if(display&&net.earlyEndsAt&&['prep','combat'].includes(net.phase)){
    const seconds=Math.max(0,Math.ceil((net.earlyEndsAt-Date.now())/1000));
@@ -1014,7 +1014,7 @@ function sync(){
 }
 function start(){
  if(running)return true;
- try{reset();const seed=window.LIVENetReplaySeed??($("#fixedSeed").checked?+$("#seed").value:Math.floor(Math.random()*2147483647));battle=new CombatEngine(config(seed));battle.start();running=true;paused=false;$("#status").textContent=`전투 중 · seed ${seed}`;renderTeams();sync();last=performance.now();frame=requestAnimationFrame(loop);return true}catch(e){battle=null;showError(e);return false}
+ try{reset();if(!teams.A.length||!teams.B.length){console.warn('[M6 QA] 전투 시작 시 팀 구성 확인', {teamA:teams.A.map(e=>e.characterId),teamB:teams.B.map(e=>e.characterId),round:roundState.round,phase:roundState.phase});}const seed=window.LIVENetReplaySeed??($("#fixedSeed").checked?+$("#seed").value:Math.floor(Math.random()*2147483647));battle=new CombatEngine(config(seed));battle.start();running=true;paused=false;$("#status").textContent=`전투 중 · seed ${seed}`;renderTeams();sync();last=performance.now();frame=requestAnimationFrame(loop);return true}catch(e){battle=null;showError(e);return false}
 }
 function loop(now){
  if(!running){frame=null;return}
