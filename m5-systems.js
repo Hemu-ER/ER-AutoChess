@@ -60,13 +60,13 @@ function renderSynergies(entries){
 }
 let popup=null,hoverTarget=null;
 function showTip(el,x,y){if(!popup){popup=document.createElement('div');popup.className='m5-synergy-popup';popup.hidden=true;document.body.appendChild(popup)}
- const detail=el?.dataset.tip||'';if(!detail){popup.hidden=true;return;}
+ const detail=el?.dataset.tip||(el?.dataset.itemName?itemDetails(el.dataset.itemName):'');if(!detail){popup.hidden=true;return;}
  const title=detail.split('\n')[0];const rest=detail.substring(title.length+1);
  popup.innerHTML=`<strong>${simple(title)}</strong><small>${simple(rest)}</small>`;
  if(el.dataset.full&&(window.event?.shiftKey||window.M5ShowDetailedTip)){const extra=document.createElement('small');extra.style.marginTop='6px';extra.textContent='전체 단계\n'+el.dataset.full;popup.appendChild(extra)}
  popup.hidden=false;let left=x+18,top=y+15;const r=popup.getBoundingClientRect();if(left+r.width>innerWidth-10)left=Math.max(10,x-r.width-20);if(top+r.height>innerHeight-10)top=Math.max(10,y-r.height-20);popup.style.left=left+'px';popup.style.top=top+'px';
 }
-const tipTarget=e=>e.target.closest?.('[data-tip]')||e.target.closest?.('#m5-region-tip');
+const tipTarget=e=>e.target.closest?.('[data-tip]')||e.target.closest?.('[data-item-name]')||e.target.closest?.('#m5-region-tip');
 document.addEventListener('pointermove',e=>{const t=tipTarget(e);if(t){hoverTarget=t;showTip(t,e.clientX,e.clientY)}else if(hoverTarget){hoverTarget=null;if(popup)popup.hidden=true}},true);
 document.addEventListener('focusin',e=>{const t=tipTarget(e);if(t){hoverTarget=t;const r=t.getBoundingClientRect();showTip(t,r.left,r.bottom)}},true);
 document.addEventListener('focusout',e=>{if(tipTarget(e)){hoverTarget=null;if(popup)popup.hidden=true}},true);
@@ -151,7 +151,7 @@ function sellItemAt(i){
  state.items.splice(i,1);itemSelectedIndex=null;itemReport(`${name} 판매 · +${entry.basic?2:5}C`);return true;
 }
 function updateCodex(){
- const root=$('m5-item-recipes');if(!root||$('m5-item-codex')?.hidden)return;
+ const root=$('m5-item-recipes');if(!root||!$('m5-item-codex')?.open)return;
  const recipes=Object.values(window.LIVEItems?.all||{}).filter(e=>!e.basic);
  root.innerHTML=recipes.map(r=>{
   const [a,b]=r.materials||[],possible=a&&b&&(a===b?state.items.filter(x=>x===a).length>=2:state.items.includes(a)&&state.items.includes(b));
@@ -162,7 +162,7 @@ function targetUidAt(x,y){
  const cell=window.LIVEM5?.cellFromClient?.(x,y);if(!cell)return null;
  return window.M5Economy?.getState?.()?.owned?.find(u=>u.location==='board'&&u.x===cell.x&&u.y===cell.y)?.uid||null;
 }
-const itemGhostRemove=()=>{itemGesture?.ghost?.remove();itemGesture=null;document.querySelectorAll('.m5-item-craft-target,.m5-item-equip-hover').forEach(n=>n.classList.remove('m5-item-craft-target','m5-item-equip-hover'));};
+const itemGhostRemove=()=>{const hint=$('m5-item-drag-preview');if(hint)hint.hidden=true;itemGesture?.ghost?.remove();itemGesture=null;document.querySelectorAll('.m5-item-craft-target,.m5-item-equip-hover').forEach(n=>n.classList.remove('m5-item-craft-target','m5-item-equip-hover'));};
 itemWorkbench?.addEventListener('pointerdown',e=>{
  const b=e.target.closest('[data-item-index]');if(!b||!window.M5Economy?.canModify?.()||(e.pointerType==='mouse'&&e.button!==0))return;
  const i=Number(b.dataset.itemIndex),name=state.items[i];if(!name)return;
@@ -179,8 +179,9 @@ document.addEventListener('pointermove',e=>{
  e.preventDefault();
  document.querySelectorAll('.m5-item-craft-target,.m5-item-equip-hover').forEach(n=>n.classList.remove('m5-item-craft-target','m5-item-equip-hover'));
  const hit=document.elementFromPoint(e.clientX,e.clientY),target=hit?.closest?.('[data-item-index]');
- if(target&&Number(target.dataset.itemIndex)!==g.i){const ci=Number(target.dataset.itemIndex);if(window.LIVEItems.craft(g.name,state.items[ci])){target.classList.add('m5-item-craft-target');updateCraftHint(ci);}}
- else if(hit?.closest?.('#m5-item-equipped, [data-bench], #stage, #m5-item-target'))hit.closest('#m5-item-equipped, [data-bench], #stage, #m5-item-target').classList.add('m5-item-equip-hover');
+ if(target&&Number(target.dataset.itemIndex)!==g.i){const ci=Number(target.dataset.itemIndex),crafted=window.LIVEItems.craft(g.name,state.items[ci]);if(crafted){target.classList.add('m5-item-craft-target');updateCraftHint(ci);const tip=$('m5-item-drag-preview');if(tip){tip.textContent=`${g.name} + ${state.items[ci]} → ${itemDetails(crafted)}`;tip.hidden=false;tip.style.left=Math.min(innerWidth-280,e.clientX+20)+'px';tip.style.top=Math.max(8,Math.min(innerHeight-150,e.clientY+14))+'px';}}}
+ else {const tip=$('m5-item-drag-preview');if(tip)tip.hidden=true;}
+ if(hit?.closest?.('#m5-item-equipped, [data-bench], #stage, #m5-item-target'))hit.closest('#m5-item-equipped, [data-bench], #stage, #m5-item-target').classList.add('m5-item-equip-hover');
 },{passive:false});
 document.addEventListener('pointerup',e=>{
  const g=itemGesture;if(!g||e.pointerId!==g.pointerId)return;
@@ -205,7 +206,13 @@ $('m5-item-equip')?.addEventListener('click',()=>{if(itemSelectedIndex!=null)equ
 $('m5-item-sell')?.addEventListener('click',()=>{if(itemSelectedIndex!=null)sellItemAt(itemSelectedIndex)});
 $('m5-item-equipped')?.addEventListener('click',e=>{if(e.target.closest('[data-equip-drop]')&&itemSelectedIndex!=null)equipItemAt(itemSelectedIndex)});
 $('m5-item-target')?.addEventListener('change',e=>setInventoryTarget(e.target.value));
-$('m5-codex-toggle')?.addEventListener('click',()=>{const root=$('m5-item-codex');root.hidden=!root.hidden;$('m5-codex-toggle').setAttribute('aria-expanded',String(!root.hidden));$('m5-codex-toggle').textContent=root.hidden?'조합 도감 ▸':'조합 도감 ▾';updateCodex()});
+const codex=$('m5-item-codex');
+function openCodex(){if(!codex)return;codex.showModal?.();$('m5-codex-toggle').setAttribute('aria-expanded','true');updateCodex();}
+function closeCodex(){codex?.close?.();$('m5-codex-toggle').setAttribute('aria-expanded','false');}
+$('m5-codex-toggle')?.addEventListener('click',openCodex);
+$('m5-codex-close')?.addEventListener('click',closeCodex);
+codex?.addEventListener('close',()=>{$('m5-codex-toggle').setAttribute('aria-expanded','false')});
+codex?.addEventListener('click',e=>{if(e.target===codex)closeCodex()});
 $('m5-item-recipes')?.addEventListener('click',e=>{
  const b=e.target.closest('[data-craft-name]');if(!b)return;
  const name=b.dataset.craftName,entry=window.LIVEItems.all[name];

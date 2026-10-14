@@ -57,7 +57,7 @@
   const charId = u => u.characterId || u.id;
   const src = id => `assets/characters/${id}.png`;
   const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
-  const state = {brightness:.75, vfx:true, sound:false, mode:'prep', x:1, y:1, grid:false, points:false, engine:'loading', activeUnitId:'bianca', hover:null, onlineSlot:null, onlinePhase:'', round:0, region:'lab'};
+  const state = {brightness:.65, vfx:true, sound:false, mode:'prep', x:1, y:1, grid:false, points:false, engine:'loading', activeUnitId:'bianca', hover:null, onlineSlot:null, onlinePhase:'', round:0, region:'lab'};
   const root = $('stage'), wrap = $('stage-wrap');
   let renderer = null, gesture = null, toastTimer = 0;
   let combat = null, raf = null, lastFrame = 0, lag = 0, lastStatus = 0;
@@ -140,7 +140,7 @@
   function updateInfo(){
     $('cell-title').textContent=label();
     $('cell-code').textContent=`X ${String(state.x).padStart(2,'0')} / Y ${String(state.y).padStart(2,'0')}`;
-    $('cell-position').textContent=`${Math.round((state.x+.5)*CW)}, ${Math.round((state.y+.5)*CH)}`;
+    $('cell-position').textContent=`${Math.round(foot(state.x,state.y).x)}, ${Math.round(foot(state.x,state.y).y)}`;
     $('mode-status').textContent=state.mode==='prep'?'준비 모드':'전투 모드';
     $('renderer-status').textContent=state.engine==='pixi'?'PixiJS 8.22.0':state.engine==='canvas'?'Canvas 대체 모드':'엔진 초기화 중';
     $('stage').setAttribute('aria-label',`${visibleCols()}열 3행 연구소 전장, ${label()} 칸 선택됨`);
@@ -166,7 +166,18 @@
     });
     updateSize();
   }
-  function render(){renderer?.paint();updateInfo();}
+  function updateUnitBadges(){
+    const layer=$('m5-unit-equipment-overlay');if(!layer||!renderer?.canvas)return;
+    const rect=renderer.canvas.getBoundingClientRect(),stateItems=window.M5Economy?.getState?.()?.owned||[];
+    layer.replaceChildren();if(!rect.width||!rect.height||state.mode!=='prep'||gesture?.moving)return;
+    for(const u of units.filter(v=>isOwn(v))){
+      const eq=stateItems.find(o=>String(u.id)===`owned-${o.uid}`)?.equipment||u.items||[];
+      if(!eq.length)continue;const p=spritePoint(u),bar=document.createElement('div');bar.className='m5-unit-gear-badges';
+      bar.style.left=(rect.left+scrollX+p.x/viewW()*rect.width)+'px';bar.style.top=(rect.top+scrollY+(p.y+16)/H*rect.height)+'px';
+      for(const name of eq){const img=document.createElement('img');img.src='assets/items/'+encodeURIComponent(name)+'.webp';img.alt=name;img.title=name;img.dataset.itemName=name;bar.appendChild(img)}layer.appendChild(bar);
+    }
+  }
+  function render(){renderer?.paint();updateInfo();updateUnitBadges();}
   function selectCell(x,y){
     if(!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>=visibleCols()||y>=ROWS)return false;
     state.x=x;state.y=y;
@@ -214,6 +225,20 @@
     const x=(e.clientX-rect.left)/rect.width*viewW(),y=(e.clientY-rect.top)/rect.height*H;
     return {x,y,cellX:Math.floor(x/CW),cellY:Math.floor(y/CH),valid:x>=0&&y>=0&&x<viewW()&&y<H};
   }
+  const inspectTip=document.createElement('div');inspectTip.className='m5-synergy-popup m5-unit-inspect';inspectTip.hidden=true;document.body.appendChild(inspectTip);
+  function inspectUnitAt(clientX,clientY){
+    const p=pointerWorld({clientX,clientY});if(!p?.valid)return null;
+    return renderer.pick?.(p.x,p.y)||unitAt(p.cellX,p.cellY);
+  }
+  function showInspect(u,clientX,clientY){
+    if(!u||gesture?.moving){inspectTip.hidden=true;return;}
+    const r=window.ERRoster?.byId?.[charId(u)]||{};
+    const equipped=window.M5Economy?.getState?.()?.owned?.find(o=>String(o.uid)===String(u.id).replace(/^owned-/,''))?.equipment||u.items||[];
+    const title=portraits[charId(u)]?.name||r.name||charId(u);
+    inspectTip.replaceChildren();const h=document.createElement('strong');h.textContent=title+' · '+(r.role||'실험체');inspectTip.appendChild(h);
+    const t=document.createElement('small');t.textContent=`${(r.affiliations||[]).join(' · ')}\nHP ${r.hp??'-'} · ATK ${r.atk??'-'} · AMP ${r.amp??'-'} · DEF ${r.def??'-'}\n장비: ${equipped.join(', ')||'없음'}`;inspectTip.appendChild(t);
+    inspectTip.hidden=false;const bounds=inspectTip.getBoundingClientRect();inspectTip.style.left=Math.max(8,Math.min(innerWidth-bounds.width-8,clientX+16))+'px';inspectTip.style.top=Math.max(8,Math.min(innerHeight-bounds.height-8,clientY+16))+'px';
+  }
   function startInput(){
     const canvas=renderer.canvas;canvas.style.touchAction='none';
     canvas.addEventListener('pointerdown',e=>{
@@ -227,7 +252,7 @@
       selectCell(p.cellX,p.cellY);
       if(picked&&isOwn(picked)&&state.mode==='prep'&&!combat){
         state.activeUnitId=picked.id;state.x=picked.x;state.y=picked.y;render();
-        gesture={id:picked.id,pointerId:e.pointerId,down:p,now:p,moving:false};
+        gesture={id:picked.id,pointerId:e.pointerId,down:p,now:p,moving:false};inspectTip.hidden=true;
         canvas.classList.add('m5-unit-grabbed');
         try{canvas.setPointerCapture(e.pointerId);}catch{}
       }
@@ -257,7 +282,7 @@
     const end=e=>{
       if(!gesture||e.pointerId!==gesture.pointerId)return;
       const g=gesture;const wasSell=!!(boardGhost&&window.M5Economy?.dragSalePreview?.(e.clientX,e.clientY,g.id));
-      gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');removeBoardGhost();
+      gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');removeBoardGhost();updateUnitBadges();
       if(g.moving&&wasSell&&state.onlineSlot===null&&window.M5Economy?.sellDraggedUnit?.(g.id)){renderer.positions();render();feedback('실험체 판매 완료');return;}
       const p=pointerWorld(e);
       if(g.moving){
@@ -278,6 +303,8 @@
     };
     canvas.addEventListener('dragover',e=>{if(state.mode==='prep'&&!combat&&state.onlineSlot===null&&window.M5Economy?.hasDrag?.()){e.preventDefault();e.dataTransfer.dropEffect='move';}});
     canvas.addEventListener('drop',e=>{if(state.mode!=='prep'||combat||state.onlineSlot!==null)return;const p=pointerWorld(e);if(p?.valid&&p.cellX<3){e.preventDefault();window.M5Economy?.drop?.(p.cellX,p.cellY);}});
+    canvas.addEventListener('pointermove',e=>{if(!gesture)showInspect(inspectUnitAt(e.clientX,e.clientY),e.clientX,e.clientY);});
+    canvas.addEventListener('pointerleave',()=>{inspectTip.hidden=true;});
     canvas.addEventListener('pointerup',end);
     canvas.addEventListener('pointercancel',e=>{if(gesture&&e.pointerId===gesture.pointerId){removeBoardGhost();gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
     canvas.addEventListener('lostpointercapture',e=>{if(gesture&&e.pointerId===gesture.pointerId){removeBoardGhost();gesture=null;state.hover=null;canvas.classList.remove('m5-unit-grabbed');renderer.positions();render();}});
@@ -640,11 +667,11 @@
         if(attack){const t=clamp01((clock-attack.at)/(attack.until-attack.at));
           shift=(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*t);}
         const isGrabbed=!combat&&gesture?.moving&&gesture.id===u.id;
-        const dragShift=isGrabbed?{x:gesture.now.x-gesture.down.x,y:gesture.now.y-gesture.down.y}:{x:0,y:0};
+        const dragShift={x:0,y:0};
         obj.node.position.set(p.x+shift+dragShift.x,p.y+dragShift.y);
         obj.node.zIndex=isGrabbed?2000:p.y;
         obj.node.visible=state.mode==='combat'||isOwn(u);
-        obj.node.alpha=isGrabbed?.83:u.dead?.22:1;
+        obj.node.alpha=isGrabbed?.40:u.dead?.22:1;
         obj.sprite.tint=acting.some(f=>f.kind==='hit'||f.kind==='crit')?0xffd8de:0xffffff;
         const bb=(portraits[charId(u)]||OTHER_BOUNDS).bounds,sc=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);obj.sprite.scale.set(visualTeam(u)==='B'?-sc:sc,sc);
         obj.node.children[1].alpha=combat?.35:state.activeUnitId===u.id?1:.60;const ring=obj.node.children[1];ring.clear().ellipse(0,-7,84,23).stroke({width:4,color:visualTeam(u)==='A'?0x83d9e4:0xe8a7bd,alpha:.78});
@@ -719,11 +746,11 @@
       if(state.hover)canvasRectangle(c,state.hover.x,state.hover.y,'#a3ffcc');
       const ordered=getDrawUnits().filter(u=>state.mode==='combat'||isOwn(u)).slice().sort((a,b)=>a.y-b.y||a.x-b.x);
       for(const u of ordered){const meta=portraits[charId(u)]||OTHER_BOUNDS,bb=meta.bounds,im=this.images.get(charId(u)),p=combat?visual.get(u.drawKey)||spritePoint(u):spritePoint(u);
-        const shift=gesture?.moving&&gesture.id===u.id?{x:gesture.now.x-gesture.down.x,y:gesture.now.y-gesture.down.y}:{x:0,y:0};
+        const shift={x:0,y:0};
         const acting=fxFor(u.drawKey),attack=acting.find(f=>f.kind==='attack');
         const bump=attack?(visualTeam(u)==='A'?1:-1)*12*Math.sin(Math.PI*clamp01((nowMs()-attack.at)/(attack.until-attack.at))):0;
         const cx=p.x+shift.x+bump,cy=p.y+shift.y,scale=Math.min(250/(bb[3]-bb[1]),215/(bb[2]-bb[0]))*(u.y===0?.78:1);
-        c.save();if(gesture?.moving&&gesture.id===u.id)c.globalAlpha=.8;if(u.dead)c.globalAlpha=.22;
+        c.save();if(gesture?.moving&&gesture.id===u.id)c.globalAlpha=.40;if(u.dead)c.globalAlpha=.22;
         c.beginPath();c.ellipse(cx,cy-5,75,20,0,0,2*Math.PI);c.fillStyle='#020b128e';c.fill();
         c.beginPath();c.ellipse(cx,cy-7,84,23,0,0,2*Math.PI);c.strokeStyle=visualTeam(u)==='A'?'#83d9e4a0':'#e8a7bda0';c.lineWidth=4;c.stroke();
         const mid=(bb[0]+bb[2])/2;
@@ -749,7 +776,7 @@
     startInput();
     render();
   }
-  // M5-09: visual director panel retired. Stage defaults remain brightness 75%, VFX ON.
+  // M5-09: visual director panel retired. Stage defaults remain brightness 65%, VFX ON.
 
   $('m5-result-back').addEventListener('click',()=>{if(state.onlineSlot===null)stopCombat();});
   $('m5-region-select').addEventListener('change',e=>setRegion(e.target.value).catch(err=>feedback('지역 이미지 로드 실패: '+err.message)));

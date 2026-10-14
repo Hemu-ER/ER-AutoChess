@@ -259,10 +259,10 @@
   const removeGhost=()=>{sellHover(-1,-1,null);benchGesture?.ghost?.remove();document.querySelectorAll('.m5-bench-grabbed').forEach(x=>x.classList.remove('m5-bench-grabbed'));document.body.classList.remove('m5-is-dragging');$('stage')?.classList.remove('m5-stage-drop-active');live.clearDragPreview?.();};
   const sellButton=$('m5-econ-sell');
   const inside=(r,x,y)=>r&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
-  const overSell=(x,y)=>inside(sellButton?.getBoundingClientRect(),x,y);
+  const overSell=(x,y)=>inside(sellButton?.getBoundingClientRect(),x,y)||inside($('m5-shop-cards')?.getBoundingClientRect(),x,y);
   const sellHover=(x,y,uid)=>{
     const target=overSell(x,y)&&editable();
-    sellButton?.classList.toggle('m5-sell-hover',!!target);
+    sellButton?.classList.toggle('m5-sell-hover',!!target);$('m5-shop-cards')?.classList.toggle('m5-shop-sell-hover',!!target);
     if(sellButton)sellButton.textContent=target?`판매하고 +${sellValue(ownedByUid(uid))}C 받기`:'판매 · 여기로 드래그';
     return target;
   };

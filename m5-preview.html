@@ -73,14 +73,14 @@
 <div><small>COL 04—06</small> B 진영 <span class="team-mark enemy"></span></div>
 </footer>
 </section></div><aside aria-label="실험체 정보 및 전투 조작" class="m5-live-rail m5-live-right"><section aria-label="아이템 관리" class="m5-items-preview m5-equipment-workbench">
-<div class="m5-panel-head"><strong>아이템 <span id="m5-item-count">0/12</span></strong><button type="button" id="m5-codex-toggle" aria-expanded="false">조합 도감 ▸</button></div>
+<div class="m5-panel-head"><strong>아이템 <span id="m5-item-count">0/12</span></strong><button type="button" id="m5-codex-toggle" aria-expanded="false">조합 도감 ↗</button></div>
 <div id="m5-item-inventory" class="m5-items-preview-grid" aria-label="기본 및 완성 아이템 12칸"></div>
 <p id="m5-item-notice">파밍 보상을 클릭하거나 드래그해서 장착할 수 있어.</p>
 <div class="m5-item-controls"><button id="m5-item-equip" type="button">선택 장비 장착</button><button id="m5-item-sell" type="button">선택 아이템 판매</button><small>기본 +2C · 완성 +5C</small></div>
 <div class="m5-item-craft-hint" id="m5-item-craft-hint">아이템을 다른 기본 아이템에 드래그하면 조합돼.</div>
 <div class="m5-item-gear"><label for="m5-item-target">장비 대상</label><select id="m5-item-target" aria-label="장비할 실험체 선택"></select>
 <div id="m5-item-equipped" class="m5-item-equipped" aria-label="선택 실험체의 장비 3칸"></div><small>3칸 제한 · 장착 후 임의 해제 불가 · 실험체 판매·성급 합성 시 반환</small></div>
-<div id="m5-item-codex" class="m5-item-codex" hidden aria-label="아이템 조합 도감"><div class="m5-panel-head"><strong>완성 아이템 28종</strong><small>재료 2개 조합 · 보유 시 제작 가능</small></div><div id="m5-item-recipes"></div></div>
+<dialog id="m5-item-codex" class="m5-item-codex m5-codex-dialog" aria-label="아이템 조합 도감"><div class="m5-panel-head"><strong>아이템 도감 · 완성품 28종</strong><button type="button" id="m5-codex-close" aria-label="도감 닫기">✕ 닫기</button></div><p>아이템에 마우스를 올리면 능력치와 고유 효과를 볼 수 있어.</p><div id="m5-item-recipes"></div></dialog>
 </section><section aria-label="실제 전투 엔진 테스트" class="lab-combat-panel">
 <div class="lab-info-top"><span>COMBAT ENGINE / DETERMINISTIC REPLAY</span><span id="combat-time">0.0s</span></div>
 <div class="m5-farm-qa" id="m5-farm-qa"><span>오프라인 파밍 시험</span><button type="button" id="m5-farm-r1">R1 들개·멧돼지</button><button type="button" id="m5-farm-r3">R3 늑대·멧돼지</button><small id="m5-farm-report">처치 시 기본 아이템 1개 · 추가 5% · 인벤토리 최대 12칸</small></div><div class="lab-combat-row">
@@ -146,5 +146,5 @@
 <script defer="" src="m5-economy.js"></script>
 <script defer="" src="m5-systems.js"></script>
 <script defer="" src="m5-online.js"></script>
-</body>
+<div id="m5-unit-equipment-overlay" aria-label="전장 실험체 장비"></div><div id="m5-item-drag-preview" class="m5-synergy-popup" hidden></div></body>
 </html>
