@@ -1,3 +1,11 @@
+## M6-12 (2026-10-14)
+- 채팅 패널 접기/펼치기 버튼 추가.
+- 사망 유닛을 반투명하게 유지하지 않고 전장에서 제거.
+- 결투 엔진 및 서버 시간 상한 60초 재확인(전멸 시 조기 종료 보존).
+- 전투 중 최초 배치 좌표로 장비 소유자 식별을 수정해 장비 표시 누락 방지.
+- 짧게 반복되는 피해 **숫자 연출만** 0.5초 단위로 합산. 실제 피해/체력/스킬 틱 불변.
+- 실제 2인 브라우저 테스트는 미수행.
+
 ## M6-11 (2026-10-14) — viewport and combat hover stabilization
 - Removed old 720×360px arena cap by overriding it with viewport-proportional dimensions and small margins.
 - Combat cursor tooltip reconciliation now verifies the current live unit hit rectangle every 65ms; closes on scroll and pointer cancellation.

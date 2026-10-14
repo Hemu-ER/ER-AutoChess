@@ -236,3 +236,6 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 #roundModePanel .live-arena-region-bar b{color:#9be2d1;white-space:nowrap}
 #roundModePanel .live-arena-region-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:760px){#roundModePanel .live-arena-region-bar{font-size:9px;gap:4px}#liveSupplyPanel.supply-collapsed .supply-peek-toggle{right:10px!important;top:100px!important}}
+
+/* M6-12: collapse chat without disconnecting or losing messages. */
+#liveChatCollapse{border:1px solid #53606a;background:#18242b;color:#e4edf2;border-radius:5px;min-width:28px;cursor:pointer;margin-left:auto}#liveChatBody{display:flex;flex:1;min-height:0;flex-direction:column;gap:8px}#liveGameChat.live-chat-collapsed{bottom:auto!important;min-height:0!important}#liveGameChat.live-chat-collapsed #liveChatBody{display:none!important}

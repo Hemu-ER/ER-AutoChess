@@ -1004,9 +1004,10 @@ function render(){
  renderCurrentSynergyPanel();
  board.querySelectorAll('.unit').forEach(e=>e.remove());
  for(const u of units){
+  if(u.dead||u.hp<=0)continue; // Defeated fighters leave the field, not translucent ghosts.
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}
   if((liveAttackUntil.get(u.id)||0)>performance.now())e.classList.add('live-attack-flash');
-  const ownedEntry=appMode==='game'&&u.team==='A'?teams.A.find(x=>x.x===u.x&&x.y===u.y&&x.characterId===u.characterId&&x.star===u.star):null;
+  const ownedEntry=appMode==='game'&&u.team==='A'?teams.A.find(x=>x.x===(u.initialX??u.x)&&x.y===(u.initialY??u.y)&&x.characterId===u.characterId&&x.star===u.star):null;
   if(appMode==='game'&&ownedEntry?.ownedId){const owned=gameState.owned.find(o=>o.uid===ownedEntry.ownedId);e.insertAdjacentHTML('beforeend',equippedSlots(owned));bindItemTooltips(e);e.draggable=false;e.dataset.ownedDrag=ownedEntry.ownedId;e.style.touchAction='none';e.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,ownedEntry.ownedId,e))}else{e.draggable=!running&&!battle;e.ondragstart=event=>event.dataTransfer.setData('text/plain',u.id)}
   if(appMode!=='game'){e.onmouseenter=()=>showInspector(u);e.onfocus=()=>showInspector(u)}
   bindCharacterTip(e,u);e.tabIndex=0;cell.appendChild(e);normalizeVisuals(e);

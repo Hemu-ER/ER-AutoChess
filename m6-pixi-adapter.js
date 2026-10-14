@@ -33,12 +33,15 @@
  
  let activeFloor=false;
  const nodes=new Map(), loading=new Map();
- const hits=[], lastBasic=new Map(), motions=new Map();
+ const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map();
  let motionFrame=0;
  const clock=()=>performance.now();
  function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
-  const at=clock();hits.push({id:String(e.unitId),amount:Number(e.amount),at,critical:!!e.critical});
-  while(hits.length>65)hits.shift();motions.set(String(e.unitId),{kind:'hit',at});startMotion();
+  const at=clock(),id=String(e.unitId);
+  const bucket=Math.floor(at/500),key=id+':'+bucket;
+  const current=pendingHits.get(key)||{id,amount:0,at:at,bucket,critical:false};
+  current.amount+=Number(e.amount);current.critical ||= !!e.critical;pendingHits.set(key,current);
+  motions.set(id,{kind:'hit',at});startMotion();
  }
  function combatSnapshot(units){if(!ready||!Array.isArray(units))return;
   const present=new Set();const at=clock();
@@ -51,6 +54,9 @@
  function startMotion(){if(motionFrame||!ready)return;motionFrame=requestAnimationFrame(animateMotion)}
  function animateMotion(){motionFrame=0;if(!ready||!app)return;
   const now=clock();let active=false;
+  // Merge rapid periodic/shared-damage popups in 0.5s presentation buckets.
+  for(const [key,hit] of pendingHits){if(now>=(hit.bucket+1)*500){hits.push({...hit,at:now});pendingHits.delete(key);}else active=true;}
+  while(hits.length>65)hits.shift();
   for(const [id,entry] of nodes){const m=motions.get(id);let dx=0,dy=0;
    if(m){const age=now-m.at,duration=m.kind==='attack'?170:220;
     if(age<duration){const t=age/duration,k=Math.sin(Math.PI*t);dx=m.kind==='attack'?(entry.team==='B'?-1:1)*9*k:0;dy=m.kind==='hit'?4*k:0;
@@ -72,7 +78,7 @@
 
  const P=()=>window.PIXI;
  const queue=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
- function fallback(){ready=false;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
+ function fallback(){ready=false;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
  async function init(){
   if(app||busy||!P()?.Application)return;
   busy=true;
@@ -144,7 +150,7 @@
    if(v.unit.style.getPropertyValue('--m6-hud-top')!==nextHudTop+'px')
      v.unit.style.setProperty('--m6-hud-top',nextHudTop+'px');
    if(!motions.has(v.id))container.position.set(footX,footY);container.zIndex=footY;
-   container.alpha=v.unit.classList.contains('dead')?.3:1;
+   container.alpha=1; // dead units are removed by M4 render() rather than translucent
    ring.clear();
   });
   layer.sortableChildren=true;layer.sortChildren();
