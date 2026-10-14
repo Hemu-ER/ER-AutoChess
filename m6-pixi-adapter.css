@@ -1,6 +1,12 @@
-/* Overlay canvas never intercepts the existing M4 pointer/drag/tooltip handlers. */
-.board-shell{position:relative}
-.m6-pixi-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:4}
-/* Only substitute sprite pixels after successful texture load; retain M4 HUD/interactions. */
-#board.m6-pixi-active .sd-slot img.sd-image{opacity:0!important}
-/* Drag ghost retains original M4 image when moved outside the board. */
+/* M6-02: M5 PixiJS battlefield skin over the original M4 authoritative game. */
+.board-shell{position:relative!important;isolation:isolate;background:#07101a!important;overflow:hidden!important}
+.m6-pixi-canvas{position:absolute;inset:0;display:block;width:100%;height:100%;z-index:1;pointer-events:none}
+#board{z-index:2;background:transparent!important}
+.board-shell[data-m6-pixi="active"] #board::before,.board-shell[data-m6-pixi="active"] #board::after{content:none!important;display:none!important}
+.board-shell[data-m6-pixi="active"] #board .cell{background:transparent!important;box-shadow:none!important}
+.board-shell[data-m6-pixi="active"] #board .cell .ground-ring{opacity:0!important}
+.board-shell[data-m6-pixi="active"] #board .sd-slot img.sd-image{opacity:0!important}
+.board-shell[data-m6-pixi="active"] .field-mark{display:none!important}
+#board .unit-hud,#board .live-equip-slots{z-index:15!important;position:absolute}
+#m6-field-label{position:absolute;left:14px;top:10px;z-index:3;pointer-events:none;font:700 10px/1.3 monospace;letter-spacing:.17em;color:#c6e9ef;text-shadow:0 2px 5px #001}
+/* Underlying M4 control surface stays clickable, draggable and focusable. */
