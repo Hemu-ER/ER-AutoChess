@@ -59,12 +59,12 @@
    entry.container.position.set(entry.baseX+dx,entry.baseY+dy);
   }
   const gfx=app.stage.getChildByLabel?.('m6-floats');
-  if(gfx){gfx.removeChildren().forEach(c=>c.destroy?.());for(const h of hits){const age=now-h.at;if(age>1050)continue;
+  if(gfx){gfx.removeChildren().forEach(c=>c.destroy?.());const damageLanes=new Map();for(const h of hits){const age=now-h.at;if(age>1050)continue;
    const ent=nodes.get(h.id);if(!ent)continue;active=true;
    const color=h.critical?0xffdc91:0xffb6bd;
    const t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:color,stroke:{color:0x101016,width:4}}});
-   t.anchor.set(.5,.5);const lane=hits.filter(v=>v.id===h.id&&Math.abs(v.at-h.at)<200).indexOf(h);
-   t.position.set(ent.baseX+ent.visualHeight*.34+(lane%4)*9,ent.baseY-Math.max(32,ent.visualHeight*.86)-(lane%4)*13-age*.05);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
+   t.anchor.set(.5,.5);const lane=(damageLanes.get(h.id)||0);damageLanes.set(h.id,lane+1);
+   t.position.set(ent.baseX+Math.max(15,ent.visualHeight*.27)+(lane%4)*7,ent.baseY-Math.max(25,ent.visualHeight*.77)-(lane%5)*11-age*.047);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
   }}
   for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050)hits.splice(i,1);
   if(active)startMotion();
