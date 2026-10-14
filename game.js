@@ -958,6 +958,28 @@ function positionCharacterCursorTip(x,y){const t=ensureCharacterCursorTip(),pad=
 function renderCharacterCursorTip(){const s=characterTipState;if(!s.unit)return;const t=ensureCharacterCursorTip();t.classList.toggle('detail',!!s.detail);t.classList.toggle('mobile',!!s.mobile);t.innerHTML=characterTipHtml(s.unit,s.detail,s.mobile);t.classList.add('show');if(s.mobile){t.style.left='8px';t.style.right='8px';t.style.top='auto';t.style.bottom='8px'}else{t.style.right='auto';t.style.bottom='auto';positionCharacterCursorTip(s.x,s.y)}}
 function showCharacterCursorTip(u,x,y,{mobile=false,detail=false}={}){characterTipState={unit:u,x,y,detail,mobile};renderCharacterCursorTip()}
 function hideCharacterCursorTip(){characterTipState.unit=null;document.querySelector('#characterCursorTip')?.classList.remove('show')}
+// M6-09: pointerleave is not guaranteed when render() replaces a hovered .unit.
+// Reconcile the tooltip with the *current* hit target instead of stale DOM listeners.
+let m609Pointer={x:-1,y:-1,active:false};
+function m609ReconcileTooltip(){
+ if(!characterTipState.unit||characterTipState.mobile)return;
+ if(!document.hasFocus()||!m609Pointer.active){hideCharacterCursorTip();return;}
+ const el=document.elementFromPoint(m609Pointer.x,m609Pointer.y);
+ const target=el?.closest?.('#board .unit');
+ // During combat, the board is rebuilt constantly. Validate pointer coordinates against
+ // the current unit rectangle, never a stale hover object.
+ if(!target || !target.isConnected){hideCharacterCursorTip();return;}
+ const rect=target.getBoundingClientRect();
+ if(m609Pointer.x<rect.left||m609Pointer.x>rect.right||m609Pointer.y<rect.top||m609Pointer.y>rect.bottom)hideCharacterCursorTip();
+}
+document.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;m609Pointer={x:e.clientX,y:e.clientY,active:true};m609ReconcileTooltip()},{capture:true,passive:true});
+document.addEventListener('pointerleave',()=>{m609Pointer.active=false;hideCharacterCursorTip()});
+window.addEventListener('blur',()=>{m609Pointer.active=false;hideCharacterCursorTip()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hideCharacterCursorTip()});
+setInterval(m609ReconcileTooltip,65);
+document.addEventListener('pointercancel',hideCharacterCursorTip,true);
+document.addEventListener('scroll',hideCharacterCursorTip,true);
+
 function bindCharacterTip(el,u){el.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch')showCharacterCursorTip(u,e.clientX,e.clientY,{detail:e.shiftKey})});el.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||characterTipState.mobile)return;if(characterTipState.unit===u){characterTipState.x=e.clientX;characterTipState.y=e.clientY;characterTipState.detail=!!e.shiftKey;renderCharacterCursorTip()}});el.addEventListener('pointerleave',e=>{if(e.pointerType!=='touch'&&!characterTipState.mobile)hideCharacterCursorTip()});el.addEventListener('focus',()=>{const r=el.getBoundingClientRect();showCharacterCursorTip(u,r.right,r.top,{detail:false})});el.addEventListener('blur',()=>{if(!characterTipState.mobile)hideCharacterCursorTip()});let tap=null;el.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')tap={id:e.pointerId,x:e.clientX,y:e.clientY,t:performance.now()}});el.addEventListener('pointerup',e=>{if(e.pointerType!=='touch'||!tap||tap.id!==e.pointerId)return;const moved=Math.hypot(e.clientX-tap.x,e.clientY-tap.y),elapsed=performance.now()-tap.t;tap=null;if(moved<=10&&elapsed<500){e.preventDefault();e.stopPropagation();showCharacterCursorTip(u,e.clientX,e.clientY,{mobile:true,detail:false})}});el.addEventListener('pointercancel',()=>{tap=null})}
 document.addEventListener('keydown',e=>{if(e.key==='Shift'&&characterTipState.unit&&!characterTipState.mobile&&!characterTipState.detail){characterTipState.detail=true;renderCharacterCursorTip()}});
 document.addEventListener('keyup',e=>{if(e.key==='Shift'&&characterTipState.unit&&!characterTipState.mobile&&characterTipState.detail){characterTipState.detail=false;renderCharacterCursorTip()}});

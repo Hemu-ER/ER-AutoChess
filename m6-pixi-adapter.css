@@ -99,3 +99,16 @@
 /* Keep visual guidance subtle. Game cells remain the sole hit targets. */
 .board-shell[data-m6-pixi="active"] #board .unit:hover .unit-hud .hpbar{filter:drop-shadow(0 0 3px #a7e9e6)}
 #characterCursorTip:not(.mobile){pointer-events:none!important}
+
+/* M6-11: fit the arena to the actual available viewport without forcing 720x360. */
+@media(min-width:851px){
+ body[data-app-mode="game"] .game-board-row{width:min(100%,1540px)!important;grid-template-columns:150px minmax(0,1fr)!important;align-items:start!important;}
+ body[data-app-mode="game"] .game-board-row>.board-shell{width:min(100%,min(1120px,calc((100dvh - 255px)*2)))!important;max-width:none!important;height:auto!important;max-height:none!important;aspect-ratio:2/1!important;min-height:0!important;margin:0 auto!important;}
+ body[data-app-mode="game"] #board,body[data-app-mode="game"] #board.combat-board{width:100%!important;height:100%!important;max-height:none!important;grid-template-rows:repeat(3,minmax(0,1fr))!important;}
+ body[data-app-mode="game"] #board.formation-board{width:50%!important;height:100%!important;max-height:none!important;}
+}
+@media(min-width:851px) and (max-height:730px){
+ body[data-app-mode="game"] .game-board-row>.board-shell{width:min(100%,min(940px,calc((100dvh - 220px)*2)))!important;max-width:none!important;height:auto!important;max-height:none!important;}
+}
+/* The hover target owns only interaction; tooltips cannot intercept pointer-out. */
+#characterCursorTip:not(.mobile),#itemCursorTip,#synergyCursorTip{pointer-events:none!important;}

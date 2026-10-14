@@ -30,6 +30,15 @@ body[data-app-mode="test"] .field-b {
 }
 </style>
 <link rel="stylesheet" href="m6-pixi-adapter.css">
+<style id="m611-first-paint">
+/* Hide the initial scene before the deferred opening script can build its overlay. */
+body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::before{content:"";position:fixed;inset:0;z-index:99999;background:#030607;pointer-events:none;}
+</style>
+<script>
+/* The intro is responsible for uncovering the scene; QA routes skip this guard. */
+(function(){if(['combat','round'].includes(new URLSearchParams(location.search).get('qa'))){document.documentElement.classList.add('m611-qa');return;}window.addEventListener('DOMContentLoaded',()=>{let tries=0;const check=()=>{const intro=document.getElementById('live-intro');if(intro&&!intro.classList.contains('live-exit')){document.body.classList.add('m611-intro-cleared');return;}if(++tries<80)setTimeout(check,50);else document.body.classList.add('m611-intro-cleared');};check();});})();
+</script>
+<style>html.m611-qa body::before{display:none!important}</style>
 </head>
 <body>
 <div class="app">

@@ -1,3 +1,10 @@
+## M6-11 (2026-10-14) — viewport and combat hover stabilization
+- Removed old 720×360px arena cap by overriding it with viewport-proportional dimensions and small margins.
+- Combat cursor tooltip reconciliation now verifies the current live unit hit rectangle every 65ms; closes on scroll and pointer cancellation.
+- First paint guarded until the original opening overlay exists (QA routes exempt).
+- M4 codex, supply, combat calculation, multiplayer and character data unchanged.
+- Automated checks: JS syntax; browser interaction and round transitions still require manual QA.
+
 ## M6-10 — 전장 공간/타격표시 통합 보정 (2026-10-14)
 - M4 시스템/도감/서버 로직 보존, M6-09 위에 적용.
 - 3×3 준비 전장은 전투 3×6의 정확히 절반 너비로 중앙 정렬. 보드 셀·Pixi 캔버스·발판이 같은 shell 좌표를 공유하도록 폭 720px/높이 360px 상한을 설정(작은 화면은 620×310, 모바일 비율 기반).
