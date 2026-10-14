@@ -68,7 +68,7 @@
       const b=document.createElement('button');b.textContent=`${i+1}. ${rewardName(opts[i])}`;
       b.disabled=!!picked;b.onclick=()=>api('supply-pick',{choice:i}).then(()=>notice('보급 선택 전송 완료')).catch(e=>notice(e.message));root.appendChild(b);
     }
-    if(picked)notice('서버에서 보급 선택을 확정했어. M5는 아직 인벤토리를 별도로 운용하지 않아.');
+    if(picked)notice('보급 지급 완료 · 서버 소유 상태에 반영됐어.');
   }
   function curtain(title,subtitle){
     let el=document.querySelector('#m5Curtain');if(!el){el=document.createElement('div');el.id='m5Curtain';el.className='m5-round-curtain';el.innerHTML='<div><strong></strong><small></small></div>';document.body.append(el)}
@@ -115,7 +115,7 @@
     if(!room||!token||pendingTeam||room.started&&game()?.phase!=='prep')return false;
     const team=window.LIVEM5?.onlineTeamForServer?.()||[];
     if(!team.length)return false;
-    const mastery=window.M5Economy?.getState?.()?.level||1;
+    const mastery=room?.started?(own()?.assets?.level||1):(window.M5Economy?.getState?.()?.level||1);
     const stamp=JSON.stringify([team,mastery]);if(!force&&stamp===lastTeam)return true;
     pendingTeam=true;
     try{await api('team',{team,mastery});lastTeam=stamp;return true;}

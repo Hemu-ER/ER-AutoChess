@@ -283,3 +283,14 @@ body.m5-board-dragging,body.m5-board-dragging *{user-select:none!important}
 .m5-codex-dialog:not([open]){display:none!important}
 .m5-codex-dialog #m5-item-recipes{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:8px;margin-top:14px}
 .m5-codex-dialog #m5-codex-close{color:#d4f2f4;border:1px solid #588d99;background:#1b303a;padding:6px 11px;cursor:pointer}
+
+/* M5-14 independent searchable M4-derived codex */
+#m5-item-codex {width:min(1050px,94vw);max-height:86vh;overflow:auto;}
+.m5-codex-tabs{display:flex;gap:8px;margin:14px 0;flex-wrap:wrap}
+.m5-codex-tabs button{border:1px solid #67838b;background:#17252c;color:#dcecef;border-radius:6px;padding:9px 17px;cursor:pointer}
+.m5-codex-tabs button.selected{background:#31535e;border-color:#9de8ee}
+#m5-codex-search{width:100%;padding:12px;background:#102127;color:#fff;border:1px solid #60777d;border-radius:5px;margin-bottom:12px}
+.m5-codex-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;max-height:55vh;overflow:auto}
+.m5-codex-entry{padding:14px;border:1px solid #465e64;background:#142329;color:#dfe9eb;border-radius:7px;min-width:0}
+.m5-codex-entry h4{font-size:16px;margin:0 0 8px}.m5-codex-entry p{font-size:12px;line-height:1.6;margin:5px 0}.m5-codex-entry b{font-size:12px;color:#9ee0e5}.m5-codex-entry small{font-size:11px;color:#a9bdc0}
+.m5-codex-character{display:flex;gap:12px}.m5-codex-character>img{width:76px;height:120px;object-fit:contain;flex-shrink:0;align-self:start}.m5-codex-character>div{min-width:0}

@@ -231,6 +231,6 @@ function rewardFarm(round,dead){
 }
 function resetItems(){state.items.length=0;itemSelectedIndex=null;state.report='인벤토리 초기화 완료';itemRender()}
 $('m5-farm-r1')?.addEventListener('click',()=>{if(window.M5Online?.active?.()){alert('오프라인 시험 모드에서 이용해 줘.')}});
-window.M5Systems=Object.freeze({renderSynergies,refreshSynergies,rewardFarm,resetItems,inventory:()=>[...state.items],canAcceptItems,addItems,renderEquipment,itemRender,craftByIndex,equipItemAt,preview:entries=>snapshotForPreview(entries)});
+window.M5Systems=Object.freeze({codexSynergies:()=>Object.keys(SYNERGY_EFFECT_TEXT).map(name=>({name,stages:(name==='새해'||name==='군악대'?[1,2,3]:['애증','현우정신','치유의 노래','에레보스','전사','탱커','원거리 평타','원거리 스킬','근거리 스킬','암살자','서포터'].includes(name)?[1]:[2,3]).map(t=>({label:`${t}단계`,detail:tierText(name,t)}))})),renderSynergies,refreshSynergies,rewardFarm,resetItems,inventory:()=>[...state.items],canAcceptItems,addItems,renderEquipment,itemRender,craftByIndex,equipItemAt,preview:entries=>snapshotForPreview(entries)});
 document.addEventListener('DOMContentLoaded',()=>{itemRender();refreshSynergies();const e=window.M5Economy?.getState?.();if(e)renderEquipment(e.owned,e.owned.find(o=>o.location==='board')?.uid||null)});
 })();
