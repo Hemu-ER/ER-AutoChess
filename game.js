@@ -10,7 +10,7 @@ let appMode=null; // null=start, "game"=실제 게임 화면, "test"=전투 테�
 const ROUND_PREP_SECONDS=60, ROUND_RESULT_SECONDS=4, PLAYER_START_HP=100;
 let roundTimer=null;
 const roundState={active:false,phase:"idle",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0};
-const gameState={credits:0,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:"",roundIncome:5,masteryLevel:1,masteryProgress:0};
+const gameState={credits:0,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:"",roundIncome:5,masteryLevel:1,masteryProgress:0,exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};
 const GAME_TEMP={startCredits:5,rerollCost:2,shopSize:5,benchSize:8,masteryInvestCost:2,masteryInvestExp:2,masteryNaturalExp:4,interestStep:10,interestCap:3};
 // Lv.1→20 총 96 EXP. 현재 레벨을 인덱스로 사용한다.
 const MASTERY_EXP_TO_NEXT={1:4,2:4,3:4,4:4,5:4,6:4,7:5,8:5,9:5,10:5,11:5,12:5,13:6,14:6,15:6,16:6,17:6,18:6,19:6};
@@ -33,7 +33,7 @@ const identityInfo={
  'debi-marlene':{name:'데비&마를렌',skin:'스파클링 트윈즈 데비&마를렌'},garnet:{name:'가넷',skin:'운명의 붉은 가약 가넷'},kenneth:{name:'케네스',skin:'운명의 푸른 가약 케네스'},irem:{name:'이렘',skin:'당신과 나의 네코마츠리 이렘'},
  laura:{name:'라우라',skin:'프리즌 브레이크 라우라'},bianca:{name:'비앙카',skin:'프리즌 키퍼 비앙카'},cathy:{name:'캐시',skin:'프리즌 브레이크 캐시'},abigail:{name:'아비게일',skin:'프리즌 키퍼 아비게일'},
  leny:{name:'레니',skin:'군악대 레니'},hart:{name:'하트',skin:'군악대 하트'},isol:{name:'아이솔',skin:'새해토끼 아이솔'},chloe:{name:'클로에',skin:'새해토끼 클로에'},sua:{name:'수아',skin:'새해의 이야기꾼 수아'},
- johann:{name:'요한',skin:'악마사냥꾼 요한'},nadine:{name:'나딘',skin:'악마사냥꾼 나딘'},bernice:{name:'버니스',skin:'악마사냥꾼 버니스'},rozzi:{name:'로지',skin:'하우스키퍼 로지'},aya:{name:'아야',skin:'하우스키퍼 아야'},mirka:{name:'미르카',skin:'와일드 메이드 미르카'},charlotte:{name:'샬럿',skin:'샬럿'},nina:{name:'니나',skin:'살아 있는 마리오네트'}
+ johann:{name:'요한',skin:'악마사냥꾼 요한'},nadine:{name:'나딘',skin:'악마사냥꾼 나딘'},bernice:{name:'버니스',skin:'악마사냥꾼 버니스'},rozzi:{name:'로지',skin:'하우스키퍼 로지'},aya:{name:'아야',skin:'하우스키퍼 아야'},mirka:{name:'미르카',skin:'와일드 메이드 미르카'},charlotte:{name:'샬럿',skin:'샬럿'},katja:{name:'카티야',skin:'카페 알바 카티야'},haze:{name:'헤이즈',skin:'카페 매니저 헤이즈'},aiden:{name:'에이든',skin:'카페 매니저 에이든'},elena:{name:'엘레나',skin:'바이올렛 엘레나'},silvia:{name:'실비아',skin:'퀸 실비아'},alex:{name:'알렉스',skin:'조커 알렉스'},nina:{name:'니나',skin:'살아 있는 마리오네트'}
 };
 const displayName=r=>identityInfo[r?.id]?.name||r?.name||'?';
 const skinName=r=>identityInfo[r?.id]?.skin||r?.name||'-';
@@ -71,6 +71,12 @@ const skillInfo={
  aya:{active:['공포탄','적이 인접하면 전투당 1회 적 전체에 스킬 피해 + 행동 불능.'],passive:['고정 사격','기본 공격 3회 후 다음 5회 기본 공격의 공격 속도 +100% 및 스킬 증폭 비례 추가 피해.']},
  mirka:{active:['크래시 해머','[리펄스 게이지] 100 이상에서 모두 소모해 체력 비례 보호막. 현재 대상과 인접 적에게 체력 비례 피해 + 행동 불능.'],passive:['리펄스 게이지','매초 +1, 자신의 HP 1% 감소마다 +2, 기본 공격마다 +5.']},
  charlotte:{active:['기적 실현','10초마다 아군 전체에게 1초 무적.'],passive:['치유의 빛','기본 공격 3회 후 자신과 2칸 이내 실험체를 회복하고 공격력·스킬 증폭 강화.']},
+ katja:{active:['조준 사격','기본 공격 2회마다 저격. 멀수록 피해 증가.'],passive:['잿빛 사신','조준 사격 후 다음 기본 공격 추가 피해.']},
+ haze:{active:['웨폰 케이스','2초마다 40mm 유탄 / 산탄 포화 / 액셀러레이션 로켓 중 남은 무기를 무작위로 사용.'],passive:['웨폰 케이스','세 무기를 각각 한 번씩 사용하면 재장전.']},
+ aiden:{active:['뇌격 / 전자포','기본 5초 쿨타임, 기본 공격마다 1초 감소. 뇌격 3회 시 과전하 돌입.'],passive:['과전하','3초간 사거리 3·치명타 100%. 과전하 도중 전자포 사용.']},
+ elena:{active:['죽음의 무도','7초마다 적 전체 소량 피해 및 1초 빙결.'],passive:['겨울여왕의 영지','매초 적 전체 냉기 +20, 100중첩마다 0.5초 빙결.']},
+ silvia:{active:['스피드건','2초마다 가장 체력이 낮은 아군 행을 회복하고 같은 행 적에게 피해.'],passive:['기동전','기본 공격 2회 후 다음 공격 추가 피해 및 0.5초 행동 불능.']},
+ alex:{active:['정밀 폭격','전투 시작부터 5초마다 적 전체에 3초간 0.5초 간격 피해, 방어력 15% 감소.'],passive:['교란','8회 피격 시 적 전체 1초 도발·적응형 -50%.']},
  nina:{active:['생명 공유','니나가 체력 5% 이하에서 발동 가능. 니나가 발동하면 니나가 불사 상태가 되고 받는 기본/스킬 피해 70%를 클로에에게 전이. 클로에 사망 시 니나도 사망.'],passive:['마리오네트','클로에가 소환하는 독립 기물. 직접 이동·기본 공격·피격 가능. 실험체가 아니므로 시너지 카운트와 실험체 전용 트리거에서 제외.']}
 };
 
@@ -96,6 +102,7 @@ const coefficientLabels={
  odyssey:['오딧세이 피해','AMP','ratio'],mind:['마음의 양식 추가 피해','AMP','ratio'],sanctuaryDef:['구원의 성역 방어력','DEF','flat'],sanctuaryHp:['성역 틱 회복','대상 최대 HP','percent'],sanctuaryAmp:['성역 틱 추가 회복','요한 AMP','ratio'],aura:['빛의 가호 증가','ATK/AMP/AS','percent'],
  wild:['야성 1중첩 공속','AS','percent'],wolf:['늑대 맹습 추가 피해','ATK','ratio'],pellet:['산탄 주 대상 피해','ATK','ratio'],scatter:['산탄 주변 피해','ATK','ratio'],leg:['레그샷 피해','ATK','ratio'],
  semtex:['셈텍스탄 피해','대상 최대 HP','percent'],double:['더블샷 1타 피해','ATK','ratio'],fear:['공포탄 피해','AMP','ratio'],fixed:['고정 사격 추가 피해','AMP','ratio'],crash:['크래시 해머 피해','최대 HP','percent'],
+ shot:['조준 사격 ATK 피해','ATK','ratio'],reaper:['잿빛 사신 추가 피해','ATK','ratio'],grenade:['유탄 피해','AMP','ratio'],shotgun:['산탄 포화 피해','AMP','ratio'],rocket:['로켓 피해','AMP','ratio'],rocketHp:['로켓 최대 HP 피해','적 최대 HP','percent'],thunder:['뇌격 피해','ATK','ratio'],cannon:['전자포 피해','ATK','ratio'],cannonHp:['전자포 최대 HP 피해','적 최대 HP','percent'],danceAmp:['죽음의 무도 피해','AMP','ratio'],danceHp:['죽음의 무도 HP 피해','자신 최대 HP','percent'],speedHeal:['스피드건 회복','AMP','ratio'],speedDamage:['스피드건 피해','AMP','ratio'],maneuver:['기동전 추가 피해','AMP','ratio'],bombard:['정밀 폭격 타격당 피해','ATK','ratio'],
  buff:['치유의 빛 공격 버프','ATK/AMP','percent']
 };
 const coefficientLabelOverrides={
@@ -150,7 +157,7 @@ function showInspector(u,rOverride=null,starOverride=null){
 document.addEventListener('click',e=>{const btn=e.target.closest?.('.inspect-detail-toggle');if(!btn)return;e.preventDefault();e.stopPropagation();const id=btn.dataset.detailId;if(expandedSkillDetails.has(id))expandedSkillDetails.delete(id);else expandedSkillDetails.add(id);const u=units.find(x=>x.characterId===id)||null;const r=byId[id];if(r)showInspector(u,r)});
 
 function esc(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A.map(e=>({...e,items:[...(gameState.owned.find(o=>o.uid===e.ownedId)?.equipment||[])]})),teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value,arenaRegion:appMode==='game'&&![1,3].includes(roundState.round)?(window.LIVEMultiplayer?.getRoom()?.game?.region||ERCombat.pickArenaRegion(window.LIVEMultiplayer?.getRoom()?.code||'local',roundState.round)):undefined}}
+function config(seed=+$("#seed").value){const teamB=appMode==='game'?teams.B.filter(e=>byId[e.characterId]):teams.B;return {teamA:teams.A.map(e=>({...e,items:[...(gameState.owned.find(o=>o.uid===e.ownedId)?.equipment||[])]})),teamB,masteryA:appMode==='game'?gameState.masteryLevel:+$("#masteryA").value,masteryB:+$("#masteryB").value,seed,moveInterval:+$("#moveInterval").value,persistent:{A:{exploration:gameState.exploration},B:{exploration:window.LIVEOpponentExploration||{stacks:0,visited:[]}}},arenaRegion:appMode==='game'&&![1,3].includes(roundState.round)?(window.LIVEMultiplayer?.getRoom()?.game?.region||ERCombat.pickArenaRegion(window.LIVEMultiplayer?.getRoom()?.code||'local',roundState.round)):undefined}}
 function showError(e){$("#status").textContent=e.message}
 function statusLabel(r){return r.implemented?"SKILL READY":"SKILL PENDING"}
 function unique(field){return [...new Set(roster.flatMap(r=>field==="aff"?r.affiliations:[r[field]]))]}
@@ -234,7 +241,7 @@ function inventoryCraft(i,j){
 function equipItem(uid,i){
  if(roundState.phase!=='prep')return;
  const unit=gameState.owned.find(o=>o.uid===uid),item=gameState.items[i];if(!unit||!item)return;
- const eq=unit.equipment||(unit.equipment=[]),basic=LIVEItems.all[item].basic,existing=eq.findIndex(n=>LIVEItems.all[n]?.basic);
+ const eq=unit.equipment||(unit.equipment=[]);if(LIVEItems.bloodInfo?.(item)&&unit.characterId!=='justina'){gameState.message='혈색반월은 유스티나만 장착 가능해.';renderGameEconomy();return}const blood=eq.findIndex(n=>LIVEItems.bloodInfo?.(n));if(blood>=0){const upgraded=LIVEItems.craft(eq[blood],item);if(upgraded){eq[blood]=upgraded;gameState.items.splice(i,1);gameState.message=`${LIVEItems.displayName(upgraded)} · 스탯 흡수 완료`;reset();renderGameEconomy();return}}const basic=LIVEItems.all[item].basic,existing=eq.findIndex(n=>LIVEItems.all[n]?.basic);
  if(basic&&existing>=0){const result=LIVEItems.craft(eq[existing],item);if(!result)return;eq[existing]=result}
  else{if(eq.length>=3){gameState.message='장비 슬롯이 가득 찼어.';renderGameEconomy();return}eq.push(item)}
  gameState.items.splice(i,1);gameState.message=`${displayName(byId[unit.characterId])} · ${item} 지급`;mergeOwnedUnits();reset();renderGameEconomy();
@@ -242,15 +249,15 @@ function equipItem(uid,i){
 function sellInventoryItem(i){if(roundState.phase!=='prep')return;const item=gameState.items.splice(i,1)[0];if(!item)return;const price=LIVEItems.all[item].basic?2:5;gameState.credits+=price;gameState.message=`${item} 판매 · +${price}C`;mergeOwnedUnits();renderGameEconomy()}
 const ITEM_ICON_PATH='assets/items/';
 const ITEM_ICON_NAMES={'방탄 조끼':'방탄조끼','슈팅스타의 자켓':'슈팅스타 자켓'};
-function itemIcon(name){return ITEM_ICON_PATH+encodeURIComponent(ITEM_ICON_NAMES[name]||name)+'.webp'}
-const ITEM_EFFECT_HINTS={"오토-암즈": "기본 공격력 +10%", "블레이드 부츠": "스킬 적중 시 2초간 공격 속도 +15%", "스펙터": "매초 인접 적에게 ATK 20% 피해", "아오자이": "받는 피해 20%를 3초 동안 지연", "미스릴 퀴버": "기본 공격 3회마다 최대 HP 6% 보호막 (1초)", "레이더": "기본 공격 3회마다 ATK 비례 추가 피해 및 회복", "서슬가시 체인": "피해 대상 회복량 -20% (5초)", "임세티": "스킬 증폭 +15%", "레버넌트": "매초 인접 적에게 AMP 25% 피해", "요명월": "액티브 사용 시 인접 적에게 AMP 60% 피해", "텔루리안 타임피스": "기본 공격마다 AMP 20% 추가 피해", "천룡잠": "치명타 시 액티브 피해 +2%, 최대 5중첩", "용의 비늘": "퍼센트 방어 관통 +15%p", "미스릴 크롭": "체력 +20%", "배틀 슈트": "공격자 거리 1/2/3에 따라 피해 감소 5/10/15%", "팬텀 자켓": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 체력 +10%", "타이탄 아머": "2초마다 다음 기본 공격에 추가 체력 비례 피해", "유령 신부의 드레스": "주변 1칸 적 방어력 -10% 오라", "가디언 슈트": "방어력 +10%", "길리 슈트": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 방어력 +10%", "화령장": "치명타 적중 시 받는 피해 -2%, 최대 5중첩", "슈팅스타의 자켓": "기본 공격 대상 방어력 -5%, 최대 2중첩", "살라딘의 화살통": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 적응형 +5%", "레가투스": "치명타 시 ATK·AS +5%, 최대 3중첩", "블래스터 헬멧": "5초마다 다음 기본 공격에 ATK 100% 추가 피해", "운명의 주사위": "치명타 피해 +10%p", "프시케의 칼날": "적 실험체 처치 시 +1C", "아이언 메이든": "퍼센트 방어 관통 +15%"};
+function itemIcon(name){return LIVEItems.bloodInfo?.(name)?ITEM_ICON_PATH+'bloodmoon.webp':ITEM_ICON_PATH+encodeURIComponent(ITEM_ICON_NAMES[name]||name)+'.webp'}
+const ITEM_EFFECT_HINTS={'혈색반월':'유스티나 전용 · 액티브 섬멸 포격 범위 적 전체로 확장 · 흡수 아이템의 스탯 50%만 누적',"오토-암즈": "기본 공격력 +10%", "블레이드 부츠": "스킬 적중 시 2초간 공격 속도 +15%", "스펙터": "매초 인접 적에게 ATK 20% 피해", "아오자이": "받는 피해 20%를 3초 동안 지연", "미스릴 퀴버": "기본 공격 3회마다 최대 HP 6% 보호막 (1초)", "레이더": "기본 공격 3회마다 ATK 비례 추가 피해 및 회복", "서슬가시 체인": "피해 대상 회복량 -20% (5초)", "임세티": "스킬 증폭 +15%", "레버넌트": "매초 인접 적에게 AMP 25% 피해", "요명월": "액티브 사용 시 인접 적에게 AMP 60% 피해", "텔루리안 타임피스": "기본 공격마다 AMP 20% 추가 피해", "천룡잠": "치명타 시 액티브 피해 +2%, 최대 5중첩", "용의 비늘": "퍼센트 방어 관통 +15%p", "미스릴 크롭": "체력 +20%", "배틀 슈트": "공격자 거리 1/2/3에 따라 피해 감소 5/10/15%", "팬텀 자켓": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 체력 +10%", "타이탄 아머": "2초마다 다음 기본 공격에 추가 체력 비례 피해", "유령 신부의 드레스": "주변 1칸 적 방어력 -10% 오라", "가디언 슈트": "방어력 +10%", "길리 슈트": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 방어력 +10%", "화령장": "치명타 적중 시 받는 피해 -2%, 최대 5중첩", "슈팅스타의 자켓": "기본 공격 대상 방어력 -5%, 최대 2중첩", "살라딘의 화살통": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 적응형 +5%", "레가투스": "치명타 시 ATK·AS +5%, 최대 3중첩", "블래스터 헬멧": "5초마다 다음 기본 공격에 ATK 100% 추가 피해", "운명의 주사위": "치명타 피해 +10%p", "프시케의 칼날": "적 실험체 처치 시 +1C", "아이언 메이든": "퍼센트 방어 관통 +15%"};
 function itemStatsText(name){const item=LIVEItems.all[name];if(!item)return '';const labels={atk:'공격력',amp:'스킬 증폭',hp:'체력',def:'방어력',as:'공격 속도',crit:'치명타 확률',penFlat:'고정 방어 관통'};return Object.entries(item.stats).map(([k,v])=>`${labels[k]||k} +${['as','crit'].includes(k)?Math.round(v*100)+'%':v}`).join(' · ')}
-function itemTooltip(name){return `${name} | ${itemStatsText(name)}${ITEM_EFFECT_HINTS[name]?' | 고유: '+ITEM_EFFECT_HINTS[name]:''}`;}
+function itemTooltip(name){const id=LIVEItems.bloodInfo?.(name)?'혈색반월':name;return `${LIVEItems.displayName(name)} | ${itemStatsText(name)||'스탯 없음'}${ITEM_EFFECT_HINTS[id]?' | 고유: '+ITEM_EFFECT_HINTS[id]:''}`;}
 function itemIconMarkup(name){return `<img src="${esc(itemIcon(name))}" alt="${esc(name)}" draggable="false">`}
 function equippedSlots(o){const arr=o?.equipment||[];return `<span class="live-equip-slots">${[0,1,2].map(i=>arr[i]?`<span class="live-equip-slot" data-item-tooltip="${esc(arr[i])}" title="${esc(itemTooltip(arr[i]))}">${itemIconMarkup(arr[i])}</span>`:`<span class="live-equip-slot empty" title="빈 장비 슬롯">+</span>`).join('')}</span>`}
 let itemPointerDrag=null;let suppressItemClick=false;
 function ensureItemCursorTip(){let t=document.querySelector('#liveItemCursorTip');if(!t){t=document.createElement('div');t.id='liveItemCursorTip';document.body.appendChild(t)}return t}
-function showItemCursorTip(name,x,y){if(!LIVEItems.all[name])return;const t=ensureItemCursorTip();t.innerHTML=`<div class="live-tip-head">${itemIconMarkup(name)}<b>${esc(name)}</b></div><div>${esc(itemStatsText(name))}</div>${ITEM_EFFECT_HINTS[name]?`<div class="live-tip-effect">고유효과 · ${esc(ITEM_EFFECT_HINTS[name])}</div>`:''}`;t.hidden=false;moveItemCursorTip(x,y)}
+function showItemCursorTip(name,x,y){if(!LIVEItems.all[name])return;const t=ensureItemCursorTip();t.innerHTML=`<div class="live-tip-head">${itemIconMarkup(name)}<b>${esc(LIVEItems.displayName(name))}</b></div><div>${esc(itemStatsText(name)||'스탯 없음')}</div>${ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name]?`<div class="live-tip-effect">고유효과 · ${esc(ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name])}</div>`:''}`;t.hidden=false;moveItemCursorTip(x,y)}
 function moveItemCursorTip(x,y){const t=document.querySelector('#liveItemCursorTip');if(!t||t.hidden)return;t.style.left=Math.min(x+17,innerWidth-t.offsetWidth-10)+'px';t.style.top=Math.min(y+17,innerHeight-t.offsetHeight-10)+'px'}
 function hideItemCursorTip(){const t=document.querySelector('#liveItemCursorTip');if(t)t.hidden=true}
 function bindItemTooltips(root=document){root.querySelectorAll?.('[data-item-tooltip]').forEach(el=>{if(el.dataset.itemTipBound)return;el.dataset.itemTipBound='1';el.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch'&&!itemPointerDrag?.started)showItemCursorTip(el.dataset.itemTooltip,e.clientX,e.clientY)});el.addEventListener('pointermove',e=>moveItemCursorTip(e.clientX,e.clientY));el.addEventListener('pointerleave',hideItemCursorTip);el.addEventListener('pointerdown',hideItemCursorTip)})}
@@ -312,7 +319,7 @@ function cancelItemPointerDrag(){itemPointerDrag?.ghost?.remove();itemPointerDra
 function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
  if(!panel){panel=document.createElement('section');panel.id='liveItemsPanel';document.body.appendChild(panel)}
- itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(name)}</span></button>`).join('');
+ itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(LIVEItems.displayName(name))}</span></button>`).join('');
  panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12</b><button type="button" id="liveCodexOpen">도감 📖</button></div><small>PREP 전용 · 조합 / 실험체에 장착 / 상점에 판매</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div>`;
 
  panel.querySelectorAll('[data-item-index]').forEach(b=>b.onclick=e=>{e.preventDefault()});
@@ -507,7 +514,7 @@ function creditHtml(amount,cls='credit-price'){
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
  const name=esc(displayName(r)),initial=esc(displayName(r).slice(0,1));
- return r.asset?.sd?`<span class="${cls}"><img data-alpha-normalize="1" src="${esc(r.asset.sd)}" alt="${name}" loading="lazy" draggable="false" onerror="this.remove();this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
+ return r.asset?.sd?`<span class="${cls}"><img data-alpha-normalize="1" src="${esc(r.asset.sd)}" alt="${name}" loading="lazy" draggable="false" onerror="this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
 }
 function alphaBounds(img){
  const key=img.currentSrc||img.src;if(alphaBoundsCache.has(key))return alphaBoundsCache.get(key);if(!img.naturalWidth||!img.naturalHeight)return null;
@@ -543,7 +550,7 @@ function renderCurrentSynergyPanel(){
  let row=shell.closest('.game-board-row');
  if(!row){row=document.createElement('div');row.className='game-board-row';shell.parentElement.insertBefore(row,shell);row.appendChild(shell)}
  if(!panel){panel=document.createElement('aside');panel.id='currentSynergyPanel';panel.className='current-synergy-panel';row.insertBefore(panel,shell)}
- panel.innerHTML=`<span class="current-synergy-title">현재 시너지</span>${synergySummary('A')}`;bindSynergyTooltips(panel);
+ panel.innerHTML=`<span class="current-synergy-title">현재 시너지</span>${synergySummary('A')}<div class="m7-round-states" title="라운드 간 누적 상태">잠입 ${gameState.infiltration||0}/5 · 탐색 ${gameState.exploration?.stacks||0}/10</div>`;bindSynergyTooltips(panel);
 }
 function rolePlacementColumns(role){
  if(role==='탱커')return [2];
@@ -606,12 +613,15 @@ function bindShopSynergyTags(root){
  });
  bindSynergyTooltips(root);
 }
+function m7ErebusGrant(){if(!roundState.active||!['prep','combat'].includes(roundState.phase)||gameState.bloodMoonGranted)return;const distinct=new Set(teams.A.filter(e=>byId[e.characterId]?.affiliations?.includes('에레보스')).map(e=>e.characterId));if(distinct.size>=3){gameState.bloodMoonGranted=true;pushItem('혈색반월');gameState.message='에레보스 3 · 혈색반월 획득'}}
+function m7InfiltrationAward(count){const n=Math.max(0,Number(count)||0);gameState.infiltration+=n;while(gameState.infiltration>=5){gameState.infiltration-=5;gameState.infiltrationRewards++;pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])} }
+function m7TravelAward(region){if(!region||!ERCombat.ARENA_REGIONS[region])return;const e=gameState.exploration;if(e.visited.includes(region))return;if(teams.A.some(x=>x.characterId==='silvia')){e.visited.push(region);e.stacks=Math.min(10,e.stacks+1)}}
 function renderGameEconomy(){
  liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&[1,3].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
  if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
- const prep=roundState.phase==='prep';
+ const prep=roundState.phase==='prep';if(prep)m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}${shopSynergyTags(r)}<span class="shop-name">${esc(displayName(r))}</span><span class="shop-meta"><small>${esc(r.role)}</small>${creditHtml(r.cost)}</span></button>`}).join('');
  const benchOwned=gameState.owned.filter(o=>o.location==='bench');
  const bench=benchOwned.map(o=>{const r=byId[o.characterId];return `<article class="bench-unit star-${o.star}" data-owned-drag="${o.uid}" tabindex="0" data-inspect-character="${esc(r.id)}" data-inspect-star="${o.star}" title="${esc(displayName(r))} · 드래그해서 배치 / 상점에 놓아 판매">${characterPortrait(r,'bench-portrait')}<span class="bench-star">★</span>${equippedSlots(o)}</article>`}).join('')||'<span class="bench-empty">벤치가 비어 있어.</span>';
@@ -624,11 +634,11 @@ function renderGameEconomy(){
 }
 
 function startRoundMode(){
- clearRoundTimer();
+ window.LIVEOpponentExploration=null;clearRoundTimer();
  if(running||battle)reset();
  teams={A:[],B:[]};
  livePendingSupplyUnits.length=0;liveSupplyApplied=false;
- Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0});
+ Object.assign(gameState,{credits:GAME_TEMP.startCredits,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:'',roundIncome:5,masteryLevel:1,masteryProgress:0,exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false});
  Object.assign(roundState,{active:true,phase:'prep',round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:'',lastDamage:0});
  const oneCost=playableRoster().filter(r=>r.cost===1);
  const first=oneCost[Math.floor(Math.random()*oneCost.length)];
@@ -685,7 +695,7 @@ function liveSupplyUi(net,slot){
  el.hidden=net.phase!=='supply';
  el.classList.toggle('supply-collapsed',liveSupplyCollapsed);
  if(el.hidden){liveSupplyCollapsed=false;el.classList.remove('supply-collapsed');if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
- const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
+ const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic&&!LIVEItems.all[n].bloodMoon);
  const describe=t=>{
   if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png?v=m608',visual:'coin',badge:'+10 C'};
   if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:'+10 EXP',subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:'LEVEL UP'};
@@ -744,7 +754,7 @@ function liveApplySupplyReward(net,slot){
    else{const outcome=addOwned(r.id,false);gameState.message=`보급 ${displayName(r)} 무료 영입${outcome.merged.length?' · 합성 완료!':''}`}
   }
  }else if(reward.type==='basic'||reward.type==='complete'){
-  const names=reward.type==='basic'?BASIC_ITEMS:Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic);
+  const names=reward.type==='basic'?BASIC_ITEMS:Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic&&!LIVEItems.all[n].bloodMoon);
   const name=names[reward.value%names.length];if(name){pushItem(name);gameState.message=`보급 ${name} 획득`}
  }
  renderGameEconomy();
@@ -764,7 +774,7 @@ function liveRenderHitEffects(){
 }
 window.LIVEApplyGame=function(net,slot,players){
  if(!roundState.active||!net)return;
- const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+ const other=players?.find(p=>p.slot!==slot);window.LIVEOpponentExploration=other?.progress?.exploration||{visited:[],stacks:0};const me=players?.find(p=>p.slot===slot);if(me?.progress){const pr=me.progress;gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;pushItem('혈색반월')}}const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
  // Server owns phase, timer and total health. Team side is player-relative.
  if(net.round!==5)liveSupplyApplied=false;liveApplySupplyReward(net,slot);liveSupplyUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[1-slot]??100;
  if(net.version!==livePhaseVersion){
@@ -805,8 +815,8 @@ window.LIVEApplyGame=function(net,slot,players){
 
 function stopRoundMode(){clearRoundTimer();roundState.active=false;roundState.phase='idle';roundState.remaining=ROUND_PREP_SECONDS;if(running||battle)reset();else $('#status').textContent='배치 단계';renderRoundUI();renderGameEconomy()}
 function startPrepTimer(){if(window.LIVEMultiplayer?.getRoom()?.started){clearRoundTimer();return}clearRoundTimer();roundState.phase='prep';roundState.remaining=ROUND_PREP_SECONDS;renderRoundUI();renderGameEconomy();roundTimer=setInterval(()=>{if(!roundState.active||roundState.phase!=='prep'){clearRoundTimer();return}roundState.remaining=Math.max(0,roundState.remaining-1);renderRoundUI();if(roundState.remaining===0)beginRoundCombat()},1000)}
-function beginRoundCombat(){if(window.LIVEMultiplayer?.getRoom()?.started)return;if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
-function finishRound(outcome){if(window.LIVEMultiplayer?.getRoom()?.started){running=false;return}if(!roundState.active||roundState.phase!=='combat')return;roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;const itemKillReward=Number(battle?.getResult()?.itemKillCredits?.A||0);if(itemKillReward>0)gameState.credits+=itemKillReward;let resultText=outcome;if(roundState.round===1){{const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));const rewards=[];for(const animal of defeated){const count=1+(Math.random()<0.05?1:0);for(let i=0;i<count;i++){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];pushItem(item);rewards.push(item)}}gameState.message=rewards.length?`야생동물 ${defeated.length}마리 처치 · ${rewards.join(' / ')} 획득`:'처치한 야생동물이 없어 아이템 보상 없음';}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){roundState.hp.B=Math.max(0,roundState.hp.B-dmg);roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');if(itemKillReward>0)resultText+=` · 프시케의 칼날 +${itemKillReward}C`;$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
+function beginRoundCombat(){if(window.LIVEMultiplayer?.getRoom()?.started)return;if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();if(![1,3].includes(roundState.round))m7TravelAward(ERCombat.pickArenaRegion('local',roundState.round));setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
+function finishRound(outcome){if(window.LIVEMultiplayer?.getRoom()?.started){running=false;return}if(!roundState.active||roundState.phase!=='combat')return;const erebus=new Set(teams.A.filter(e=>byId[e.characterId]?.affiliations?.includes('에레보스')).map(e=>e.characterId)).size;m7InfiltrationAward(erebus);roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;const itemKillReward=Number(battle?.getResult()?.itemKillCredits?.A||0);if(itemKillReward>0)gameState.credits+=itemKillReward;let resultText=outcome;if(roundState.round===1){{const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));const rewards=[];for(const animal of defeated){const count=1+(Math.random()<0.05?1:0);for(let i=0;i<count;i++){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];pushItem(item);rewards.push(item)}}gameState.message=rewards.length?`야생동물 ${defeated.length}마리 처치 · ${rewards.join(' / ')} 획득`:'처치한 야생동물이 없어 아이템 보상 없음';}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){const tier=battle?.getResult()?.synergies?.A?.affiliations?.['페르소나']?.tier||0;roundState.hp.B=Math.max(0,roundState.hp.B-dmg-(tier>=3?2:tier>=2?1:0));roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');if(itemKillReward>0)resultText+=` · 프시케의 칼날 +${itemKillReward}C`;$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
 function reset(){
  clearOwnedDrag();document.querySelectorAll('.drag-ghost').forEach(e=>e.remove());
@@ -834,7 +844,7 @@ function selectOptions(values,current,allLabel){
 function teamSlot(team,e,i,disabled){
  const r=byId[e.characterId]||{id:e.characterId,name:e.characterId||"?",cost:"?",role:"소환수",affiliations:[],implemented:true,asset:{}};
  const portrait=r.asset?.sd
-  ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.remove();this.parentElement.textContent='${esc(displayName(r).slice(0,1))}'">`
+  ? `<img src="${esc(r.asset.sd)}" alt="" onerror="this.parentElement.textContent='${esc(displayName(r).slice(0,1))}'">`
   : esc(displayName(r).slice(0,1));
  return `<div class="team-slot">
   <div class="slot-id"><span class="mini-portrait">${portrait}</span><div><b>${esc(displayName(r))}</b><small>${r.cost}C · ${esc(r.role)}</small></div></div>
@@ -847,7 +857,7 @@ function teamSlot(team,e,i,disabled){
 function rosterCard(team,r){
  const used=teams[team].some(e=>e.characterId===r.id),full=teams[team].length>=3;
  const portrait=r.asset?.sd
-  ? `<img src="${esc(r.asset.sd)}" alt="${esc(displayName(r))}" loading="lazy" onerror="this.remove();this.parentElement.innerHTML='<span>${esc(displayName(r).slice(0,1))}</span>'">`
+  ? `<img src="${esc(r.asset.sd)}" alt="${esc(displayName(r))}" loading="lazy" onerror="this.parentElement.innerHTML='<span>${esc(displayName(r).slice(0,1))}</span>'">`
   : `<span>${esc(displayName(r).slice(0,1))}</span>`;
  return `<button class="roster-card ${r.implemented?"ready":"pending"}" data-pick="${r.id}" ${running||used||full?"disabled":""}>
    <span class="portrait-placeholder" data-character="${r.id}">${portrait}</span>
@@ -868,7 +878,10 @@ const SYNERGY_EFFECT_TEXT={
  "메이드":t=>t>=3?`메이드 기본 공격마다 클리닝 +15. 누적에 따라 아군 DEF가 최대 +15, 200 도달 시 아군 전체 최대 HP 12% 회복.`:`메이드 기본 공격마다 클리닝 +10. 누적에 따라 아군 DEF가 최대 +10, 200 도달 시 아군 전체 최대 HP 10% 회복.`,
  "애증":()=>`케네스가 전장에 존재하면 가넷 AMP/AS +30%, 최대 HP/DEF +20%.`,
  "치유의 노래":()=>`샬럿의 치유의 빛 발동 시 아군 전체를 샬럿 현재 AMP의 70%만큼 추가 회복.`,
- "에레보스":()=>`현재 효과 미정.`,
+ "에레보스":t=>`전투 종료마다 소속 실험체당 잠입 +1. 잠입 5마다 기본 재료 1개. ${t>=3?'적응형 +20%, 혈색반월 지급':t>=2?'소속 적응형 +10%':'성장형 시너지'}.`,
+ "카페":t=>`카페 실험체가 액티브 사용 시 아군 전체 회복. 발동자 최대 HP의 ${t>=3?5:3}%.`,
+ "페르소나":t=>`행동 불능을 건 스킬 1회당 팀 공유 중첩 +1. 중첩당 적응형 +${t>=2?3:2}%, 피해 감소 ${t>=2?3:2}%. 최대 ${t>=3?10:5}중첩. ${t>=3?'PvP 승리 상대 HP -2':t>=2?'PvP 승리 상대 HP -1':''}.`,
+ "여행자":()=>`처음 전투한 지역마다 탐색 +1, 최대 10. 중첩당 AMP +2%.`,
  "전사":()=>`중열 또는 전열 배치 시 주 능력치 +15%, AS +10%, DEF +10, 최대 HP +10%.`,
  "탱커":()=>`전열 배치 시 DEF +20, 최대 HP +20%, AS +10%.`,
  "원거리 평타":()=>`후열 또는 중열 배치 시 ATK +20%, AS +20%.`,
@@ -887,11 +900,11 @@ function bindSynergyTooltips(root=document){root.querySelectorAll?.(".synergy-ti
 document.addEventListener("pointerdown",e=>{if(!e.target.closest?.(".synergy-tip-chip"))hideSynergyCursorTip()});
 function synergySummary(team){
  const rs=[...new Map(teams[team].map(e=>byId[e.characterId]).filter(Boolean).map(r=>[r.id,r])).values()],count=n=>rs.filter(r=>Array.isArray(r.affiliations)&&r.affiliations.includes(n)).length;
- const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스"];
+ const live=battle?.getResult?.().synergies?.[team], names=["파자마","바니걸","수영복","마츠리","프리즌","군악대","새해","악마사냥꾼","메이드","애증","치유의 노래","에레보스","카페","페르소나","여행자"];
  const hy=teams[team].find(e=>e.characterId==='hyunwoo'),hyOn=!!hy&&hy.x===2&&!teams[team].some(e=>e!==hy&&e.x===2);
  const parts=[];
  if(hy)parts.push(synergyChip("현우정신",`현우정신 ${hyOn?'1단계 ON':'1 · 미발동'}`,1,hyOn?'synergy-on':'synergy-off'));
- parts.push(...names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=n==="에레보스"?`${n} · 효과 미정`:tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return synergyChip(n,label,Math.max(1,tier||c),tier?"synergy-on":"synergy-off")}).filter(Boolean));
+ parts.push(...names.map(n=>{const c=count(n);if(!c)return"";let tier=live?.affiliations?.[n]?.tier??((n==="군악대"||n==="새해"||n==="에레보스"||n==="페르소나"||n==="여행자")?c:(n==="애증"||n==="치유의 노래")?1:c>=3?3:c>=2?2:0);let label=tier?`${n} ${tier}단계 ON`:`${n} ${c} · 미발동`;return synergyChip(n,label,Math.max(1,tier||c),tier?"synergy-on":"synergy-off")}).filter(Boolean));
  const roles=live?.roles||teams[team].map(e=>{const r=byId[e.characterId];if(!r)return null;const d=e.x,role=r.role,active=(role==='전사'||role==='근거리 스킬')?d>=1:role==='탱커'?d===2:(role==='원거리 평타'||role==='원거리 스킬')?d<=1:(role==='암살자'||role==='서포터')?true:null;return{name:r.name,role,active}}).filter(Boolean);
  return `<div class="synergy-strip">${parts.length?parts.join(""):"<em>소속 없음</em>"}<i></i>${roles.map(x=>synergyChip(x.role,`${esc(x.role)}${x.active===true?" ON":x.active===false?" OFF":""}`,1,`role-chip ${x.active===false?"synergy-off":""}`)).join("")}</div>`
 }
@@ -986,10 +999,19 @@ document.addEventListener('keyup',e=>{if(e.key==='Shift'&&characterTipState.unit
 document.addEventListener('pointerdown',e=>{if(characterTipState.mobile&&!e.target.closest?.('#characterCursorTip')&&!e.target.closest?.('.unit'))hideCharacterCursorTip()});
 document.addEventListener('click',e=>{const detail=e.target.closest?.('[data-char-detail]'),brief=e.target.closest?.('[data-char-brief]');if(!detail&&!brief)return;e.preventDefault();e.stopPropagation();if(characterTipState.unit&&characterTipState.mobile){characterTipState.detail=!!detail;renderCharacterCursorTip()}});
 
+function m7UnitStatus(u){const result=[],details=[];const add=(title,icon,desc)=>{details.push(desc);result.push(`<span class="m7-state" title="${esc(desc)}" aria-label="${esc(desc)}">${icon}<b>${esc(title)}</b></span>`)};
+ if(u.coldStacks>0)add(u.coldStacks,'❄','냉기 '+u.coldStacks+'/100');if(u.freezeUntil>time)add((u.freezeUntil-time).toFixed(1),'◈','빙결 · 남은 '+(u.freezeUntil-time).toFixed(1)+'초');else if(u.ccUntil>time)add((u.ccUntil-time).toFixed(1),'⏳','행동 불능 '+(u.ccUntil-time).toFixed(1)+'초');
+ if(u.tauntedUntil>time)add((u.tauntedUntil-time).toFixed(1),'⚠','도발');if(u.alexDefenseUntil>time)add('-15%','⬡','방어력 감소');
+ if(u.skill?.aidenCharges>0)add(u.skill.aidenCharges,'⚡','전하 '+u.skill.aidenCharges+'/3');if(u.skill?.aidenOverUntil>time)add((u.skill.aidenOverUntil-time).toFixed(1),'⚡','과전하');
+ if(u.aff?.includes('페르소나')&&battle){const stacks=battle.runtime.shared?.[u.team]?.persona||0;if(stacks)add(stacks,'◉','페르소나 중첩 '+stacks)}
+ if(u.aff?.includes('여행자')&&u.travelerStacks>0)add(u.travelerStacks,'✧','탐색 '+u.travelerStacks+'/10');
+ if(u.prisonStacks>0)add(u.prisonStacks,'♜','감옥 중첩 '+u.prisonStacks+'/8');
+ return result.length?`<div class="m7-unit-states">${result.slice(0,3).join('')}${result.length>3?`<span class="m7-state" title="${esc(details.slice(3).join(' · '))}">+${result.length-3}</span>`:''}</div>`:'';
+}
 function unitMarkup(u){
  const r=byId[u.characterId]||(u.characterId==='nina'?{name:'니나',role:'소환수',implemented:true,asset:{sd:'assets/characters/nina.png'}}:{name:u.name,role:u.role,implemented:true,asset:{}}),hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
  const visual=r.asset?.sd
-  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.remove();this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
+  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
   : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;
  return `<div class="ground-ring"></div>
   <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}">${visual}</div>
@@ -997,7 +1019,7 @@ function unitMarkup(u){
   <div class="unit-hud compact-hud">
    <span class="hud-star star-${u.star}" aria-label="${u.star}성">★</span>
    <div class="hpbar ${low?"low":""} ${(u.skill?.invulnUntil>time||u.skill?.immortalUntil>time)?"invincible-hp":""}" title="${shield>0?`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)} · 보호막 ${Math.ceil(shield)}`:`HP ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}`}"><i style="width:${hp}%"></i>${shield>0?`<em class="shield-overlay" style="left:${hp}%;width:${shieldPct}%"></em>`:""}</div>
-  </div>`;
+  </div>${m7UnitStatus(u)}`;
 }
 function render(){
  syncBoardPresentation();

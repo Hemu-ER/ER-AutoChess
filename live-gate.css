@@ -239,3 +239,6 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 
 /* M6-12: collapse chat without disconnecting or losing messages. */
 #liveChatCollapse{border:1px solid #53606a;background:#18242b;color:#e4edf2;border-radius:5px;min-width:28px;cursor:pointer;margin-left:auto}#liveChatBody{display:flex;flex:1;min-height:0;flex-direction:column;gap:8px}#liveGameChat.live-chat-collapsed{bottom:auto!important;min-height:0!important}#liveGameChat.live-chat-collapsed #liveChatBody{display:none!important}
+
+/* M7: unobtrusive stack/time pills next to each combatant */
+.m7-unit-states{position:absolute;top:calc(var(--hud-top, -28px) - 21px);left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:2px;white-space:nowrap;pointer-events:auto}.m7-state{display:inline-flex;align-items:center;gap:1px;border:1px solid rgba(183,206,207,.3);background:rgba(8,11,18,.88);color:#e1e9ea;padding:1px 3px;border-radius:4px;font:600 9px/1.2 system-ui,sans-serif;text-shadow:0 1px 1px #000}.m7-state b{font-weight:600}.m7-round-states{margin-top:5px;font-size:10px;opacity:.8;letter-spacing:.01em}

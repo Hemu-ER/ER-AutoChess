@@ -1,6 +1,141 @@
 // 32-character roster. Pending entries use basic combat only; no invented skills.
 (function(root){'use strict';
 const roster=[
+{
+  "id": "katja",
+  "name": "카티야",
+  "cost": 2,
+  "role": "원거리 평타",
+  "affiliations": [
+    "카페"
+  ],
+  "baseStats": {
+    "hp": 750,
+    "atk": 66,
+    "amp": 0,
+    "range": 3,
+    "def": 20,
+    "as": 0.95
+  },
+  "implemented": true,
+  "main": "atk",
+  "asset": {
+    "sd": "assets/characters/katja.png"
+  }
+},
+{
+  "id": "haze",
+  "name": "헤이즈",
+  "cost": 3,
+  "role": "원거리 스킬",
+  "affiliations": [
+    "카페"
+  ],
+  "baseStats": {
+    "hp": 740,
+    "atk": 49,
+    "amp": 132,
+    "range": 3,
+    "def": 20,
+    "as": 0.8
+  },
+  "implemented": true,
+  "main": "amp",
+  "asset": {
+    "sd": "assets/characters/haze.png"
+  }
+},
+{
+  "id": "aiden",
+  "name": "에이든",
+  "cost": 1,
+  "role": "전사",
+  "affiliations": [
+    "카페",
+    "에레보스"
+  ],
+  "baseStats": {
+    "hp": 990,
+    "atk": 64,
+    "amp": 0,
+    "range": 1,
+    "def": 32,
+    "as": 0.88
+  },
+  "implemented": true,
+  "main": "atk",
+  "asset": {
+    "sd": "assets/characters/aiden.png"
+  }
+},
+{
+  "id": "elena",
+  "name": "엘레나",
+  "cost": 1,
+  "role": "탱커",
+  "affiliations": [
+    "페르소나"
+  ],
+  "baseStats": {
+    "hp": 1050,
+    "atk": 45,
+    "amp": 65,
+    "range": 1,
+    "def": 40,
+    "as": 0.72
+  },
+  "implemented": true,
+  "main": "hp",
+  "asset": {
+    "sd": "assets/characters/elena.png"
+  }
+},
+{
+  "id": "silvia",
+  "name": "실비아",
+  "cost": 2,
+  "role": "원거리 스킬",
+  "affiliations": [
+    "페르소나",
+    "여행자"
+  ],
+  "baseStats": {
+    "hp": 750,
+    "atk": 49,
+    "amp": 116,
+    "range": 3,
+    "def": 20,
+    "as": 0.85
+  },
+  "implemented": true,
+  "main": "amp",
+  "asset": {
+    "sd": "assets/characters/silvia.png"
+  }
+},
+{
+  "id": "alex",
+  "name": "알렉스",
+  "cost": 3,
+  "role": "전사",
+  "affiliations": [
+    "페르소나",
+    "에레보스"
+  ],
+  "baseStats": {
+    "hp": 1020,
+    "atk": 79,
+    "amp": 0,
+    "range": 1,
+    "def": 38,
+    "as": 0.88
+  },
+  "implemented": true,
+  "main": "atk",
+  "asset": {
+    "sd": "assets/characters/alex.png"
+  }
+},
   {
     "id": "hyunwoo",
     "name": "멧현우",

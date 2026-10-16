@@ -4,6 +4,6 @@
   "private": true,
   "scripts": {
     "start": "node server.cjs",
-    "test": "node tests/m5-12.cjs"
+    "test:m7": "node tests/m7-regression.cjs"
   }
 }
