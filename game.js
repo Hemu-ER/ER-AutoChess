@@ -12,8 +12,8 @@ let roundTimer=null;
 const roundState={active:false,phase:"idle",round:1,hp:{A:PLAYER_START_HP,B:PLAYER_START_HP},remaining:ROUND_PREP_SECONDS,lastOutcome:"",lastDamage:0};
 const gameState={credits:0,shop:[],shopLocked:false,owned:[],items:[],nextOwnedId:1,message:"",roundIncome:5,masteryLevel:1,masteryProgress:0,exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};
 const GAME_TEMP={startCredits:5,rerollCost:2,shopSize:5,benchSize:8,masteryInvestCost:2,masteryInvestExp:2,masteryNaturalExp:4,interestStep:10,interestCap:3};
-// Lv.1→20 총 96 EXP. 현재 레벨을 인덱스로 사용한다.
-const MASTERY_EXP_TO_NEXT={1:4,2:4,3:4,4:4,5:4,6:4,7:5,8:5,9:5,10:5,11:5,12:5,13:6,14:6,15:6,16:6,17:6,18:6,19:6};
+// M7-03: Lv.1→20 총 175 EXP. Lv.5/10/15 누적 필요량은 22/61/110 EXP.
+const MASTERY_EXP_TO_NEXT={1:5,2:5,3:6,4:6,5:7,6:7,7:8,8:8,9:9,10:9,11:9,12:10,13:10,14:11,15:11,16:12,17:13,18:14,19:15};
 const UNIT_POOL_BY_COST={1:18,2:15,3:12};
 const SELL_REFUND_RATE=0.50;
 const alphaBoundsCache=new Map();
@@ -220,8 +220,10 @@ function mergeOwnedUnits(){
  }
  return merged;
 }
-function addOwned(characterId,autoBoard=false){const o={uid:gameState.nextOwnedId++,characterId,star:1,location:'bench',equipment:[]};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star:1,...pos,ownedId:o.uid});o.location='board'}}const merged=mergeOwnedUnits();return {unit:o,merged}}
-function purchaseCanMerge(characterId){const a=gameState.owned.filter(o=>o.characterId===characterId&&o.star===1).sort((a,b)=>mergePriority(a)-mergePriority(b)).slice(0,2);return a.length===2&&a.reduce((n,o)=>n+(o.equipment||[]).length,0)<=INVENTORY_LIMIT-gameState.items.length}
+function addOwned(characterId,autoBoard=false,star=1){const o={uid:gameState.nextOwnedId++,characterId,star,location:'bench',equipment:[]};gameState.owned.push(o);if(autoBoard){const pos=firstFreeCell();if(pos){teams.A.push({characterId,star,...pos,ownedId:o.uid});o.location='board'}}const merged=mergeOwnedUnits();return {unit:o,merged}}
+function purchaseCanMerge(characterId){return supplyCanMerge(characterId,1)}
+function supplyCanMerge(characterId,star){const a=gameState.owned.filter(o=>o.characterId===characterId&&o.star===star).sort((a,b)=>mergePriority(a)-mergePriority(b)).slice(0,2);return a.length===2&&a.reduce((n,o)=>n+(o.equipment||[]).length,0)<=INVENTORY_LIMIT-gameState.items.length}
+function supplyCanReceive(characterId,star){return gameState.owned.filter(o=>o.location==='bench').length<GAME_TEMP.benchSize||supplyCanMerge(characterId,star)}
 
 function buyShop(i){if(appMode!=='game'||roundState.phase!=='prep')return;const id=gameState.shop[i],r=byId[id];if(!r)return;if(gameState.credits<r.cost){gameState.message='크레딧이 부족해.';renderGameEconomy();return}if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(id)){gameState.message='벤치가 가득 찼어.';renderGameEconomy();return}gameState.credits-=r.cost;const added=addOwned(id,false);gameState.shop[i]=null;mergeOwnedUnits();gameState.message=added.merged.length?`${displayName(r)} 구매 · ${added.merged.join(' → ')} 합성!`:`${displayName(r)} 구매 · 벤치로 이동`;reset();renderGameEconomy()}
 function rerollShop(){if(roundState.phase!=='prep')return;if(gameState.credits<GAME_TEMP.rerollCost){gameState.message='리롤할 크레딧이 부족해.';renderGameEconomy();return}gameState.credits-=GAME_TEMP.rerollCost;rollShop();gameState.message='상점을 새로고침했어.';renderGameEconomy()}
@@ -629,7 +631,7 @@ function renderGameEconomy(){
  p.innerHTML='';
  if(!dock){dock=document.createElement('section');dock.id='gameBottomDock';dock.className='game-bottom-dock';document.body.appendChild(dock)}
  const max=masteryExpToNext(),prog=Math.min(max||0,gameState.masteryProgress),pct=max?prog/max*100:100,bonus=Math.max(0,gameState.masteryLevel-1);
- dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 열기':'▼ 상점 접기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span><div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div>${livePendingSupplyUnits.length?`<div class="supply-bench-queue" role="status">보급 실험체 ${livePendingSupplyUnits.map(id=>esc(displayName(byId[id]))).join(', ')} 영입 대기 · 벤치 자리를 비워줘.</div>`:''}</div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>고정 적응형 능력치 +${bonus}%</small></div><div class="mastery-track"><i style="width:${pct}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} EXP · 라운드마다 +${GAME_TEMP.masteryNaturalExp} EXP`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 EXP +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
+ dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 열기':'▼ 상점 접기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span><div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div>${livePendingSupplyUnits.length?`<div class="supply-bench-queue" role="status">보급 실험체 ${livePendingSupplyUnits.map(o=>esc(displayName(byId[o.characterId]))+' ★'+o.star).join(', ')} 영입 대기 · 벤치 자리를 비워줘.</div>`:''}</div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>고정 적응형 능력치 +${bonus}%</small></div><div class="mastery-track"><i style="width:${pct}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} EXP · 라운드마다 +${GAME_TEMP.masteryNaturalExp} EXP`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 EXP +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
  dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;renderGameEconomy()});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindShopSynergyTags(dock);bindOwnedPointerDrag(dock);bindItemTooltips(dock);normalizeVisuals(dock);renderItemPanel();
 }
 
@@ -673,9 +675,9 @@ function liveFlushSupplyUnitQueue(){
  if(roundState.phase!=='prep'||!livePendingSupplyUnits.length)return;
  let granted=0;
  while(livePendingSupplyUnits.length){
-  const characterId=livePendingSupplyUnits[0];
-  if(gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(characterId))break;
-  livePendingSupplyUnits.shift();addOwned(characterId,false);granted++;
+  const reward=livePendingSupplyUnits[0];
+  if(!supplyCanReceive(reward.characterId,reward.star))break;
+  livePendingSupplyUnits.shift();addOwned(reward.characterId,false,reward.star);granted++;
  }
  if(granted)gameState.message=`대기 중이던 보급 실험체 ${granted}명 영입 완료`;
 }
@@ -697,17 +699,15 @@ function liveSupplyUi(net,slot){
  if(el.hidden){liveSupplyCollapsed=false;el.classList.remove('supply-collapsed');if(liveSupplyTimerId!==null){clearInterval(liveSupplyTimerId);liveSupplyTimerId=null}return}
  const completedNames=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic&&!LIVEItems.all[n].bloodMoon);
  const describe=t=>{
-  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:'10 크레딧',subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png?v=m608',visual:'coin',badge:'+10 C'};
-  if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:'+10 EXP',subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:'LEVEL UP'};
+  if(t.type==='credits')return {kind:'credits',category:'RESOURCE · CREDIT',title:`${t.value} 크레딧`,subtitle:'자금 확보',detail:'상점 구매 / 리롤 / 숙련도 투자',img:'assets/ui/credit.png?v=m608',visual:'coin',badge:`+${t.value} C`};
+  if(t.type==='exp')return {kind:'exp',category:'RESOURCE · MASTERY',title:`+${t.value} EXP`,subtitle:'숙련도 연구',detail:'팀 숙련도 경험치 즉시 증가',visual:'exp',badge:`+${t.value} EXP`};
   if(t.type==='unit'){
    const r=byId[t.value];
    if(!r||![1,2].includes(r.cost))return {kind:'unavailable',category:'UNAVAILABLE',title:'정보 없음',subtitle:'',detail:'',visual:'exp',badge:'-'};
-   return {kind:'unit',category:`EXPERIMENT · ${r.cost} COST`,title:displayName(r),subtitle:skinName(r),detail:[r.role,...(r.affiliations||[])].join(' / '),img:r.asset?.sd,visual:'character',badge:`${r.cost} COST · 무료 영입`,cost:r.cost};
+   return {kind:'unit',category:`EXPERIMENT · ${r.cost} COST`,title:displayName(r)+' ★2',subtitle:skinName(r),detail:[r.role,...(r.affiliations||[]),...(r.cost===1?['기본 아이템 1개 추가 지급']:[])].join(' / '),img:r.asset?.sd,visual:'character',badge:r.cost===1?'2성 + 기본 아이템':'2성 실험체',cost:r.cost};
   }
-  const isBasic=t.type==='basic';
-  const names=isBasic?BASIC_ITEMS:completedNames;
-  const name=names[t.value%names.length];
-  return {kind:isBasic?'basic':'complete',category:isBasic?'EQUIPMENT · BASIC':'EQUIPMENT · RARE',title:name,subtitle:isBasic?'기본 장비':'완성 장비',detail:itemStatsText(name)+(ITEM_EFFECT_HINTS[name]?' · '+ITEM_EFFECT_HINTS[name]:''),img:itemIcon(name),visual:'item',badge:isBasic?'BASIC':'RARE'};
+  const name=completedNames[t.value%completedNames.length];
+  return {kind:'complete',category:'EQUIPMENT · RARE',title:name,subtitle:'완성 장비',detail:itemStatsText(name)+(ITEM_EFFECT_HINTS[name]?' · '+ITEM_EFFECT_HINTS[name]:''),img:itemIcon(name),visual:'item',badge:'RARE'};
  };
  const pickIndex=picked?opts.findIndex(o=>o.type===picked.type&&o.value===picked.value):-1;
  const stamp=[net.round,slot,JSON.stringify(opts),pickIndex].join(':');
@@ -744,17 +744,24 @@ function liveApplySupplyReward(net,slot){
  if(net.round!==5||liveSupplyApplied)return;
  const reward=net.supplyResolved?.[slot];if(!reward)return;
  liveSupplyApplied=true;
- if(reward.type==='credits')gameState.credits+=10;
- else if(reward.type==='exp')addMasteryProgress(10,'보급 선택');
+ if(reward.type==='credits')gameState.credits+=reward.value;
+ else if(reward.type==='exp')addMasteryProgress(reward.value,'보급 선택');
  else if(reward.type==='unit'){
-  const r=byId[reward.value];
-  if(r&&!r.pveOnly&&[1,2].includes(r.cost)){
-   const full=gameState.owned.filter(o=>o.location==='bench').length>=GAME_TEMP.benchSize&&!purchaseCanMerge(r.id);
-   if(full){livePendingSupplyUnits.push(r.id);gameState.message=`보급 ${displayName(r)} 영입 대기 · 벤치에 자리를 만들어줘.`}
-   else{const outcome=addOwned(r.id,false);gameState.message=`보급 ${displayName(r)} 무료 영입${outcome.merged.length?' · 합성 완료!':''}`}
+  const r=byId[reward.value],star=2;
+  if(r&&!r.pveOnly&&r.cost===reward.cost&&[1,2].includes(r.cost)){
+   // The bonus material is independent of bench space. Inventory overflow follows existing auto-sale rules.
+   const bonus=r.cost===1?BASIC_ITEMS[reward.bonusBasic]:null;
+   if(bonus)pushItem(bonus);
+   if(!supplyCanReceive(r.id,star)){
+    livePendingSupplyUnits.push({characterId:r.id,star});
+    gameState.message=`보급 ${displayName(r)} ★2 영입 대기 · 벤치에 자리를 만들어줘.${bonus?' · '+bonus+' 획득':''}`;
+   }else{
+    const outcome=addOwned(r.id,false,star);
+    gameState.message=`보급 ${displayName(r)} ★2 영입${bonus?' · '+bonus+' 획득':''}${outcome.merged.length?' · '+outcome.merged.join(' / ')+' 합성!':''}`;
+   }
   }
- }else if(reward.type==='basic'||reward.type==='complete'){
-  const names=reward.type==='basic'?BASIC_ITEMS:Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic&&!LIVEItems.all[n].bloodMoon);
+ }else if(reward.type==='complete'){
+  const names=Object.keys(LIVEItems.all).filter(n=>!LIVEItems.all[n].basic&&!LIVEItems.all[n].bloodMoon);
   const name=names[reward.value%names.length];if(name){pushItem(name);gameState.message=`보급 ${name} 획득`}
  }
  renderGameEconomy();
@@ -781,7 +788,9 @@ window.LIVEApplyGame=function(net,slot,players){
   livePhaseVersion=net.version;
   clearRoundTimer();
   if(net.phase==='prep'){
-   if(running||battle)reset();teams.B=[];roundState.phase='prep';
+   roundState.phase='prep';teams.B=[];
+   // Reset battle damage/death state into fresh preparation units, even after some or all units died.
+   reset();window.M6PixiAdapter?.refresh?.();
    if(net.round>1&&liveCompletedRound!==net.round){liveCompletedRound=net.round;if(!gameState.shopLocked)rollShop();addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');gameState.credits+=roundCreditIncome().total;}
    $('#status').textContent=`ROUND ${net.round} · 온라인 준비`;renderGameEconomy();
   }else if(net.phase==='combat'){
@@ -793,7 +802,7 @@ window.LIVEApplyGame=function(net,slot,players){
    const original=window.LIVENetReplaySeed;window.LIVENetReplaySeed=net.seed;
    if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
    window.LIVENetReplaySeed=original;
-  }else if(net.phase==='supply'){if(running||battle)reset();teams.B=[];roundState.phase='supply';$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='result'){
+  }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='result'){
    if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
    if(net.pve){const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));for(const animal of defeated){const count=1+(Math.random()<.05?1:0);for(let k=0;k<count;k++)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}}
    roundState.phase='result';liveCombatActive=false;

@@ -7,19 +7,28 @@ const crypto = require('node:crypto');
 const {CombatEngine,pickArenaRegion}=require('./combat-engine.js');
 const {roster:supplyRoster}=require('./roster.js');
 const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
-// M4-08: each player rolls three independent reward slots; only exact duplicate cards are rerolled.
-const SUPPLY_ODDS=Object.freeze([['basic',30],['complete',5],['credits',25],['exp',20],['unit1',12],['unit2',8]]);
+// M7-03: three different reward CATEGORIES chosen by weighted sampling without replacement.
+// 1-cost and 2-cost subjects are distinct categories. These are first-draw weights.
+const SUPPLY_ODDS=Object.freeze([['complete',5],['credits',30],['exp',20],['unit1',25],['unit2',20]]);
 const SUPPLY_UNITS={1:supplyRoster.filter(r=>!r.pveOnly&&r.cost===1).map(r=>r.id),2:supplyRoster.filter(r=>!r.pveOnly&&r.cost===2).map(r=>r.id)};
 if(!SUPPLY_UNITS[1].length||!SUPPLY_UNITS[2].length)throw Error('보급용 1·2코스트 실험체 풀이 비어 있어.');
-function drawSupplyReward(){
- const roll=crypto.randomInt(100);let cumulative=0;const kind=SUPPLY_ODDS.find(([,weight])=>(cumulative+=weight)>roll)?.[0];
- if(kind==='credits'||kind==='exp')return {type:kind,value:10};
- if(kind==='basic'||kind==='complete')return {type:kind,value:crypto.randomInt(kind==='basic'?7:28)};
+function drawSupplyReward(kind){
+ if(!kind){const total=SUPPLY_ODDS.reduce((n,[,weight])=>n+weight,0);let roll=crypto.randomInt(total);for(const [name,weight] of SUPPLY_ODDS){if(roll<weight){kind=name;break}roll-=weight}}
+ if(kind==='credits'||kind==='exp')return {type:kind,value:crypto.randomInt(7,11)};
+ if(kind==='complete')return {type:'complete',value:crypto.randomInt(28)};
+ if(kind!=='unit1'&&kind!=='unit2')throw Error('알 수 없는 보급 유형: '+kind);
  const cost=kind==='unit1'?1:2,units=SUPPLY_UNITS[cost];
- return {type:'unit',cost,value:units[crypto.randomInt(units.length)]};
+ return {type:'unit',cost,value:units[crypto.randomInt(units.length)],star:2,
+  ...(cost===1?{bonusBasic:crypto.randomInt(7)}:{})};
 }
 function drawSupplyChoices(){
- const cards=[];for(let i=0;i<3;i++){let option,tries=0;do{option=drawSupplyReward()}while(cards.some(x=>x.type===option.type&&x.value===option.value)&&++tries<30);cards.push(option)}return cards;
+ const pool=SUPPLY_ODDS.map(([kind,weight])=>({kind,weight})),cards=[];
+ for(let i=0;i<3;i++){
+  const total=pool.reduce((n,e)=>n+e.weight,0);let roll=crypto.randomInt(total),chosen=0;
+  for(let j=0;j<pool.length;j++){if(roll<pool[j].weight){chosen=j;break}roll-=pool[j].weight}
+  const [{kind}]=pool.splice(chosen,1);cards.push(drawSupplyReward(kind));
+ }
+ return cards;
 }
 
 const root = __dirname;

@@ -5,7 +5,9 @@
 .board-shell[data-m6-pixi="active"] #board::before,.board-shell[data-m6-pixi="active"] #board::after{content:none!important;display:none!important}
 .board-shell[data-m6-pixi="active"] #board .cell{background:transparent!important;box-shadow:none!important}
 .board-shell[data-m6-pixi="active"] #board .cell .ground-ring{opacity:0!important}
-.board-shell[data-m6-pixi="active"] #board .sd-slot img.sd-image{opacity:0!important}
+/* Hide DOM artwork only after Pixi has a complete and current sprite scene. */
+.board-shell[data-m6-pixi="active"] #board.m6-pixi-active .sd-slot img.sd-image{opacity:0!important}
+.board-shell[data-m6-pixi="active"] #board:not(.m6-pixi-active) .sd-slot img.sd-image{opacity:1!important}
 .board-shell[data-m6-pixi="active"] .field-mark{display:none!important}
 #board .unit-hud,#board .live-equip-slots{z-index:15!important;position:absolute}
 #m6-field-label{position:absolute;left:14px;top:10px;z-index:3;pointer-events:none;font:700 10px/1.3 monospace;letter-spacing:.17em;color:#c6e9ef;text-shadow:0 2px 5px #001}

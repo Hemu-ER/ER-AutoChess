@@ -7,6 +7,8 @@
  const shell=board.closest('.board-shell');
  if(!shell)return;
  let app=null, layer=null, floorSprite=null, effects=null, ready=false, scheduled=false, busy=false;
+ // M7-03: invalidate stale asynchronous draws when units/rounds change.
+ let drawing=false, dirty=false, drawVersion=0;
  const FLOORS=['lab','alley','beach','cemetery','church','estate','forest','hotel','police','temple'];
  const params=new URLSearchParams(location.search);
  const chosen=params.get('m6floor');
@@ -77,8 +79,8 @@
  }
 
  const P=()=>window.PIXI;
- const queue=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
- function fallback(){ready=false;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
+ const queue=()=>{drawVersion++;if(drawing){dirty=true;return;}if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
+ function fallback(){ready=false;drawing=false;dirty=false;drawVersion++;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
  async function init(){
   if(app||busy||!P()?.Application)return;
   busy=true;
@@ -100,7 +102,11 @@
  async function texture(url){if(loading.has(url))return loading.get(url);const task=P().Assets.load(url);loading.set(url,task);return task;}
  async function draw(){
   if(!ready||!app||!layer)return;
+  if(drawing){dirty=true;return;}
+  drawing=true;const revision=drawVersion;
+  try{
   await syncFloor();
+  if(!ready||revision!==drawVersion)return;
   const w=Math.max(1,shell.clientWidth),h=Math.max(1,shell.clientHeight);
   if(app.renderer.width!==w||app.renderer.height!==h)app.renderer.resize(w,h);
   const outer=shell.getBoundingClientRect(),seen=new Set(),list=[];
@@ -126,8 +132,9 @@
   }
   // Only enable sprite substitution if every visible unit texture loaded.
   const loaded=await Promise.allSettled(list.map(v=>texture(v.src)));
-  if(!ready||!app)return;
-  if(loaded.some(x=>x.status!=='fulfilled')){board.classList.remove('m6-pixi-active');return;}
+  if(!ready||!app||revision!==drawVersion)return;
+  if(loaded.some(x=>x.status!=='fulfilled')){board.classList.remove('m6-pixi-active');layer.visible=false;return;}
+  layer.visible=true;
   list.forEach((v,i)=>{
    seen.add(v.id);let entry=nodes.get(v.id);const t=loaded[i].value;
    if(!entry){const container=new (P().Container)();const ring=new (P().Graphics)();const sprite=new (P().Sprite)(t);sprite.anchor.set(.5,1);container.addChild(ring,sprite);layer.addChild(container);entry={container,ring,sprite,src:v.src};nodes.set(v.id,entry);}
@@ -156,6 +163,10 @@
   layer.sortableChildren=true;layer.sortChildren();
   for(const [id,entry] of nodes)if(!seen.has(id)){layer.removeChild(entry.container);entry.container.destroy({children:true});nodes.delete(id);}
   board.classList.add('m6-pixi-active');
+  }finally{
+   drawing=false;
+   if(ready&&(dirty||revision!==drawVersion)){dirty=false;queue();}
+  }
  }
  // Catch geometry changes caused by CSS/round mode, without altering M4 game state.
  const resizeObserver=window.ResizeObserver?new ResizeObserver(queue):null;resizeObserver?.observe(shell);resizeObserver?.observe(board);

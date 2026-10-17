@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.cjs",
     "test:m7": "node tests/m7-regression.cjs",
-    "test:m7-02": "node tests/m7-regression.cjs && node tests/m7-02-regression.cjs"
+    "test:m7-02": "node tests/m7-regression.cjs && node tests/m7-02-regression.cjs",
+    "test:m7-03": "npm run test:m7-02 && node tests/m7-03-regression.cjs"
   }
 }
