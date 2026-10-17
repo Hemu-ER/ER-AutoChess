@@ -130,14 +130,29 @@ function advanceRoom(r){const g=r.game;if(!g||g.phase==='finished'||Date.now()<M
   if(g.round===5){
    g.supplyOptions=players.map(()=>drawSupplyChoices());g.supplyResolved=[null,null];g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
   }
-  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;g.region=pickArenaRegion(r.code,g.round);
+  // M6-05 safety: no combat before both participants have valid deployed teams.
+  const missing=players.filter(player=>!Array.isArray(player.team)||player.team.length===0);
+  if(missing.length){
+   g.earlyEndsAt=null;g.endsAt=Date.now()+10000;
+   g.prepNotice='전투 대기 · '+missing.map(player=>player.name+' 편성 없음').join(', ');
+   g.version++;broadcast(r);return;
+  }
+  g.prepNotice=null;
+  const seed=crypto.randomInt(1,2147483647),pve=g.round===1||g.round===3;g.region=pve?null:pickArenaRegion(r.code,g.round);
   const a=players[0],b=players[1];for(const ply of players){
    const ids=new Set((ply.team||[]).map(e=>e.characterId));const affiliates=n=>[...ids].filter(id=>m7Roster[id]?.affiliations?.includes(n)).length;
    if(affiliates('에레보스')>=3)ply.progress.bloodMoonGranted=true;
    if(!pve&&g.region&&ids.has('silvia')&&!ply.progress.exploration.visited.includes(g.region)){ply.progress.exploration.visited.push(g.region);ply.progress.exploration.stacks=Math.min(10,ply.progress.exploration.stacks+1)}
   }let battle=null,duration=3;
   if(!pve){try{const cfg={teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}};const result=new CombatEngine(cfg).run();battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0};duration=Math.max(3,Math.min(60,Math.ceil(result.time)+2));}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)};duration=3}}
-  g.phase='combat';g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
+  // M6-05 safety: do not silently turn failed PvP simulation into a draw.
+  if(!pve&&(battle?.error||!Number.isFinite(battle?.time)||battle.time<=0)){
+   g.earlyEndsAt=null;g.endsAt=Date.now()+10000;
+   g.prepNotice='전투 계산 재시도 대기'+(battle?.error?' · 서버 오류':' · 즉시 종료 감지');
+   console.warn('[M7-02] Invalid PvP simulation',{room:r.code,round:g.round,battle,teamA:a.team.length,teamB:b.team.length});
+   g.version++;broadcast(r);return;
+  }
+  g.phase='combat';g.combatStartedAt=Date.now();g.seed=seed;g.battle=battle;g.combatId=g.version;g.pve=pve;g.earlyEndsAt=null;for(const member of r.players.values())member.farmDone=false;g.endsAt=Date.now()+(pve?60:duration)*1000;g.version++;broadcast(r);return;
  }
  if(g.phase==='supply'){for(const p of r.players.values())if(!g.supplyResolved[p.slot])g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;}
  if(g.phase==='combat'){

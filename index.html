@@ -29,6 +29,15 @@ body[data-app-mode="test"] .field-b {
   display: block !important;
 }
 </style>
+<link rel="stylesheet" href="m6-pixi-adapter.css">
+<style id="m611-first-paint">
+/* M6-11 intro guard: restore initial scene cover until the intro is ready. */
+body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::before{content:"";position:fixed;inset:0;z-index:99999;background:#030607;pointer-events:none;}
+</style>
+<script>
+(function(){if(['combat','round'].includes(new URLSearchParams(location.search).get('qa'))){document.documentElement.classList.add('m611-qa');return;}window.addEventListener('DOMContentLoaded',()=>{let tries=0;const check=()=>{const intro=document.getElementById('live-intro');if(intro&&!intro.classList.contains('live-exit')){document.body.classList.add('m611-intro-cleared');return;}if(++tries<80)setTimeout(check,50);else document.body.classList.add('m611-intro-cleared');};check();});})();
+</script>
+<style>html.m611-qa body::before{display:none!important}</style>
 </head>
 <body>
 <div class="app">
@@ -99,5 +108,19 @@ body[data-app-mode="test"] .field-b {
 <script src="live-intro.js"></script>
 <script src="multiplayer.js"></script>
 <script src="battlefield.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
+<script defer src="m6-pixi-adapter.js"></script>
+<script>
+/* Restored M6-07 development QA shortcut; respects authentication for game mode. */
+(()=>{
+ const query=new URLSearchParams(location.search);
+ const devHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
+ if(!devHost&&query.get('devqa')!=='1')return;
+ const a=document.createElement('a');a.href='qa-combat.html';a.textContent='⚒ 전투 QA 바로가기';
+ a.setAttribute('aria-label','전투 QA 실험실 열기');
+ a.style.cssText='position:fixed;right:16px;bottom:16px;z-index:100020;padding:11px 16px;border:1px solid #83d9e4;border-radius:9px;background:#0b1b26f2;color:#d7faff;font:700 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 3px 24px #000b';
+ document.body.appendChild(a);
+})();
+</script>
 </body>
 </html>
