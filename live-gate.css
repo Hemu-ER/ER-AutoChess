@@ -242,3 +242,36 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 
 /* M7: unobtrusive stack/time pills next to each combatant */
 .m7-unit-states{position:absolute;top:calc(var(--hud-top, -28px) - 21px);left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:2px;white-space:nowrap;pointer-events:auto}.m7-state{display:inline-flex;align-items:center;gap:1px;border:1px solid rgba(183,206,207,.3);background:rgba(8,11,18,.88);color:#e1e9ea;padding:1px 3px;border-radius:4px;font:600 9px/1.2 system-ui,sans-serif;text-shadow:0 1px 1px #000}.m7-state b{font-weight:600}.m7-round-states{margin-top:5px;font-size:10px;opacity:.8;letter-spacing:.01em}
+
+/* M8-01: both global and bomb-team chats are movable floating popups. */
+#liveGameChat,#liveTeamChat{position:fixed;top:80px;left:12px;right:auto;bottom:auto;width:300px;height:260px;max-width:calc(100vw - 18px);max-height:calc(100vh - 70px);min-height:0;z-index:8500;display:flex;flex-direction:column;gap:6px;background:#101820f2;border:1px solid #527174;border-radius:9px;padding:8px;color:#e4edf2;box-shadow:0 6px 25px #0009;font-size:12px}
+#liveTeamChat{top:150px;left:auto;right:16px;z-index:8501;border-color:#80a98c}
+#liveTeamChat[hidden]{display:none!important}
+#liveGameChat .live-chat-head,#liveTeamChat .live-chat-head{cursor:move;touch-action:none;display:flex;align-items:center;gap:9px;user-select:none;padding:5px 2px;flex-shrink:0}
+#liveGameChat .live-chat-head b,#liveTeamChat .live-chat-head b{flex:1}
+#liveGameChat .live-chat-toggle,#liveTeamChat .live-chat-toggle{border:1px solid #53606a;background:#18242b;color:#eef4f6;border-radius:5px;min-width:26px;cursor:pointer}
+#liveGameChat .live-chat-body,#liveTeamChat .live-chat-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px}
+#liveGameChat.live-chat-collapsed,#liveTeamChat.live-chat-collapsed{height:auto}
+#liveGameChat.live-chat-collapsed .live-chat-body,#liveTeamChat.live-chat-collapsed .live-chat-body{display:none}
+#liveGameChat .live-chat-log,#liveTeamChat .live-chat-log{flex:1;min-height:0;overflow:auto;overflow-wrap:anywhere}
+#liveGameChat .live-chat-send,#liveTeamChat .live-chat-send{display:flex;gap:5px;flex-shrink:0}
+#liveGameChat .live-chat-send input,#liveTeamChat .live-chat-send input{min-width:0;flex:1}
+#liveGate .live-room-count{display:inline-flex;gap:10px;align-items:center;margin:8px 12px 8px 0}
+#liveGate .live-room-count select{background:#18242b;color:#e2f4ef;border:1px solid #648b87;border-radius:5px;padding:7px}
+
+/* M8-01 interactive 2–8 player first-pick draft. */
+#liveSelectionPanel[hidden]{display:none!important}
+#liveSelectionPanel{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:#050b12df;backdrop-filter:blur(7px);padding:22px;overflow-y:auto;color:#e9f1f3}
+#liveSelectionPanel .live-selection-card{background:linear-gradient(135deg,#172931,#121a24);border:1px solid #557b7d;border-radius:14px;padding:24px;width:min(940px,98vw);max-height:92vh;overflow:auto}
+#liveSelectionPanel h2{font-size:28px;letter-spacing:.04em;margin:0 0 8px;color:#c4f4e5}
+#liveSelectionPanel p{line-height:1.5;font-size:13px;color:#bdced1;margin:8px 0}
+#liveSelectionPanel .live-selection-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;margin-top:15px}
+#liveSelectionPanel .live-selection-option{min-height:137px;display:flex;flex-direction:column;align-items:center;gap:8px;justify-content:space-between;background:#223541;border:1px solid #6a999a;border-radius:10px;color:#e8fffc;padding:12px 8px;cursor:pointer}
+#liveSelectionPanel .live-selection-option:hover:not(:disabled){background:#376269;border-color:#abe5c9}
+#liveSelectionPanel .live-selection-option small{font-size:10px;text-align:center;overflow-wrap:anywhere}
+#liveSelectionPanel .live-selection-option img{width:42px;height:42px;object-fit:contain}
+#liveSelectionPanel .live-selection-option span{font-size:10px;color:#9cceb9}
+#liveSelectionPanel .live-selection-option:disabled{opacity:.5;cursor:default}
+#liveSelectionPanel .live-selection-option.taken{background:#151b20;color:#829da3}
+
+#liveGameChat,#liveTeamChat{resize:both;overflow:hidden;min-width:190px}

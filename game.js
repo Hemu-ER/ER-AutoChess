@@ -469,8 +469,10 @@ function ensureRoundUI(){
 // R1~R6 are fully scheduled. R7+ currently use a temporary duel fallback,
 // not the future weighted special-round scheduler.
 function liveRoundKind(round){
- const kinds={1:'파밍',2:'결투',3:'파밍',4:'결투',5:'보급',6:'결투'};
- return kinds[round]||'결투 · 임시';
+ const labels={farm:'파밍',pvp:'결투',supply:'보급',shop:'상점',auction:'경매',boss:'보스',experiment:'번외 실험',selection:'선점'};
+ const order=window.LIVEMultiplayer?.getRoom?.()?.game?.schedule;
+ if(order&&[7,9,11,13,15].includes(round))return labels[order[(round-7)/2]]||'특수';
+ const known={1:'파밍',2:'결투',3:'파밍',4:'결투',5:'보급',6:'결투'};return known[round]||'결투';
 }
 function phaseLabel(){if([1,3].includes(roundState.round)&&roundState.phase==='combat')return '파밍 전투';return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
 function syncBoardPresentation(){
@@ -486,8 +488,8 @@ function syncBoardPresentation(){
 function renderRoundUI(){
  syncBoardPresentation();
  const p=$('#roundModePanel');if(!p)return;const pveRound=[1,3].includes(roundState.round),opp=pveRound?(roundState.phase==='prep'?'파밍 대기':'야생동물'):'PLAYER B',oppHp=pveRound?100:roundState.hp.B;
- const seconds=['prep','result','combat','supply'].includes(roundState.phase)?Math.max(0,Math.ceil(roundState.remaining)):null;
- const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='supply'?`보급 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:`결투 · ${seconds}초`);
+ const seconds=['prep','result','combat','supply','special'].includes(roundState.phase)?Math.max(0,Math.ceil(roundState.remaining)):null;
+ const center=roundState.phase==='prep'?`준비 · ${seconds}초`:roundState.phase==='supply'?`보급 · ${seconds}초`:roundState.phase==='result'?`결과 · ${seconds}초`:roundState.phase==='special'?`${liveRoundKind(roundState.round)} · ${seconds}초`:(window.LIVEMultiplayer?.getRoom()?.game?.pve?`파밍 · ${seconds}초`:`결투 · ${seconds}초`);
  const previousReady=p.querySelector('#roundOnlineReady');
  const nextRounds=[1,2,3].map(i=>`<span class="live-schedule-step"><small>R${roundState.round+i}</small> ${liveRoundKind(roundState.round+i)}</span>`).join('');
  const kind=liveRoundKind(roundState.round);
@@ -656,6 +658,7 @@ function startRoundMode(){
 
 let livePhaseVersion=0,liveCompletedRound=0,liveCombatActive=false;
 let liveSupplyApplied=false;
+let liveSelectionAppliedRound=0;
 const livePendingSupplyUnits=[];
 let liveSupplyTimerId=null;
 let liveSupplyCollapsed=false;
@@ -677,7 +680,7 @@ function liveFlushSupplyUnitQueue(){
  while(livePendingSupplyUnits.length){
   const reward=livePendingSupplyUnits[0];
   if(!supplyCanReceive(reward.characterId,reward.star))break;
-  livePendingSupplyUnits.shift();addOwned(reward.characterId,false,reward.star);granted++;
+  livePendingSupplyUnits.shift();if(reward.equipment){const o={uid:gameState.nextOwnedId++,characterId:reward.characterId,star:reward.star,location:'bench',equipment:[...reward.equipment]};gameState.owned.push(o);mergeOwnedUnits()}else addOwned(reward.characterId,false,reward.star);granted++;
  }
  if(granted)gameState.message=`대기 중이던 보급 실험체 ${granted}명 영입 완료`;
 }
@@ -766,6 +769,40 @@ function liveApplySupplyReward(net,slot){
  }
  renderGameEconomy();
 }
+// M8-01: owner-scoped selection receipt; never process the same reward twice.
+function liveApplySelectionReward(net,slot){
+ if(net.specialType!=='selection'||liveSelectionAppliedRound===net.round)return;
+ const award=net.selection?.resolved?.[slot];if(!award)return;
+ liveSelectionAppliedRound=net.round;
+ const r=byId[award.characterId],item=award.item;
+ if(!r||r.pveOnly||!LIVEItems.all[item])return;
+ if(!supplyCanReceive(r.id,1)){
+  livePendingSupplyUnits.push({characterId:r.id,star:1,equipment:[item]});
+  gameState.message=`선점 보상 ${displayName(r)} + ${item} 수령 대기 · 벤치 자리를 비워줘.`;
+ }else{
+  gameState.owned.push({uid:gameState.nextOwnedId++,characterId:r.id,star:1,location:'bench',equipment:[item]});
+  mergeOwnedUnits();gameState.message=`선점 ${displayName(r)} + ${item} 획득`;
+ }
+ renderGameEconomy();
+}
+function liveSelectionUi(net,slot){
+ let el=document.querySelector('#liveSelectionPanel');
+ if(!el){el=document.createElement('section');el.id='liveSelectionPanel';document.body.appendChild(el)}
+ el.hidden=net.phase!=='special'||net.specialType!=='selection';if(el.hidden)return;
+ const sel=net.selection;if(!sel)return;
+ const active=sel.order.slice(sel.wave*2,sel.wave*2+2).includes(slot),done=!!sel.resolved?.[slot];
+ const stamp=JSON.stringify([net.round,sel.wave,sel.candidates.map(c=>c.claimedBy),done,slot]);
+ if(el.dataset.stamp!==stamp){
+  el.dataset.stamp=stamp;
+  el.innerHTML=`<div class="live-selection-card"><h2>ROUND ${net.round} / 선점</h2><p>HP가 낮은 순서대로 두 명씩 실험체 + 장비를 선택해. 남은 후보를 누르면 획득해.</p><p><b>${done?'선점 완료 · 보상 수령':active?'지금 선택할 차례야':'다른 플레이어의 선택을 기다려 줘.'}</b> · <span data-selection-timer>8</span>초</p><div class="live-selection-options">${sel.candidates.map((c,i)=>{const unit=byId[c.characterId];const icon=itemIcon(c.item);return `<button type="button" data-select-pick="${i}" ${c.claimedBy!==null||!active||done?'disabled':''} class="live-selection-option ${c.claimedBy!==null?'taken':''}"><b>${esc(unit?displayName(unit):c.characterId)}</b><small>★1 · ${esc(c.item)}</small>${icon?`<img src="${esc(icon)}" alt="">`:''}<span>${c.claimedBy!==null?'선택됨':c.itemTier==='complete'?'완성템':'기본템'}</span></button>`}).join('')}</div><p class="live-selection-message">제한시간 종료 시 남은 후보를 무작위로 배정해.</p></div>`;
+  el.querySelectorAll('[data-select-pick]').forEach(btn=>btn.addEventListener('click',async()=>{
+   const i=Number(btn.dataset.selectPick);el.querySelectorAll('[data-select-pick]').forEach(b=>b.disabled=true);
+   try{const response=await fetch('/api/selection-pick',{method:'POST',headers:{'content-type':'application/json','x-live-token':window.LIVEMultiplayer?.getToken?.()||''},body:JSON.stringify({choice:i})});if(!response.ok)throw Error((await response.json()).error||'선점 선택 실패')}
+   catch(e){const msg=el.querySelector('.live-selection-message');if(msg)msg.textContent=e.message;el.dataset.stamp='';}
+  }));
+ }
+ const timer=el.querySelector('[data-selection-timer]');if(timer)timer.textContent=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+}
 let livePreviousUnitStats=new Map(),liveLastHit=0;const liveHitUntil=new Map(),liveAttackUntil=new Map();
 function liveRenderHitEffects(){
  if(!battle||!running){livePreviousUnitStats.clear();liveHitUntil.clear();liveAttackUntil.clear();return}
@@ -781,9 +818,9 @@ function liveRenderHitEffects(){
 }
 window.LIVEApplyGame=function(net,slot,players){
  if(!roundState.active||!net)return;
- const other=players?.find(p=>p.slot!==slot);window.LIVEOpponentExploration=other?.progress?.exploration||{visited:[],stacks:0};const me=players?.find(p=>p.slot===slot);if(me?.progress){const pr=me.progress;gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;pushItem('혈색반월')}}const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+ const foeSlot=Number.isInteger(net.opponentSlot)?net.opponentSlot:(players?.find(p=>p.slot!==slot&&net.hp[p.slot]>0)?.slot??slot);const other=players?.find(p=>p.slot===foeSlot);window.LIVEOpponentExploration=other?.progress?.exploration||{visited:[],stacks:0};const me=players?.find(p=>p.slot===slot);if(me?.progress){const pr=me.progress;gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;pushItem('혈색반월')}}const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
  // Server owns phase, timer and total health. Team side is player-relative.
- if(net.round!==5)liveSupplyApplied=false;liveApplySupplyReward(net,slot);liveSupplyUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[1-slot]??100;
+ if(net.round!==5)liveSupplyApplied=false;liveApplySupplyReward(net,slot);if(typeof liveApplySelectionReward==='function')liveApplySelectionReward(net,slot);liveSupplyUi(net,slot);if(typeof liveSelectionUi==='function')liveSelectionUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[foeSlot]??100;
  if(net.version!==livePhaseVersion){
   livePhaseVersion=net.version;
   clearRoundTimer();
@@ -796,21 +833,21 @@ window.LIVEApplyGame=function(net,slot,players){
   }else if(net.phase==='combat'){
    roundState.phase='combat';liveCombatActive=true;liveBeep('round');
    if(!net.pve){
-    const other=players.find(p=>p.slot!==slot);
+    const other=players.find(p=>p.slot===foeSlot);
     teams.B=(other?.team||[]).map(u=>({...u}));
    }else setupWildRound(net.round);
    const original=window.LIVENetReplaySeed;window.LIVENetReplaySeed=net.seed;
-   if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
+   if(net.hp[slot]<=0){teams.B=[];reset();$('#status').textContent='탈락 · 다른 플레이어 경기 관전 중';}else if(net.bye){teams.B=[];reset();$('#status').textContent='부전승 · HP 피해 없음';}else if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
    window.LIVENetReplaySeed=original;
-  }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='result'){
+  }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='special'){teams.B=[];roundState.phase='special';reset();$('#status').textContent=`ROUND ${net.round} · ${liveRoundKind(net.round)} · 서버 연동 준비 중`;renderGameEconomy();}else if(net.phase==='result'){
    if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
    if(net.pve){const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));for(const animal of defeated){const count=1+(Math.random()<.05?1:0);for(let k=0;k<count;k++)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}}
    roundState.phase='result';liveCombatActive=false;
-   const result=net.pve?'파밍 종료':net.battle?.outcome==='무승부'?'무승부':net.battle?.outcome===(slot===0?'A팀 승리':'B팀 승리')?'승리':'패배';
+   const result=net.kind==='pvp'&&net.bye?'부전승':net.kind&&!['farm','pvp'].includes(net.kind)?liveRoundKind(net.round)+' 종료':net.pve?'파밍 종료':net.battle?.outcome==='무승부'?'무승부':net.battle?.outcome==='A팀 승리'?'승리':'패배';
    $('#status').textContent=`ROUND ${net.round} · ${result} · 서버 판정`;renderGameEconomy();
   }else if(net.phase==='finished'){
    roundState.phase='finished';roundState.active=false;clearRoundTimer();running=false;
-   $('#status').textContent=net.hp[slot]<=0?'게임 종료 · 패배':'게임 종료 · 승리';
+   $('#status').textContent=net.winnerSlot===slot?'게임 종료 · 승리':net.winnerSlot===null?'게임 종료 · 무승부':'게임 종료 · 패배';
   }
  }
  roundState.remaining=rem;renderRoundUI();if(net.phase==='prep'&&net.prepNotice){const status=document.querySelector('#status');if(status)status.textContent=net.prepNotice;}

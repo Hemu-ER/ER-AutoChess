@@ -1,0 +1,23 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');const path=require('node:path');const os=require('node:os');
+const {SPECIALS,createSchedule,roundKind,pairSurvivors,draftOrder,selectionCandidates}=require('../round-rules.cjs');
+for(let i=0;i<1000;i++){const schedule=createSchedule();assert.equal(schedule.length,5);assert.deepEqual([...schedule].sort(),[...SPECIALS].sort());const expected=['farm','pvp','farm','pvp','supply','pvp'];assert.deepEqual(Array.from({length:6},(_,j)=>roundKind(j+1,schedule)),expected);for(let j=7;j<=15;j++){assert.equal(roundKind(j,schedule),j%2===0?'pvp':schedule[(j-7)/2])}for(let j=16;j<=60;j++)assert.equal(roundKind(j,schedule),'pvp')}
+for(let n=2;n<=8;n++){const players=Array.from({length:n},(_,slot)=>({slot})),hp=players.map(()=>100);const {pairs,bye}=pairSurvivors(players,hp);assert.equal(pairs.length,Math.floor(n/2));assert.equal(Number(Boolean(bye)),n%2);assert.equal(new Set([...pairs.flat(),...(bye?[bye]:[])].map(x=>x.slot)).size,n);assert.equal(selectionCandidates(n),n+2)}
+assert.deepEqual(draftOrder([{slot:0},{slot:1},{slot:2}],[30,10,20]),[1,2,0]);
+process.env.PORT='0';process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m8-01-'));
+const {server,rooms,advanceRoom,playerView}=require('../server.cjs');
+function makeRoom(n,round=8){const players=Array.from({length:n},(_,slot)=>({id:'p'+slot,slot,name:'P'+slot,connected:true,team:[{characterId:'alex',x:1,y:1,star:1,items:[]}],mastery:1,progress:{exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false},roundReady:false,farmDone:false}));return {code:'M8TEST',started:true,players:new Map(players.map(p=>[p.id,p])),messages:[],revision:0,game:{round,phase:'prep',schedule:createSchedule(),hp:Array(n).fill(100),version:1,endsAt:Date.now()-1}}}
+for(let n=2;n<=8;n++){
+ const room=makeRoom(n);rooms.set(room.code,room);advanceRoom(room);const g=room.game;assert.equal(g.phase,'combat','PvP 2-8 player combat');assert.equal(g.pairs.length,Math.floor(n/2),'each participant paired at most once');assert.equal(g.byeSlot===undefined||g.byeSlot===null,n%2===0);
+ for(const p of room.players.values()){const snap=playerView(room,p);assert.equal(snap.game.pairs,undefined,'no other player pair info leaked');assert.equal(snap.game.bye,n%2===1&&p.slot===g.byeSlot);if(!snap.game.bye)assert(Number.isInteger(snap.game.opponentSlot));}
+ const before=[...g.hp];g.endsAt=Date.now()-1;advanceRoom(room);assert.equal(g.phase,'result');for(const [i,h] of g.hp.entries())assert(h<=before[i]);if(g.byeSlot!==null&&g.byeSlot!==undefined)assert.equal(g.hp[g.byeSlot],100,'bye health must be unchanged');
+ rooms.delete(room.code);
+}
+const specialRoom=makeRoom(7,7);specialRoom.game.schedule=['experiment','boss','shop','auction','selection'];rooms.set(specialRoom.code,specialRoom);advanceRoom(specialRoom);assert.equal(specialRoom.game.phase,'special');assert.equal(specialRoom.game.specialType,'experiment');
+if(specialRoom.game.experimentId==='bomb'){const gs=specialRoom.game;assert.equal(gs.bombTeams.length,3);assert(Number.isInteger(gs.bombBye));const spectator=playerView(specialRoom,[...specialRoom.players.values()][gs.bombBye]);assert.equal(spectator.game.bombTeams,undefined);assert.equal(spectator.game.bombTeamId,null);const member=[...specialRoom.players.values()].find(p=>p.slot===gs.bombTeams[0].slots[0]);assert.equal(playerView(specialRoom,member).game.bombTeamId,'B0')}
+// M4 privacy fix: one player's supplies must not appear in another player's snapshot.
+const priv=makeRoom(3,5);priv.game.supplyOptions={0:[{type:'credits',value:7}],1:[{type:'credits',value:10}],2:[{type:'credits',value:9}]};priv.game.supplyResolved={0:{type:'credits',value:7}};const v=playerView(priv,[...priv.players.values()][1]);assert.deepEqual(Object.keys(v.game.supplyOptions),['1']);assert.deepEqual(Object.keys(v.game.supplyResolved),['1']);
+const qa=fs.readFileSync(path.join(__dirname,'../qa.js'),'utf8');for(const bit of ['game.deadline=Date.now()+30000','game.deadline=Date.now()+60000','game.deadline=Date.now()+40000','if(game.module>=2)','회로 오작동 · 즉시 실패','p.lines>=3?{credits:7'])assert(qa.includes(bit),'QA v3.0 rule missing: '+bit);
+const multiplayer=fs.readFileSync(path.join(__dirname,'../multiplayer.js'),'utf8');for(const bit of ['id="liveMaxPlayers"','id=\'liveTeamChat\'','makeMovable(dock)','makeMovable(teamDock)'])assert(multiplayer.includes(bit),'Chat/multi UI missing '+bit);
+rooms.clear();server.close(()=>{console.log('M8-01 PASS: special schedule ×1000, 2–8 pairs and health safety, secret supply cards, popup UI and QA v3.0 source checks');process.exit(0)});
