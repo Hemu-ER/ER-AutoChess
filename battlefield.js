@@ -29,7 +29,7 @@
     }
     return n >>> 0;
   };
-  function floorUrl(key) { return `assets/battlefields/floor/${key}.png`; }
+  function floorUrl(key) { return `assets/battlefields/floor/${key}.webp`; }
   function preload(key) {
     if (loading.has(key)) return;
     const img = new Image();

@@ -20,7 +20,7 @@ const roster=[
   "implemented": true,
   "main": "atk",
   "asset": {
-    "sd": "assets/characters/katja.png"
+    "sd": "assets/characters/katja.webp"
   }
 },
 {
@@ -42,7 +42,7 @@ const roster=[
   "implemented": true,
   "main": "amp",
   "asset": {
-    "sd": "assets/characters/haze.png"
+    "sd": "assets/characters/haze.webp"
   }
 },
 {
@@ -65,7 +65,7 @@ const roster=[
   "implemented": true,
   "main": "atk",
   "asset": {
-    "sd": "assets/characters/aiden.png"
+    "sd": "assets/characters/aiden.webp"
   }
 },
 {
@@ -87,7 +87,7 @@ const roster=[
   "implemented": true,
   "main": "hp",
   "asset": {
-    "sd": "assets/characters/elena.png"
+    "sd": "assets/characters/elena.webp"
   }
 },
 {
@@ -110,7 +110,7 @@ const roster=[
   "implemented": true,
   "main": "amp",
   "asset": {
-    "sd": "assets/characters/silvia.png"
+    "sd": "assets/characters/silvia.webp"
   }
 },
 {
@@ -133,7 +133,7 @@ const roster=[
   "implemented": true,
   "main": "atk",
   "asset": {
-    "sd": "assets/characters/alex.png"
+    "sd": "assets/characters/alex.webp"
   }
 },
   {
@@ -156,7 +156,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/hyunwoo.png"
+      "sd": "assets/characters/hyunwoo.webp"
     }
   },
   {
@@ -178,7 +178,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/adela.png"
+      "sd": "assets/characters/adela.webp"
     }
   },
   {
@@ -200,7 +200,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/dailin.png"
+      "sd": "assets/characters/dailin.webp"
     }
   },
   {
@@ -222,7 +222,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/yuki.png"
+      "sd": "assets/characters/yuki.webp"
     }
   },
   {
@@ -244,7 +244,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/rio.png"
+      "sd": "assets/characters/rio.webp"
     }
   },
   {
@@ -267,7 +267,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/justina.png"
+      "sd": "assets/characters/justina.webp"
     }
   },
   {
@@ -289,7 +289,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/jenny.png"
+      "sd": "assets/characters/jenny.webp"
     }
   },
   {
@@ -311,7 +311,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/nicky.png"
+      "sd": "assets/characters/nicky.webp"
     }
   },
   {
@@ -333,7 +333,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/shurin.png"
+      "sd": "assets/characters/shurin.webp"
     }
   },
   {
@@ -355,7 +355,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/marcus.png"
+      "sd": "assets/characters/marcus.webp"
     }
   },
   {
@@ -377,7 +377,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/ian.png"
+      "sd": "assets/characters/ian.webp"
     }
   },
   {
@@ -399,7 +399,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/yumin.png"
+      "sd": "assets/characters/yumin.webp"
     }
   },
   {
@@ -421,7 +421,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/debi-marlene.png"
+      "sd": "assets/characters/debi-marlene.webp"
     }
   },
   {
@@ -444,7 +444,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/garnet.png"
+      "sd": "assets/characters/garnet.webp"
     }
   },
   {
@@ -466,7 +466,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/kenneth.png"
+      "sd": "assets/characters/kenneth.webp"
     }
   },
   {
@@ -488,7 +488,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/irem.png"
+      "sd": "assets/characters/irem.webp"
     }
   },
   {
@@ -510,7 +510,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/laura.png"
+      "sd": "assets/characters/laura.webp"
     }
   },
   {
@@ -532,7 +532,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/bianca.png"
+      "sd": "assets/characters/bianca.webp"
     }
   },
   {
@@ -554,7 +554,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/cathy.png"
+      "sd": "assets/characters/cathy.webp"
     }
   },
   {
@@ -576,7 +576,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/abigail.png"
+      "sd": "assets/characters/abigail.webp"
     }
   },
   {
@@ -598,7 +598,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/leny.png"
+      "sd": "assets/characters/leny.webp"
     }
   },
   {
@@ -620,7 +620,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/hart.png"
+      "sd": "assets/characters/hart.webp"
     }
   },
   {
@@ -642,7 +642,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/isol.png"
+      "sd": "assets/characters/isol.webp"
     }
   },
   {
@@ -664,7 +664,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/chloe.png"
+      "sd": "assets/characters/chloe.webp"
     }
   },
   {
@@ -686,7 +686,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/sua.png"
+      "sd": "assets/characters/sua.webp"
     }
   },
   {
@@ -708,7 +708,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/johann.png"
+      "sd": "assets/characters/johann.webp"
     }
   },
   {
@@ -730,7 +730,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/nadine.png"
+      "sd": "assets/characters/nadine.webp"
     }
   },
   {
@@ -752,7 +752,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/bernice.png"
+      "sd": "assets/characters/bernice.webp"
     }
   },
   {
@@ -774,7 +774,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/rozzi.png"
+      "sd": "assets/characters/rozzi.webp"
     }
   },
   {
@@ -796,7 +796,7 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/aya.png"
+      "sd": "assets/characters/aya.webp"
     }
   },
   {
@@ -818,7 +818,7 @@ const roster=[
     "implemented": true,
     "main": "atk",
     "asset": {
-      "sd": "assets/characters/mirka.png"
+      "sd": "assets/characters/mirka.webp"
     }
   },
   {
@@ -840,28 +840,28 @@ const roster=[
     "implemented": true,
     "main": "amp",
     "asset": {
-      "sd": "assets/characters/charlotte.png"
+      "sd": "assets/characters/charlotte.webp"
     }
   },
   {
     "id":"wild_boar","name":"멧돼지","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":360,"atk":25,"amp":0,"range":1,"def":18,"as":0.62},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_boar.png"}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_boar.webp"}
   },
   {
     "id":"wild_dog","name":"들개","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":300,"atk":29,"amp":0,"range":1,"def":14,"as":0.78},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_dog.png"}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_dog.webp"}
   },
   {
     "id":"wild_wolf","name":"늑대","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":430,"atk":34,"amp":0,"range":1,"def":20,"as":0.82},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_wolf.png"}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_wolf.webp"}
   },
   {
     "id":"wild_bear","name":"곰","cost":0,"role":"야생동물","affiliations":[],
     "baseStats":{"hp":650,"atk":42,"amp":0,"range":1,"def":30,"as":0.58},
-    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_bear.png"}
+    "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_bear.webp"}
   }
 
 ];

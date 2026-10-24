@@ -23,6 +23,14 @@ const BASIC_ITEMS=LIVEItems.baseNames;
 const INVENTORY_LIMIT=12;
 let itemSelected=null;
 const playableRoster=()=>roster.filter(r=>!r.pveOnly&&r.cost>=1&&r.cost<=3);
+// Cache already-referenced character image decodes before the first combat. Never download the entire roster at once.
+const liveImagePreloads=new Map();
+function preloadVisibleCharacters(){
+ if(typeof Image==='undefined')return;
+ const ids=[...new Set([...gameState.shop,...teams.A.map(u=>u.characterId),...teams.B.map(u=>u.characterId)].filter(Boolean))];
+ for(const id of ids.slice(0,12)){const url=byId[id]?.asset?.sd;if(!url||liveImagePreloads.has(url))continue;const img=new Image();img.decoding='async';img.src=url;liveImagePreloads.set(url,img);if(liveImagePreloads.size>40)liveImagePreloads.delete(liveImagePreloads.keys().next().value)}
+}
+
 const filters={A:{q:"",cost:"all",role:"all",aff:"all",status:"all"},B:{q:"",cost:"all",role:"all",aff:"all",status:"all"}};
 
 
@@ -240,7 +248,7 @@ function applyLiveEconomy(assets,phase){
  gameState.pendingItemCount=(assets.overflowItems||[]).length;gameState.pendingUnitCount=(assets.pendingUnits||[]).length;
  gameState.owned=(assets.owned||[]).map(u=>({uid:u.uid,characterId:u.characterId,star:u.star,location:u.location,equipment:[...(u.items||[])],x:u.x,y:u.y}));
  gameState.nextOwnedId=assets.nextUid;
- if(['prep','intro'].includes(phase)){
+ if(['prep','intro','special'].includes(phase)){
   teams.A=gameState.owned.filter(o=>o.location==='board').map(o=>({ownedId:o.uid,characterId:o.characterId,star:o.star,x:o.x,y:o.y}));
   if(roundState.phase==='prep'&&!running)reset();
  }
@@ -276,12 +284,12 @@ function itemIcon(name){return LIVEItems.bloodInfo?.(name)?ITEM_ICON_PATH+'blood
 const ITEM_EFFECT_HINTS={'혈색반월':'유스티나 전용 · 액티브 섬멸 포격 범위 적 전체로 확장 · 흡수 아이템의 스탯 50%만 누적',"오토-암즈": "기본 공격력 +10%", "블레이드 부츠": "스킬 적중 시 2초간 공격 속도 +15%", "스펙터": "매초 인접 적에게 ATK 20% 피해", "아오자이": "받는 피해 20%를 3초 동안 지연", "미스릴 퀴버": "기본 공격 3회마다 최대 HP 6% 보호막 (1초)", "레이더": "기본 공격 3회마다 ATK 비례 추가 피해 및 회복", "서슬가시 체인": "피해 대상 회복량 -20% (5초)", "임세티": "스킬 증폭 +15%", "레버넌트": "매초 인접 적에게 AMP 25% 피해", "요명월": "액티브 사용 시 인접 적에게 AMP 60% 피해", "텔루리안 타임피스": "기본 공격마다 AMP 20% 추가 피해", "천룡잠": "치명타 시 액티브 피해 +2%, 최대 5중첩", "용의 비늘": "퍼센트 방어 관통 +15%p", "미스릴 크롭": "체력 +20%", "배틀 슈트": "공격자 거리 1/2/3에 따라 피해 감소 5/10/15%", "팬텀 자켓": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 체력 +10%", "타이탄 아머": "2초마다 다음 기본 공격에 추가 체력 비례 피해", "유령 신부의 드레스": "주변 1칸 적 방어력 -10% 오라", "가디언 슈트": "방어력 +10%", "길리 슈트": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 방어력 +10%", "화령장": "치명타 적중 시 받는 피해 -2%, 최대 5중첩", "슈팅스타의 자켓": "기본 공격 대상 방어력 -5%, 최대 2중첩", "살라딘의 화살통": "기본 공격마다 공격 속도 +5%, 최대 4중첩; 최대 중첩 적응형 +5%", "레가투스": "치명타 시 ATK·AS +5%, 최대 3중첩", "블래스터 헬멧": "5초마다 다음 기본 공격에 ATK 100% 추가 피해", "운명의 주사위": "치명타 피해 +10%p", "프시케의 칼날": "적 실험체 처치 시 +1C", "아이언 메이든": "퍼센트 방어 관통 +15%"};
 function itemStatsText(name){const item=LIVEItems.all[name];if(!item)return '';const labels={atk:'공격력',amp:'스킬 증폭',hp:'체력',def:'방어력',as:'공격 속도',crit:'치명타 확률',penFlat:'고정 방어 관통'};return Object.entries(item.stats).map(([k,v])=>`${labels[k]||k} +${['as','crit'].includes(k)?Math.round(v*100)+'%':v}`).join(' · ')}
 function itemSalePrice(name){return LIVEItems.all[name]?.basic?2:5}
-function itemTooltip(name){const id=LIVEItems.bloodInfo?.(name)?'혈색반월':name;return `${LIVEItems.displayName(name)} | 판매 시 +${itemSalePrice(name)}C | ${itemStatsText(name)||'스탯 없음'}${ITEM_EFFECT_HINTS[id]?' | 고유: '+ITEM_EFFECT_HINTS[id]:''}`;}
+function itemTooltip(name){const id=LIVEItems.bloodInfo?.(name)?'혈색반월':name;return `${LIVEItems.displayName(name)} | ${itemStatsText(name)||'스탯 없음'}${ITEM_EFFECT_HINTS[id]?' | 고유: '+ITEM_EFFECT_HINTS[id]:''}`;}
 function itemIconMarkup(name){return `<img src="${esc(itemIcon(name))}" alt="${esc(name)}" draggable="false">`}
 function equippedSlots(o){const arr=o?.equipment||[];return `<span class="live-equip-slots">${[0,1,2].map(i=>arr[i]?`<span class="live-equip-slot" data-item-tooltip="${esc(arr[i])}" title="${esc(itemTooltip(arr[i]))}">${itemIconMarkup(arr[i])}</span>`:`<span class="live-equip-slot empty" title="빈 장비 슬롯">+</span>`).join('')}</span>`}
 let itemPointerDrag=null;let suppressItemClick=false;
 function ensureItemCursorTip(){let t=document.querySelector('#liveItemCursorTip');if(!t){t=document.createElement('div');t.id='liveItemCursorTip';document.body.appendChild(t)}return t}
-function showItemCursorTip(name,x,y){if(!LIVEItems.all[name])return;const t=ensureItemCursorTip();t.innerHTML=`<div class="live-tip-head">${itemIconMarkup(name)}<b>${esc(LIVEItems.displayName(name))}</b></div><div>${esc(itemStatsText(name)||'스탯 없음')}</div><div>판매 +${itemSalePrice(name)}C</div>${ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name]?`<div class="live-tip-effect">고유효과 · ${esc(ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name])}</div>`:''}`;t.hidden=false;moveItemCursorTip(x,y)}
+function showItemCursorTip(name,x,y){if(!LIVEItems.all[name])return;const t=ensureItemCursorTip();t.innerHTML=`<div class="live-tip-head">${itemIconMarkup(name)}<b>${esc(LIVEItems.displayName(name))}</b></div><div>${esc(itemStatsText(name)||'스탯 없음')}</div>${ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name]?`<div class="live-tip-effect">고유효과 · ${esc(ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name])}</div>`:''}`;t.hidden=false;moveItemCursorTip(x,y)}
 function moveItemCursorTip(x,y){const t=document.querySelector('#liveItemCursorTip');if(!t||t.hidden)return;t.style.left=Math.min(x+17,innerWidth-t.offsetWidth-10)+'px';t.style.top=Math.min(y+17,innerHeight-t.offsetHeight-10)+'px'}
 function hideItemCursorTip(){const t=document.querySelector('#liveItemCursorTip');if(t)t.hidden=true}
 function bindItemTooltips(root=document){root.querySelectorAll?.('[data-item-tooltip]').forEach(el=>{if(el.dataset.itemTipBound)return;el.dataset.itemTipBound='1';el.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch'&&!itemPointerDrag?.started)showItemCursorTip(el.dataset.itemTooltip,e.clientX,e.clientY)});el.addEventListener('pointermove',e=>moveItemCursorTip(e.clientX,e.clientY));el.addEventListener('pointerleave',hideItemCursorTip);el.addEventListener('pointerdown',hideItemCursorTip)})}
@@ -337,13 +345,13 @@ function openLiveCodex(){
 }
 
 function beginItemPointerDrag(ev,i,source){if(roundState.phase!=='prep'||ev.button>0)return;itemPointerDrag={i,id:ev.pointerId,x:ev.clientX,y:ev.clientY,started:false,ghost:null};source.setPointerCapture?.(ev.pointerId);}
-function moveItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;if(!d.started){if(Math.hypot(d.x-ev.clientX,d.y-ev.clientY)<8)return;d.started=true;liveBeep('pick');d.ghost=document.createElement('div');d.ghost.className='live-item-drag-ghost';d.ghost.innerHTML=itemIconMarkup(gameState.items[d.i]);document.body.appendChild(d.ghost)}ev.preventDefault();d.ghost.style.left=ev.clientX+'px';d.ghost.style.top=ev.clientY+'px';updateCraftPreview(d,ev.clientX,ev.clientY);}
-function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;d.ghost?.remove();closeCraftPreview();if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=document.elementFromPoint(ev.clientX,ev.clientY);const targetItem=hit?.closest('[data-item-index]');if(hit?.closest('.dock-shop,[data-equip-uid],[data-owned-drag]')||targetItem)liveBeep('drop');if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();return}const alt=hit?.closest('[data-equip-uid]');if(alt){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();}}
-function cancelItemPointerDrag(){itemPointerDrag?.ghost?.remove();itemPointerDrag=null;closeCraftPreview()}
+function moveItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;if(!d.started){if(Math.hypot(d.x-ev.clientX,d.y-ev.clientY)<8)return;d.started=true;liveBeep('pick');d.ghost=document.createElement('div');d.ghost.className='live-item-drag-ghost';d.ghost.innerHTML=itemIconMarkup(gameState.items[d.i]);document.body.appendChild(d.ghost)}ev.preventDefault();d.ghost.style.left=ev.clientX+'px';d.ghost.style.top=ev.clientY+'px';updateCraftPreview(d,ev.clientX,ev.clientY);const shop=document.elementFromPoint(ev.clientX,ev.clientY)?.closest('.dock-shop');document.body.classList.toggle('shop-sell-active',!!shop);if(shop){const item=gameState.items[d.i];shop.dataset.sellHint=item?`판매 +${itemSalePrice(item)}C`:'';}}
+function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;d.ghost?.remove();closeCraftPreview();document.body.classList.remove('shop-sell-active');if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=document.elementFromPoint(ev.clientX,ev.clientY);const targetItem=hit?.closest('[data-item-index]');if(hit?.closest('.dock-shop,[data-equip-uid],[data-owned-drag]')||targetItem)liveBeep('drop');document.body.classList.remove('shop-sell-active');if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();return}const alt=hit?.closest('[data-equip-uid]');if(alt){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();}}
+function cancelItemPointerDrag(){itemPointerDrag?.ghost?.remove();itemPointerDrag=null;closeCraftPreview();document.body.classList.remove('shop-sell-active')}
 function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
  if(!panel){panel=document.createElement('section');panel.id='liveItemsPanel';document.body.appendChild(panel)}
- itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(LIVEItems.displayName(name))} · 판매 +${itemSalePrice(name)}C</span></button>`).join('');
+ itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(LIVEItems.displayName(name))}</span></button>`).join('');
  panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12${gameState.pendingItemCount?` · 대기 ${gameState.pendingItemCount}`:``}</b><button type="button" id="liveCodexOpen">도감 📖</button></div><small>PREP 전용 · 조합 / 실험체에 장착 / 상점에 판매</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div>`;
 
  panel.querySelectorAll('[data-item-index]').forEach(b=>b.onclick=e=>{e.preventDefault()});
@@ -437,6 +445,7 @@ function ensureRoundUI(){
  .cell{overflow:visible!important;border:0!important;background:transparent!important}.cell.divider{border:0!important}.coord{opacity:.24!important;font-size:7px!important}.ground-ring{opacity:.32;z-index:2}
  #board .unit{overflow:visible!important;z-index:10!important}
  #board .sd-slot{left:-8%!important;right:-8%!important;top:-38px!important;bottom:18px!important;overflow:visible!important;z-index:3!important;display:flex!important;align-items:flex-end!important;justify-content:center!important}
+ #board.formation-board .sd-slot img.sd-image{opacity:1!important;visibility:visible!important}
  #board .sd-image{display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center bottom!important;opacity:1!important;visibility:visible!important;image-rendering:auto;filter:drop-shadow(0 5px 6px #000b)}
  @media(max-width:850px){#board.formation-board{width:100%}#board .sd-slot{top:-24px!important}}
  .unit-hud.compact-hud{left:12%;right:12%;top:var(--hud-top,-42px);bottom:auto;z-index:80;display:grid;grid-template-columns:11px minmax(0,1fr);gap:3px;align-items:center;pointer-events:none}.compact-hud .hud-star{font-size:9px;line-height:1;text-align:center;text-shadow:0 1px 3px #000,0 0 4px #000}.compact-hud .hud-star.star-1{color:#69b9ff}.compact-hud .hud-star.star-2{color:#c58cff}.compact-hud .hud-star.star-3{color:#ffd75f}.compact-hud .hpbar{height:3px;margin:0;position:relative;z-index:81}.unit{z-index:10}.unit:hover,.unit:focus{z-index:20}.unit .unit-hud{z-index:80}
@@ -499,7 +508,7 @@ function liveRoundKind(round){
 function phaseLabel(){if([1,3].includes(roundState.round)&&roundState.phase==='combat')return '파밍 전투';return {idle:'대기',prep:'준비',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
 function syncBoardPresentation(){
  if(!board)return;
- const prep=appMode==='game'&&roundState.active&&roundState.phase==='prep';
+ const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special'].includes(roundState.phase)||(roundState.phase==='result'&&liveRoundKind(roundState.round)==='보급'));window.M6PixiAdapter?.showDomIfFormation?.(prep);
  board.classList.toggle('formation-board',prep);
  board.classList.toggle('combat-board',!prep);
  document.body.classList.toggle('formation-phase',prep);
@@ -540,11 +549,19 @@ function creditHtml(amount,cls='credit-price'){
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
  const name=esc(displayName(r)),initial=esc(displayName(r).slice(0,1));
- return r.asset?.sd?`<span class="${cls}"><img data-alpha-normalize="1" src="${esc(r.asset.sd)}" alt="${name}" loading="lazy" draggable="false" onerror="this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
+ return r.asset?.sd?`<span class="${cls}"><img data-alpha-normalize="1" src="${esc(r.asset.sd)}" alt="${name}" loading="eager" decoding="async" draggable="false" onerror="this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
 }
 function alphaBounds(img){
  const key=img.currentSrc||img.src;if(alphaBoundsCache.has(key))return alphaBoundsCache.get(key);if(!img.naturalWidth||!img.naturalHeight)return null;
- try{const c=document.createElement('canvas'),w=img.naturalWidth,h=img.naturalHeight;c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0);const d=x.getImageData(0,0,w,h).data;let minX=w,minY=h,maxX=-1,maxY=-1;for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){if(d[(yy*w+xx)*4+3]>12){if(xx<minX)minX=xx;if(xx>maxX)maxX=xx;if(yy<minY)minY=yy;if(yy>maxY)maxY=yy}}let centerX=w/2;if(maxX>=0){const weights=new Float64Array(w);let total=0;for(let yy=minY;yy<=maxY;yy++)for(let xx=minX;xx<=maxX;xx++){const a=d[(yy*w+xx)*4+3]/255;if(a>.05){weights[xx]+=a;total+=a}}let acc=0;for(let xx=0;xx<w;xx++){acc+=weights[xx];if(acc>=total*.5){centerX=xx;break}}}const b=maxX<0?{minX:0,minY:0,maxX:w-1,maxY:h-1,centerX:w/2}:{minX,minY,maxX,maxY,centerX};alphaBoundsCache.set(key,b);return b}catch(e){return null}
+ try{
+  const ow=img.naturalWidth,oh=img.naturalHeight,w=Math.min(240,ow),h=Math.max(1,Math.round(oh*w/ow));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data;let minX=w,minY=h,maxX=-1,maxY=-1,total=0,weightedX=0;
+  for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){const a=d[(yy*w+xx)*4+3];if(a>12){if(xx<minX)minX=xx;if(xx>maxX)maxX=xx;if(yy<minY)minY=yy;if(yy>maxY)maxY=yy;total+=a;weightedX+=a*xx}}
+  const scaleX=ow/w,scaleY=oh/h,centerX=total>0?(weightedX/total+.5)*scaleX:ow/2;
+  const b=maxX<0?{minX:0,minY:0,maxX:ow-1,maxY:oh-1,centerX:ow/2}:{minX:minX*scaleX,minY:minY*scaleY,maxX:Math.min(ow-1,(maxX+1)*scaleX-1),maxY:Math.min(oh-1,(maxY+1)*scaleY-1),centerX};
+  alphaBoundsCache.set(key,b);return b;
+ }catch(e){return null}
 }
 function normalizePortraitImage(img){
  if(!img.isConnected||!img.complete||!img.naturalWidth)return;
@@ -649,7 +666,8 @@ function renderGameEconomy(){
  if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}${shopSynergyTags(r)}<span class="shop-name">${esc(displayName(r))}</span><span class="shop-meta"><small>${esc(r.role)}</small>${creditHtml(r.cost)}</span></button>`}).join('');
- const benchOwned=gameState.owned.filter(o=>o.location==='bench');
+ preloadVisibleCharacters();
+  const benchOwned=gameState.owned.filter(o=>o.location==='bench');
  const bench=benchOwned.map(o=>{const r=byId[o.characterId];return `<article class="bench-unit star-${o.star}" data-owned-drag="${o.uid}" tabindex="0" data-inspect-character="${esc(r.id)}" data-inspect-star="${o.star}" title="${esc(displayName(r))} · 드래그해서 배치 / 상점에 놓아 판매">${characterPortrait(r,'bench-portrait')}<span class="bench-star">★</span>${equippedSlots(o)}</article>`}).join('')||'<span class="bench-empty">벤치가 비어 있어.</span>';
  // 보드/게임 화면에는 설명성 상태 문구를 출력하지 않는다. 전황과 실제 전투 UI만 표시.
  p.innerHTML='';
@@ -848,11 +866,80 @@ function liveRoundCurtain(net){
  curtain.addEventListener('animationend',done,{once:true});
  // Reduced motion/hidden tab: animation event may be missing. Server still has a 5s fallback.
 }
+
+// M8-03. Live, server-authoritative marketplace. Not the regular 5-card shop.
+let liveMarketStamp='',liveMarketNotice='';
+function liveMarketUi(net,slot,players){
+ let panel=document.querySelector('#liveMarketPanel');
+ if(!panel){panel=document.createElement('section');panel.id='liveMarketPanel';panel.hidden=true;document.body.appendChild(panel)}
+ const active=net?.phase==='special'&&net.specialType==='shop'&&!!net.market&&(net.hp?.[slot]??0)>0;
+ panel.hidden=!active;
+ if(!active){liveMarketStamp='';return}
+ const state=net.market;
+ const remaining=Math.max(0,Math.ceil((Math.min(net.endsAt,net.earlyEndsAt||Infinity)-Date.now())/1000));
+ const stamp=JSON.stringify([net.round,state.revision,gameState.credits,
+  gameState.owned.map(o=>[o.uid,o.star,o.location,o.equipment]),gameState.items,slot]);
+ if(stamp!==liveMarketStamp){
+  liveMarketStamp=stamp;
+  const prevPrice=panel.querySelector('#liveMarketPrice')?.value||'1';
+  const prevUnit=panel.querySelector('#liveMarketUnit')?.value||'';
+  const prevItem=panel.querySelector('#liveMarketItem')?.value||'';
+  const member=idx=>players?.find(x=>x.slot===idx)?.name||('참가자 '+(idx+1));
+  const listings=state.listings.map(l=>{
+   const own=l.sellerSlot===slot,open=l.status==='active';
+   const label=l.kind==='unit'?(byId[l.unit.characterId]?displayName(byId[l.unit.characterId]):l.unit.characterId)+' '+('★'.repeat(l.unit.star)):LIVEItems.displayName(l.item);
+   const gear=l.kind==='unit'&&l.unit.items.length?`<small>장비 포함 · ${l.unit.items.map(x=>esc(LIVEItems.displayName(x))).join(' / ')}</small>`:'';
+   return `<article class="live-market-listing ${open?'':'market-closed'}">
+    <div class="live-market-listing-info"><b>${esc(label)}</b>${gear}<small>판매자 · ${esc(member(l.sellerSlot))}</small></div>
+    <strong>${creditHtml(l.price)}</strong>
+    ${open?own?`<button data-market-cancel="${l.id}">등록 취소</button>`:`<button data-market-buy="${l.id}" ${gameState.credits<l.price?'disabled':''}>구매</button>`:`<span>${l.status==='sold'?'판매 완료':'반환됨'}</span>`}
+   </article>`;
+  }).join('');
+  panel.innerHTML=`<div class="live-market-card">
+   <header><small>AGLAIA // PLAYER MARKET</small><h2>ROUND ${net.round} · 거래 상점</h2><p>다른 참가자에게 실험체·아이템을 거래해. 등록된 실험체와 장비는 거래 중 소유 목록에서 빠져.</p>
+   <div class="live-market-status"><span>남은 시간 <b id="liveMarketTime">${remaining}초</b></span><span>내 크레딧 ${creditHtml(gameState.credits)}</span></div></header>
+   <div class="live-market-columns">
+    <div class="live-market-sell"><h3>매물 등록</h3>
+     <label>판매할 실험체 <select id="liveMarketUnit"><option value="">선택하지 않음</option>${gameState.owned.map(o=>`<option value="${o.uid}">${esc(displayName(byId[o.characterId]||{name:o.characterId}))} ${'★'.repeat(o.star)} · 장비 ${o.equipment.length}개</option>`).join('')}</select></label>
+     <button id="liveMarketListUnit" ${!gameState.owned.length?'disabled':''}>실험체 매물 등록</button>
+     <label>판매할 아이템 <select id="liveMarketItem"><option value="">선택하지 않음</option>${gameState.items.map((name,i)=>`<option value="${i}">${esc(LIVEItems.displayName(name))}</option>`).join('')}</select></label>
+     <button id="liveMarketListItem" ${!gameState.items.length?'disabled':''}>아이템 매물 등록</button>
+     <label>등록 가격 · 크레딧 <input id="liveMarketPrice" type="number" min="1" step="1" value="1" inputmode="numeric"></label>
+     <small>최소 1C, 수수료 0%. 미판매 상품은 라운드 종료 시 반환돼. 벤치가 가득 차면 수령 대기열에 들어가.</small>
+    </div>
+    <div class="live-market-browse"><h3>전체 매물 · ${state.listings.filter(l=>l.status==='active').length}개 판매 중</h3>
+     <div class="live-market-list">${listings||'<p class="live-market-empty">등록된 매물이 없어.</p>'}</div></div>
+   </div>
+   <footer><p id="liveMarketNotice" role="status">${esc(liveMarketNotice)}</p>
+    <button id="liveMarketReady" class="${state.ready?.[slot]?'is-ready':''}">${state.ready?.[slot]?'거래 종료 준비 취소':'거래 종료 준비'}</button>
+    <small>생존 참가자 전원이 완료하면 3초 후 종료해.</small></footer>
+  </div>`;
+  const unitField=panel.querySelector('#liveMarketUnit'),itemField=panel.querySelector('#liveMarketItem');
+  unitField.value=[...unitField.options].some(o=>o.value===prevUnit)?prevUnit:'';
+  itemField.value=[...itemField.options].some(o=>o.value===prevItem)?prevItem:'';
+  panel.querySelector('#liveMarketPrice').value=prevPrice;
+  const send=async(cmd,payload)=>{
+   if(panel.dataset.pending==='1')return;
+   panel.dataset.pending='1';const buttons=[...panel.querySelectorAll('button')],prior=buttons.map(b=>b.disabled);buttons.forEach(btn=>btn.disabled=true);
+   try{await window.LIVEMultiplayer.market(cmd,payload);liveMarketNotice='거래 요청 처리 완료';const notice=panel.querySelector('#liveMarketNotice');if(notice)notice.textContent=liveMarketNotice;}
+   catch(e){liveMarketNotice=e.message||'거래 요청 실패';const notice=panel.querySelector('#liveMarketNotice');if(notice)notice.textContent=liveMarketNotice;}
+   finally{panel.dataset.pending='0';buttons.forEach((btn,i)=>{if(btn.isConnected)btn.disabled=prior[i]});}
+  };
+  const price=()=>Number(panel.querySelector('#liveMarketPrice').value);
+  panel.querySelector('#liveMarketListUnit').onclick=()=>send('list',{kind:'unit',uid:Number(unitField.value),price:price()});
+  panel.querySelector('#liveMarketListItem').onclick=()=>send('list',{kind:'item',index:Number(itemField.value),price:price()});
+  panel.querySelectorAll('[data-market-buy]').forEach(btn=>btn.onclick=()=>send('buy',{listingId:Number(btn.dataset.marketBuy)}));
+  panel.querySelectorAll('[data-market-cancel]').forEach(btn=>btn.onclick=()=>send('cancel',{listingId:Number(btn.dataset.marketCancel)}));
+  panel.querySelector('#liveMarketReady').onclick=()=>send('ready',{ready:!state.ready?.[slot]});
+ }
+ const time=panel.querySelector('#liveMarketTime');if(time)time.textContent=remaining+'초';
+}
+
 window.LIVEApplyGame=function(net,slot,players){
  if(!roundState.active||!net)return;
  const foeSlot=Number.isInteger(net.opponentSlot)?net.opponentSlot:(players?.find(p=>p.slot!==slot&&net.hp[p.slot]>0)?.slot??slot);const other=players?.find(p=>p.slot===foeSlot);window.LIVEOpponentExploration=other?.progress?.exploration||{visited:[],stacks:0};const me=players?.find(p=>p.slot===slot);if(me?.assets)applyLiveEconomy(me.assets,net.phase);if(me?.progress){const pr=me.progress;gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;if(!me.assets)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;if(!me.assets)pushItem('혈색반월')}}const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
  // Server owns phase, timer and total health. Team side is player-relative.
- if(net.round!==5)liveSupplyApplied=false;if(!me?.assets){liveApplySupplyReward(net,slot);if(typeof liveApplySelectionReward==='function')liveApplySelectionReward(net,slot);}liveSupplyUi(net,slot);if(typeof liveSelectionUi==='function')liveSelectionUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[foeSlot]??100;
+ if(net.round!==5)liveSupplyApplied=false;if(!me?.assets){liveApplySupplyReward(net,slot);if(typeof liveApplySelectionReward==='function')liveApplySelectionReward(net,slot);}liveSupplyUi(net,slot);if(typeof liveSelectionUi==='function')liveSelectionUi(net,slot);if(typeof liveMarketUi==='function')liveMarketUi(net,slot,players);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[foeSlot]??100;
  if(net.version!==livePhaseVersion){
   livePhaseVersion=net.version;
   clearRoundTimer();
@@ -873,7 +960,7 @@ window.LIVEApplyGame=function(net,slot,players){
     teams.B=(other?.team||[]).map(u=>({...u}));
    }else setupWildRound(net.round);
    const original=window.LIVENetReplaySeed;window.LIVENetReplaySeed=net.seed;
-   if(net.hp[slot]<=0){teams.B=[];reset();$('#status').textContent='탈락 · 다른 플레이어 경기 관전 중';}else if(net.bye){teams.B=[];reset();$('#status').textContent='부전승 · HP 피해 없음';}else if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
+   if(net.hp[slot]<=0){teams.B=[];reset();$('#status').textContent='탈락 · 다른 플레이어 경기 관전 중';}else if(net.bye){teams.B=[];reset();$('#status').textContent='부전승 · HP 피해 없음';}else if(net.battle?.auto){teams.B=[];reset();$('#status').textContent=net.battle.outcome==='양 팀 패배'?'양 팀 편성 없음 · 자동 패배':net.battle.outcome==='A팀 승리'?'상대 편성 없음 · 자동 승리':'편성 없음 · 자동 패배';}else if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
    window.LIVENetReplaySeed=original;
   }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='special'){teams.B=[];roundState.phase='special';reset();$('#status').textContent=`ROUND ${net.round} · ${liveRoundKind(net.round)} · 서버 연동 준비 중`;renderGameEconomy();}else if(net.phase==='result'){
    if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
@@ -1091,9 +1178,9 @@ function m7UnitStatus(u){const result=[],details=[];const add=(title,icon,desc)=
  return result.length?`<div class="m7-unit-states">${result.slice(0,3).join('')}${result.length>3?`<span class="m7-state" title="${esc(details.slice(3).join(' · '))}">+${result.length-3}</span>`:''}</div>`:'';
 }
 function unitMarkup(u){
- const r=byId[u.characterId]||(u.characterId==='nina'?{name:'니나',role:'소환수',implemented:true,asset:{sd:'assets/characters/nina.png'}}:{name:u.name,role:u.role,implemented:true,asset:{}}),hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
+ const r=byId[u.characterId]||(u.characterId==='nina'?{name:'니나',role:'소환수',implemented:true,asset:{sd:'assets/characters/nina.webp'}}:{name:u.name,role:u.role,implemented:true,asset:{}}),hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,u.skill?.shield||0),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
  const visual=r.asset?.sd
-  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" draggable="false" onerror="this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
+  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" decoding="async" draggable="false" onerror="this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
   : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;
  return `<div class="ground-ring"></div>
   <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}">${visual}</div>
@@ -1112,7 +1199,7 @@ function render(){
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;const e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}${u.dead?' dead':''}${u.ccUntil>time?' cc':''}`;e.dataset.id=u.id;e.innerHTML=unitMarkup(u);if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}
   if((liveAttackUntil.get(u.id)||0)>performance.now())e.classList.add('live-attack-flash');
   const ownedEntry=appMode==='game'&&u.team==='A'?teams.A.find(x=>x.x===(u.initialX??u.x)&&x.y===(u.initialY??u.y)&&x.characterId===u.characterId&&x.star===u.star):null;
-  if(appMode==='game'&&ownedEntry?.ownedId){const owned=gameState.owned.find(o=>o.uid===ownedEntry.ownedId);e.insertAdjacentHTML('beforeend',equippedSlots(owned));bindItemTooltips(e);e.draggable=false;e.dataset.ownedDrag=ownedEntry.ownedId;e.style.touchAction='none';e.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,ownedEntry.ownedId,e))}else{e.draggable=!running&&!battle;e.ondragstart=event=>event.dataTransfer.setData('text/plain',u.id)}
+  if(appMode==='game'&&ownedEntry?.ownedId){const owned=gameState.owned.find(o=>o.uid===ownedEntry.ownedId);e.insertAdjacentHTML('beforeend',equippedSlots(owned));bindItemTooltips(e);e.draggable=false;e.dataset.ownedDrag=ownedEntry.ownedId;e.style.touchAction='none';e.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,ownedEntry.ownedId,e))}else{if(appMode==='game'&&u.team==='B'&&roundState.phase==='combat'){const foe=teams.B.find(t=>t.characterId===u.characterId&&t.star===u.star&&t.x===5-(u.initialX??u.x)&&t.y===(u.initialY??u.y))||teams.B.find(t=>t.characterId===u.characterId&&t.star===u.star);if(foe?.items?.length){e.insertAdjacentHTML('beforeend',equippedSlots({equipment:foe.items}));bindItemTooltips(e)}}e.draggable=!running&&!battle;e.ondragstart=event=>event.dataTransfer.setData('text/plain',u.id)}
   if(appMode!=='game'){e.onmouseenter=()=>showInspector(u);e.onfocus=()=>showInspector(u)}
   bindCharacterTip(e,u);e.tabIndex=0;cell.appendChild(e);normalizeVisuals(e);
  }

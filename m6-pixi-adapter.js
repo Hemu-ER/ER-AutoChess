@@ -13,7 +13,7 @@
  const params=new URLSearchParams(location.search);
  const chosen=params.get('m6floor');
  let floorId=FLOORS.includes(chosen)?chosen:'lab';
- let floorPath=`assets/m5/floor/${floorId}.png`;
+ let floorPath=`assets/m5/floor/${floorId}.webp`;
  let floorRequest=0;
  function desiredFloor(){
   const net=window.LIVEMultiplayer?.getRoom?.()?.game;
@@ -27,7 +27,7 @@
   const key=desired||'lab';
   if(floorId===key && activeFloor===(!!desired))return;
   const ticket=++floorRequest;
-  if(desired){try{const tex=await texture(`assets/m5/floor/${key}.png`);if(ticket!==floorRequest||!ready)return;floorSprite.texture=tex;floorSprite.visible=true;floorId=key;activeFloor=true;}
+  if(desired){try{const tex=await texture(`assets/m5/floor/${key}.webp`);if(ticket!==floorRequest||!ready)return;floorSprite.texture=tex;floorSprite.visible=true;floorId=key;activeFloor=true;}
     catch(e){console.warn('[M6 Pixi] 지역 이미지 로드 실패',e);return;}}
   else{floorSprite.visible=false;floorId=key;activeFloor=false;}
   document.getElementById('m6-field-label')?.replaceChildren(document.createTextNode(desired?`전장 · ${desired.toUpperCase()}`:''));
@@ -38,6 +38,8 @@
  const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map();
  let motionFrame=0;
  const clock=()=>performance.now();
+ function showDomIfFormation(formation){if(formation){board.classList.remove('m6-pixi-active');if(layer)layer.visible=false;}}
+
  function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
   const at=clock(),id=String(e.unitId);
   const bucket=Math.floor(at/500),key=id+':'+bucket;
@@ -102,6 +104,7 @@
  async function texture(url){if(loading.has(url))return loading.get(url);const task=P().Assets.load(url);loading.set(url,task);return task;}
  async function draw(){
   if(!ready||!app||!layer)return;
+  if(board.classList.contains('formation-board')){showDomIfFormation(true);return;}
   if(drawing){dirty=true;return;}
   drawing=true;const revision=drawVersion;
   try{
@@ -130,6 +133,8 @@
    const rect=cell.getBoundingClientRect(),slot=unit.querySelector('.sd-slot')?.getBoundingClientRect(),hud=unit.querySelector('.unit-hud')?.getBoundingClientRect();if(!rect.width||!rect.height)continue;
    list.push({id,src,rect,slot,hud,unit,cell});
   }
+  // The DOM remains the safe fallback when no visible sprites exist (e.g. after a full wipe).
+  if(!list.length){board.classList.remove('m6-pixi-active');layer.visible=false;for(const entry of nodes.values()){layer.removeChild(entry.container);entry.container.destroy({children:true})}nodes.clear();return;}
   // Only enable sprite substitution if every visible unit texture loaded.
   const loaded=await Promise.allSettled(list.map(v=>texture(v.src)));
   if(!ready||!app||revision!==drawVersion)return;
@@ -177,5 +182,5 @@
  let attempts=0;const begin=()=>{if(P()?.Application)init();else if(++attempts<30)setTimeout(begin,300);};
  begin();
  setInterval(()=>{if(ready && desiredFloor()!== (activeFloor?floorId:null))queue();},350);
- window.M6PixiAdapter={refresh:queue,disable:fallback,impact,combatSnapshot};
+ window.M6PixiAdapter={refresh:queue,disable:fallback,showDomIfFormation,impact,combatSnapshot};
 })();

@@ -9,6 +9,7 @@ const {roster:supplyRoster}=require('./roster.js');
 const {createSchedule,roundKind,pairSurvivors,draftOrder,LABELS}=require('./round-rules.cjs');
 const {makeCandidates}=require('./selection.cjs');
 const economy=require('./match-economy.cjs');
+const market=require('./match-market.cjs');
 const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
 const FARM_LINEUPS={
  1:[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_dog',star:1,x:1,y:0}],
@@ -73,6 +74,7 @@ function playerView(r,p){
   if(g.selection){g.selection={...g.selection,resolved:{[p.slot]:g.selection.resolved[p.slot]||null}}}
   if(g.supplyOptions)g.supplyOptions=Object.fromEntries([[p.slot,r.game.supplyOptions[p.slot]]]);
   if(g.supplyResolved)g.supplyResolved=Object.fromEntries([[p.slot,r.game.supplyResolved[p.slot]]]);
+  if(g.market)g.market=market.publicView(g.market);
   const pair=g.pairs?.find(x=>x.a===p.slot||x.b===p.slot);
   g.opponentSlot=pair?(pair.a===p.slot?pair.b:pair.a):null;
   g.bye=!!(g.kind==='pvp'&&['combat','result'].includes(g.phase)&&!pair&&g.hp[p.slot]>0);
@@ -100,14 +102,15 @@ function finishAbandonedMatch(r,reason='opponent_left',explicitWinnerSlot=null){
  if(explicitWinnerSlot===null)return;
  const survivors=living(r);
  if(survivors.length!==1||survivors[0].slot!==explicitWinnerSlot)return;
- g.winnerSlot=explicitWinnerSlot;g.endReason=reason;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;broadcast(r);
+ if(g.market)market.close(r);g.winnerSlot=explicitWinnerSlot;g.endReason=reason;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;broadcast(r);
 }
 function removePlayer(p){
  const r=rooms.get(p.room);if(!r)return;
+ if(r.game?.market)market.cancelSeller(r,p.slot);
  if(r.started&&r.game&&r.game.phase!=='finished')r.game.hp[p.slot]=0;
  r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();
  r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});
- if(r.started&&r.game&&r.game.phase!=='finished'){const remain=living(r);if(remain.length<=1){r.game.phase='finished';r.game.winnerSlot=remain[0]?.slot??null;r.game.endReason='opponent_left';r.game.endsAt=Date.now();r.game.version++}else refreshEarlyFinish(r)}
+ if(r.started&&r.game&&r.game.phase!=='finished'){const remain=living(r);if(remain.length<=1){if(r.game.market)market.close(r);r.game.phase='finished';r.game.winnerSlot=remain[0]?.slot??null;r.game.endReason='opponent_left';r.game.endsAt=Date.now();r.game.version++}else refreshEarlyFinish(r)}
  broadcast(r);cleanupRoom(r);
 }
 const getPlayer=(req,body)=>{const token=String(req.headers['x-live-token']||body?.token||'');for(const r of rooms.values())for(const p of r.players.values())if(p.token===token)return {p,r};return null};
@@ -173,6 +176,17 @@ if(url.pathname==='/api/selection-pick'){
  const now=Date.now();if(now-(p.lastTeamChat||0)<350)return reply(res,429,{error:'채팅 전송 간격을 지켜 줘.'});p.lastTeamChat=now;
  team.messages.push({name:p.name,slot:p.slot,text:message,at:now});team.messages=team.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true});
  }
+ if(url.pathname==='/api/market'){
+  const allowed=['list','buy','cancel','ready'];if(!allowed.includes(body.cmd))return reply(res,400,{error:'알 수 없는 거래 요청'});
+  try{
+   const outcome=market.act(r,p,body.cmd,body);
+   if(body.cmd==='ready'){
+    if(outcome.allReady&&!r.game.earlyEndsAt)r.game.earlyEndsAt=Math.min(r.game.endsAt,Date.now()+3000);
+    if(!outcome.allReady)r.game.earlyEndsAt=null;
+   }else r.game.earlyEndsAt=null;
+   r.game.version++;broadcast(r);return reply(res,200,{ok:true,...outcome});
+  }catch(e){return reply(res,409,{error:e.message})}
+ }
  if(url.pathname==='/api/advance'){return reply(res,403,{error:'라운드 변경은 서버가 관리해.'})}
 if(url.pathname==='/api/economy'){
   if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'준비 단계에서만 경제 동작을 할 수 있어.'});
@@ -215,7 +229,7 @@ function refreshEarlyFinish(r){
 }
 // Room-authoritative, variable-population match loop. A PvP phase pairs every living player;
 // one unmatched player receives a bye (no health loss).
-function finishGameIfNeeded(r){const g=r.game,alive=living(r);if(alive.length>1)return false;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.endReason='elimination';g.winnerSlot=alive[0]?.slot??null;g.version++;broadcast(r);return true}
+function finishGameIfNeeded(r){const g=r.game,alive=living(r);if(alive.length>1)return false;if(g.market)market.close(r);g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.endReason='elimination';g.winnerSlot=alive[0]?.slot??null;g.version++;broadcast(r);return true}
 function advanceRoom(r){
  const g=r.game;if(!g||g.phase==='finished'||Date.now()<Math.min(g.endsAt,g.earlyEndsAt||Infinity))return;
  if(g.phase==='prep'){
@@ -229,6 +243,12 @@ function advanceRoom(r){
    // Stage 1: explicit integration boundary. Later patches implement server-validated
    // trades, bids, boss combat, minigames and draft before currency is credited.
    g.phase='special';g.specialType=g.kind;
+   if(g.kind==='shop'){
+    g.market=market.open();
+    g.specialNotice=null;
+    g.earlyEndsAt=null;g.endsAt=Date.now()+120000;
+    g.version++;broadcast(r);return;
+   }
    if(g.kind==='selection'){
     g.selection={candidates:makeCandidates(g.round,players.length),order:draftOrder(players,g.hp),wave:0,resolved:{}};
     g.earlyEndsAt=null;g.endsAt=Date.now()+8000;g.version++;broadcast(r);return;
@@ -245,7 +265,15 @@ function advanceRoom(r){
    g.earlyEndsAt=null;g.endsAt=Date.now()+(g.kind==='experiment'&&g.experimentId==='bomb'?60000:15000);g.version++;broadcast(r);return;
   }
   const missing=players.filter(player=>!Array.isArray(player.team)||!player.team.length);
-  if(missing.length){g.earlyEndsAt=null;g.endsAt=Date.now()+10000;g.prepNotice='전투 대기 · '+missing.map(p=>p.name+' 편성 없음').join(', ');g.version++;broadcast(r);return}
+  if(missing.length){
+   // M8-03: selling the last deployed unit must not deadlock the next PvP.
+   // Old QA rooms without match assets keep their previous strict guard.
+   if(!players.every(p=>p.assets)||!g.missingTeamGraceStartedAt||Date.now()-g.missingTeamGraceStartedAt<10000){
+    g.missingTeamGraceStartedAt??=Date.now();g.earlyEndsAt=null;g.endsAt=Date.now()+1000;
+    g.prepNotice='편성 없음 · 10초 후 자동 패배: '+missing.map(p=>p.name).join(', ');g.version++;broadcast(r);return;
+   }
+   g.prepNotice='편성 없음 · 자동 패배 판정';
+  }else g.missingTeamGraceStartedAt=null;
   if(players.every(p=>p.assets)){
    g.phase='intro';g.introReady={};g.introStartedAt=Date.now();g.earlyEndsAt=null;
    g.endsAt=Date.now()+5000;g.version++;broadcast(r);return;
@@ -277,7 +305,10 @@ function advanceRoom(r){
     g.byeSlot=bye?.slot??null;
    for(const [a,b] of pairs){
     const seed=crypto.randomInt(1,2147483647);let battle;
-    try{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}}).run();battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0}}catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
+    try{
+     if(!a.team.length||!b.team.length)battle={outcome:!a.team.length&&!b.team.length?'양 팀 패배':!a.team.length?'B팀 승리':'A팀 승리',time:1,auto:true,personaTierA:0,personaTierB:0};
+     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}}).run();battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0}}
+    }catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
     if(battle.error||!Number.isFinite(battle.time)||battle.time<=0){g.endsAt=Date.now()+10000;g.prepNotice='전투 계산 재시도 대기 · 서버 전투 오류';g.earlyEndsAt=null;g.version++;console.warn('[M8-01] PvP invalid',{room:r.code,round:g.round,a:a.slot,b:b.slot,battle});broadcast(r);return}
     duration=Math.max(duration,Math.min(60,Math.ceil(battle.time)+2));g.pairs.push({a:a.slot,b:b.slot,seed,battle});
      g.lastOpponents[a.slot]=b.slot;g.lastOpponents[b.slot]=a.slot;
@@ -290,6 +321,7 @@ function advanceRoom(r){
   for(const p of living(r))if(!g.supplyResolved[p.slot]){g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];if(p.assets){economy.grant(p.assets,g.supplyResolved[p.slot],`r${g.round}:supply:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}}g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='special'){
+  if(g.specialType==='shop'&&g.market)market.close(r);
   if(g.specialType==='selection'&&g.selection){
    const sel=g.selection,wave=sel.order.slice(sel.wave*2,sel.wave*2+2);
    for(const slot of wave)if(!sel.resolved[slot]){
@@ -317,25 +349,26 @@ function advanceRoom(r){
    for(const pair of g.pairs||[]){const outcome=pair.battle.outcome;
     if(outcome==='A팀 승리')g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage-(pair.battle.personaTierA>=3?2:pair.battle.personaTierA>=2?1:0));
     if(outcome==='B팀 승리')g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage-(pair.battle.personaTierB>=3?2:pair.battle.personaTierB>=2?1:0));
+    if(outcome==='양 팀 패배'){g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage);g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage)}
    }
   }
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='result'){
   if(finishGameIfNeeded(r))return;
-  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
+  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
   g.version++;broadcast(r);
  }
 }
 const gameClock=setInterval(()=>{for(const r of rooms.values())try{
  if(r.started&&r.game?.phase!=='finished'){
-  for(const p of r.players.values())if(r.game.hp[p.slot]>0&&!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000){r.game.hp[p.slot]=0;r.messages.push({system:true,text:`${p.name} 연결 종료 · 탈락`,at:Date.now()});r.game.version++;broadcast(r)}
+  for(const p of r.players.values())if(r.game.hp[p.slot]>0&&!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000){if(r.game.market)market.cancelSeller(r,p.slot);r.game.hp[p.slot]=0;r.messages.push({system:true,text:`${p.name} 연결 종료 · 탈락`,at:Date.now()});r.game.version++;broadcast(r)}
   if(!finishGameIfNeeded(r))advanceRoom(r);
  }
 }catch(e){console.error('room timer:',e)}},250);
 const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;p.disconnectedAt=null;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;p.disconnectedAt=Date.now();refreshEarlyFinish(r);broadcast(r)}});return}
 if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable});
 if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
-if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-cache'});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
+if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':file.endsWith('.webp')?'public, max-age=86400':'no-cache','content-length':stat.size});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
 loadAccounts().then(()=>server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
 module.exports={server,rooms,drawSupplyReward,drawSupplyChoices,SUPPLY_ODDS,advanceRoom,playerView};

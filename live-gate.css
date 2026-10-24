@@ -283,3 +283,17 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 #liveRoundIntro small{color:#9cc6be;letter-spacing:.22em;font:600 14px/1.4 system-ui,sans-serif}
 @keyframes liveRoundIntroFade{0%,70%{opacity:1}100%{opacity:0}}
 @media (prefers-reduced-motion: reduce){#liveRoundIntro{animation-duration:.15s}}
+
+
+/* M8-03 · server-authoritative player marketplace, 2–8 players */
+#liveMarketPanel{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:20px;background:rgba(3,7,13,.82);backdrop-filter:blur(7px);color:#e3ecec;font-family:Pretendard,'Noto Sans KR',sans-serif}
+#liveMarketPanel[hidden]{display:none!important}
+.live-market-card{display:flex;flex-direction:column;width:min(1110px,100%);max-height:min(90dvh,950px);padding:22px;gap:15px;overflow:hidden;background:#101922;border:1px solid #49626c;border-radius:15px;box-shadow:0 20px 80px #000b}
+.live-market-card header small{color:#7db3aa;letter-spacing:.16em}.live-market-card h2{font-size:28px;margin:4px 0 8px}.live-market-card p,.live-market-card small{color:#aec0c7;line-height:1.5}
+.live-market-status{display:flex;gap:22px;flex-wrap:wrap;margin-top:10px;font-size:14px}.live-market-status b{color:#d2f0dc}
+.live-market-columns{display:grid;grid-template-columns:minmax(230px,310px) minmax(0,1fr);gap:16px;min-height:0;flex:1}.live-market-sell,.live-market-browse{display:flex;flex-direction:column;gap:9px;min-height:0;border:1px solid #344852;border-radius:10px;padding:14px;background:rgba(15,28,36,.7)}
+.live-market-card h3{font-size:16px;margin:0 0 3px}.live-market-sell label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#bad4d3}.live-market-sell select,.live-market-sell input{width:100%;min-width:0;color:#ebf4f3;background:#152630;padding:9px 10px;border:1px solid #52717a;border-radius:6px;font:inherit}
+.live-market-card button{padding:9px 14px;border:1px solid #628c91;color:#eaf4f5;border-radius:7px;background:#294650;font:inherit;cursor:pointer}.live-market-card button:hover:not(:disabled){border-color:#a3d6d2;background:#365965}.live-market-card button:disabled{opacity:.43;cursor:not-allowed}
+.live-market-list{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:8px}.live-market-listing{display:flex;align-items:center;gap:10px;border:1px solid #344957;border-radius:8px;padding:10px;background:#14222d}.live-market-listing-info{display:flex;flex-direction:column;min-width:0;flex:1;gap:2px}.live-market-listing-info b{font-size:14px;overflow-wrap:anywhere}.live-market-listing-info small{font-size:11px}.live-market-listing>strong{white-space:nowrap}.live-market-listing.market-closed{opacity:.55}.live-market-listing.market-closed>span{font-size:12px}.live-market-empty{margin:auto!important}
+.live-market-card footer{display:flex;align-items:center;gap:13px;border-top:1px solid #3a5260;padding-top:12px}.live-market-card footer p{flex:1;min-width:0;overflow-wrap:anywhere}.live-market-card footer .is-ready{background:#315b44;border-color:#81c09e}
+@media(max-width:700px){#liveMarketPanel{padding:6px}.live-market-card{max-height:97dvh;padding:12px;gap:8px}.live-market-card h2{font-size:22px}.live-market-columns{display:flex;flex-direction:column;overflow:auto}.live-market-sell,.live-market-browse{overflow:visible;flex:none}.live-market-list{max-height:30dvh}.live-market-card footer{flex-wrap:wrap}}
