@@ -275,3 +275,11 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 #liveSelectionPanel .live-selection-option.taken{background:#151b20;color:#829da3}
 
 #liveGameChat,#liveTeamChat{resize:both;overflow:hidden;min-width:190px}
+
+
+/* M8-02: online round intro blocks interactions until fade-out completes. */
+#liveRoundIntro{position:fixed;inset:0;z-index:10040;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(3,8,12,.96);color:#e7f8f5;text-align:center;pointer-events:auto;animation:liveRoundIntroFade 1.7s linear both}
+#liveRoundIntro b{font:700 clamp(30px,6vw,66px)/1.1 system-ui,sans-serif;letter-spacing:.12em}
+#liveRoundIntro small{color:#9cc6be;letter-spacing:.22em;font:600 14px/1.4 system-ui,sans-serif}
+@keyframes liveRoundIntroFade{0%,70%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#liveRoundIntro{animation-duration:.15s}}

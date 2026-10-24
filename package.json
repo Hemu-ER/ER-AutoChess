@@ -7,6 +7,7 @@
     "test:m7": "node tests/m7-regression.cjs",
     "test:m7-02": "node tests/m7-regression.cjs && node tests/m7-02-regression.cjs",
     "test:m7-03": "npm run test:m7-02 && node tests/m7-03-regression.cjs",
-    "test:m8-01": "npm run test:m7-03 && node tests/m8-01-regression.cjs && node tests/m8-selection-qa.cjs"
+    "test:m8-01": "npm run test:m7-03 && node tests/m8-01-regression.cjs && node tests/m8-selection-qa.cjs",
+    "test:m8-02": "npm run test:m8-01 && node tests/m8-02-economy.cjs"
   }
 }
