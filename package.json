@@ -9,6 +9,8 @@
     "test:m7-03": "npm run test:m7-02 && node tests/m7-03-regression.cjs",
     "test:m8-01": "npm run test:m7-03 && node tests/m8-01-regression.cjs && node tests/m8-selection-qa.cjs",
     "test:m8-02": "npm run test:m8-01 && node tests/m8-02-economy.cjs",
-    "test:m8-03": "npm run test:m8-02 && node tests/m8-03-market.cjs && node tests/m8-03-visual-regression.cjs"
+    "test:m8-03": "npm run test:m8-02 && node tests/m8-03-market.cjs && node tests/m8-03-visual-regression.cjs",
+    "test:m8-04": "npm run test:m8-03 && node tests/m8-04-auction.cjs && node tests/m8-04-ui-regression.cjs",
+    "test:m8-05": "node tests/m8-05-boss.cjs && node tests/m8-05-balance.cjs && node tests/m8-05-ui-regression.cjs"
   }
 }

@@ -27,7 +27,7 @@ function publicView(market){
   listings:market.listings.map(l=>({
    id:l.id,sellerSlot:l.sellerSlot,price:l.price,status:l.status,
    ...(l.kind==='item'?{kind:'item',item:l.item}:{kind:'unit',unit:{
-    characterId:l.unit.characterId,star:l.unit.star,items:[...l.unit.items]
+    characterId:l.unit.characterId,star:l.unit.star,location:l.unit.location,items:[...l.unit.items]
    }}),
    buyerSlot:l.buyerSlot??null
   }))};

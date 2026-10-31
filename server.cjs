@@ -10,6 +10,8 @@ const {createSchedule,roundKind,pairSurvivors,draftOrder,LABELS}=require('./roun
 const {makeCandidates}=require('./selection.cjs');
 const economy=require('./match-economy.cjs');
 const market=require('./match-market.cjs');
+const auction=require('./match-auction.cjs');
+const boss=require('./match-boss.cjs');
 const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
 const FARM_LINEUPS={
  1:[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_dog',star:1,x:1,y:0}],
@@ -75,6 +77,8 @@ function playerView(r,p){
   if(g.supplyOptions)g.supplyOptions=Object.fromEntries([[p.slot,r.game.supplyOptions[p.slot]]]);
   if(g.supplyResolved)g.supplyResolved=Object.fromEntries([[p.slot,r.game.supplyResolved[p.slot]]]);
   if(g.market)g.market=market.publicView(g.market);
+  if(g.auction)g.auction=auction.view(g.auction);
+  if(g.boss){g.boss=boss.view(r.game.boss,p.slot,g.phase);if(g.kind==='boss'&&['combat','result'].includes(g.phase)&&r.game.boss.results[p.slot]){g.seed=r.game.boss.results[p.slot].seed;g.battle={outcome:r.game.boss.results[p.slot].won?'A팀 승리':'B팀 승리',time:r.game.boss.results[p.slot].time,bossWin:r.game.boss.results[p.slot].won};}}
   const pair=g.pairs?.find(x=>x.a===p.slot||x.b===p.slot);
   g.opponentSlot=pair?(pair.a===p.slot?pair.b:pair.a):null;
   g.bye=!!(g.kind==='pvp'&&['combat','result'].includes(g.phase)&&!pair&&g.hp[p.slot]>0);
@@ -102,15 +106,15 @@ function finishAbandonedMatch(r,reason='opponent_left',explicitWinnerSlot=null){
  if(explicitWinnerSlot===null)return;
  const survivors=living(r);
  if(survivors.length!==1||survivors[0].slot!==explicitWinnerSlot)return;
- if(g.market)market.close(r);g.winnerSlot=explicitWinnerSlot;g.endReason=reason;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;broadcast(r);
+ if(g.market)market.close(r);if(g.auction&&!g.auction.closed)auction.playerLeft(r,g.auction.lots[g.auction.index]?.bidderSlot);g.winnerSlot=explicitWinnerSlot;g.endReason=reason;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;broadcast(r);
 }
 function removePlayer(p){
  const r=rooms.get(p.room);if(!r)return;
- if(r.game?.market)market.cancelSeller(r,p.slot);
+ if(r.game?.market)market.cancelSeller(r,p.slot);if(r.game?.auction)auction.playerLeft(r,p.slot);
  if(r.started&&r.game&&r.game.phase!=='finished')r.game.hp[p.slot]=0;
  r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();
  r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});
- if(r.started&&r.game&&r.game.phase!=='finished'){const remain=living(r);if(remain.length<=1){if(r.game.market)market.close(r);r.game.phase='finished';r.game.winnerSlot=remain[0]?.slot??null;r.game.endReason='opponent_left';r.game.endsAt=Date.now();r.game.version++}else refreshEarlyFinish(r)}
+ if(r.started&&r.game&&r.game.phase!=='finished'){const remain=living(r);if(remain.length<=1){if(r.game.market)market.close(r);if(r.game.auction&&!r.game.auction.closed)auction.playerLeft(r,r.game.auction.lots[r.game.auction.index]?.bidderSlot);r.game.phase='finished';r.game.winnerSlot=remain[0]?.slot??null;r.game.endReason='opponent_left';r.game.endsAt=Date.now();r.game.version++}else refreshEarlyFinish(r)}
  broadcast(r);cleanupRoom(r);
 }
 const getPlayer=(req,body)=>{const token=String(req.headers['x-live-token']||body?.token||'');for(const r of rooms.values())for(const p of r.players.values())if(p.token===token)return {p,r};return null};
@@ -158,7 +162,14 @@ if(url.pathname==='/api/supply-pick'){
  if(!options||!Number.isInteger(choice)||choice<0||choice>=3)return reply(res,400,{error:'잘못된 보상 선택'});
  r.game.supplyResolved[slot]=options[choice];if(p.assets){economy.grant(p.assets,options[choice],`r${r.game.round}:supply:${slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
 }
-if(url.pathname==='/api/farm-done'){if(!r.game||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const expected=r.game.farmResults?.[p.slot]?.time;if(Number.isFinite(expected)&&Date.now()-r.game.combatStartedAt<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/boss-done'){
+ const g=r.game,entry=g?.boss?.results[p.slot];
+ if(!g||g.kind!=='boss'||g.phase!=='combat'||!entry||g.hp[p.slot]<=0)return reply(res,409,{error:'보스 전투 단계가 아니야.'});
+ if(Number(body.round)!==g.round)return reply(res,409,{error:'지난 라운드 완료 요청이야.'});
+ if(Date.now()-g.combatStartedAt<Math.min(60,entry.time)*1000-250)return reply(res,409,{error:'보스 전투가 아직 끝나지 않았어.'});
+ p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
+if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const expected=r.game.farmResults?.[p.slot]?.time;if(Number.isFinite(expected)&&Date.now()-r.game.combatStartedAt<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'prep',endsAt:Date.now()+60000,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/selection-pick'){
@@ -175,6 +186,11 @@ if(url.pathname==='/api/selection-pick'){
  const message=String(body.text||'').trim().slice(0,240);if(!message)return reply(res,400,{error:'빈 메시지'});
  const now=Date.now();if(now-(p.lastTeamChat||0)<350)return reply(res,429,{error:'채팅 전송 간격을 지켜 줘.'});p.lastTeamChat=now;
  team.messages.push({name:p.name,slot:p.slot,text:message,at:now});team.messages=team.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true});
+ }
+ if(url.pathname==='/api/auction'){
+  const g=r.game;if(!g||g.phase!=='special'||g.specialType!=='auction'||!g.auction)return reply(res,409,{error:'경매가 진행 중이지 않아.'});
+  try{const bid=auction.bid(r,p,body.amount);g.endsAt=g.auction.endsAt;g.version++;broadcast(r);return reply(res,200,{ok:true,...bid})}
+  catch(e){return reply(res,409,{error:e.message})}
  }
  if(url.pathname==='/api/market'){
   const allowed=['list','buy','cancel','ready'];if(!allowed.includes(body.cmd))return reply(res,400,{error:'알 수 없는 거래 요청'});
@@ -229,7 +245,7 @@ function refreshEarlyFinish(r){
 }
 // Room-authoritative, variable-population match loop. A PvP phase pairs every living player;
 // one unmatched player receives a bye (no health loss).
-function finishGameIfNeeded(r){const g=r.game,alive=living(r);if(alive.length>1)return false;if(g.market)market.close(r);g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.endReason='elimination';g.winnerSlot=alive[0]?.slot??null;g.version++;broadcast(r);return true}
+function finishGameIfNeeded(r){const g=r.game,alive=living(r);if(alive.length>1)return false;if(g.market)market.close(r);if(g.auction&&!g.auction.closed)auction.playerLeft(r,g.auction.lots[g.auction.index]?.bidderSlot);g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.endReason='elimination';g.winnerSlot=alive[0]?.slot??null;g.version++;broadcast(r);return true}
 function advanceRoom(r){
  const g=r.game;if(!g||g.phase==='finished'||Date.now()<Math.min(g.endsAt,g.earlyEndsAt||Infinity))return;
  if(g.phase==='prep'){
@@ -243,15 +259,21 @@ function advanceRoom(r){
    // Stage 1: explicit integration boundary. Later patches implement server-validated
    // trades, bids, boss combat, minigames and draft before currency is credited.
    g.phase='special';g.specialType=g.kind;
+   if(g.kind==='boss'){
+    g.boss=boss.open(g.round,players);g.region='lab';g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=Date.now()+7000;g.version++;broadcast(r);return;
+   }
    if(g.kind==='shop'){
     g.market=market.open();
     g.specialNotice=null;
     g.earlyEndsAt=null;g.endsAt=Date.now()+120000;
     g.version++;broadcast(r);return;
    }
+   if(g.kind==='auction'){
+    g.auction=auction.open();g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=g.auction.endsAt;g.version++;broadcast(r);return;
+   }
    if(g.kind==='selection'){
     g.selection={candidates:makeCandidates(g.round,players.length),order:draftOrder(players,g.hp),wave:0,resolved:{}};
-    g.earlyEndsAt=null;g.endsAt=Date.now()+8000;g.version++;broadcast(r);return;
+    g.earlyEndsAt=null;g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;
    }
    if(g.kind==='experiment'){
     g.experimentId=['stack','zones','divide','bomb','quiz'][crypto.randomInt(5)];
@@ -321,6 +343,15 @@ function advanceRoom(r){
   for(const p of living(r))if(!g.supplyResolved[p.slot]){g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];if(p.assets){economy.grant(p.assets,g.supplyResolved[p.slot],`r${g.round}:supply:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}}g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='special'){
+  if(g.specialType==='boss'&&g.boss){
+   g.phase='combat';g.pve=true;g.boss.startedAt=Date.now();g.combatStartedAt=g.boss.startedAt;
+   for(const ply of living(r))ply.farmDone=false;
+   g.endsAt=Date.now()+60000;g.earlyEndsAt=null;g.version++;broadcast(r);return;
+  }
+  if(g.specialType==='auction'&&g.auction){
+   auction.settle(r);g.endsAt=g.auction.endsAt;g.earlyEndsAt=null;
+   if(!g.auction.closed){g.version++;broadcast(r);return;}
+  }
   if(g.specialType==='shop'&&g.market)market.close(r);
   if(g.specialType==='selection'&&g.selection){
    const sel=g.selection,wave=sel.order.slice(sel.wave*2,sel.wave*2+2);
@@ -328,12 +359,13 @@ function advanceRoom(r){
     const remaining=sel.candidates.filter(c=>c.claimedBy===null);if(!remaining.length)throw Error('선점 후보 부족');
     const candidate=remaining[crypto.randomInt(remaining.length)];candidate.claimedBy=slot;sel.resolved[slot]={characterId:candidate.characterId,star:1,item:candidate.item};const who=[...r.players.values()].find(p=>p.slot===slot);if(who?.assets){economy.grant(who.assets,{type:'selection',...sel.resolved[slot]},`r${g.round}:selection:${slot}`);who.team=economy.ownTeam(who.assets);who.mastery=who.assets.level;}
    }
-   sel.wave++;if(sel.wave*2<sel.order.length){g.endsAt=Date.now()+8000;g.version++;broadcast(r);return;}
+   sel.wave++;if(sel.wave*2<sel.order.length){g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;}
   }
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='combat'){
-  if(g.pve){
+  if(g.kind==='boss'&&g.boss){boss.settle(r);}
+  if(g.pve&&g.kind==='farm'){
    for(const ply of living(r)){
     if(!ply.assets)continue;
     const n=Math.min(3,g.farmResults?.[ply.slot]?.killed||0);
@@ -350,19 +382,21 @@ function advanceRoom(r){
     if(outcome==='A팀 승리')g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage-(pair.battle.personaTierA>=3?2:pair.battle.personaTierA>=2?1:0));
     if(outcome==='B팀 승리')g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage-(pair.battle.personaTierB>=3?2:pair.battle.personaTierB>=2?1:0));
     if(outcome==='양 팀 패배'){g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage);g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage)}
+    auction.onPvP(r,pair.a,outcome==='A팀 승리',outcome==='B팀 승리'||outcome==='양 팀 패배');
+    auction.onPvP(r,pair.b,outcome==='B팀 승리',outcome==='A팀 승리'||outcome==='양 팀 패배');
    }
   }
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='result'){
   if(finishGameIfNeeded(r))return;
-  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
+  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
   g.version++;broadcast(r);
  }
 }
 const gameClock=setInterval(()=>{for(const r of rooms.values())try{
  if(r.started&&r.game?.phase!=='finished'){
-  for(const p of r.players.values())if(r.game.hp[p.slot]>0&&!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000){if(r.game.market)market.cancelSeller(r,p.slot);r.game.hp[p.slot]=0;r.messages.push({system:true,text:`${p.name} 연결 종료 · 탈락`,at:Date.now()});r.game.version++;broadcast(r)}
+  for(const p of r.players.values())if(r.game.hp[p.slot]>0&&!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000){if(r.game.market)market.cancelSeller(r,p.slot);if(r.game.auction)auction.playerLeft(r,p.slot);r.game.hp[p.slot]=0;r.messages.push({system:true,text:`${p.name} 연결 종료 · 탈락`,at:Date.now()});r.game.version++;broadcast(r)}
   if(!finishGameIfNeeded(r))advanceRoom(r);
  }
 }catch(e){console.error('room timer:',e)}},250);

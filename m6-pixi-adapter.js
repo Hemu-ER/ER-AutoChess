@@ -38,7 +38,7 @@
  const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map();
  let motionFrame=0;
  const clock=()=>performance.now();
- function showDomIfFormation(formation){if(formation){board.classList.remove('m6-pixi-active');if(layer)layer.visible=false;}}
+ function showDomIfFormation(formation){if(app?.canvas)app.canvas.style.visibility=formation?'hidden':'visible';if(formation){board.classList.remove('m6-pixi-active');if(layer)layer.visible=false;}}
 
  function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
   const at=clock(),id=String(e.unitId);

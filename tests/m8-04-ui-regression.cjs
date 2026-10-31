@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const read=n=>fs.readFileSync(path.join(__dirname,'..',n),'utf8');
+const game=read('game.js'),css=read('live-gate.css'),server=read('server.cjs'),mp=read('multiplayer.js');
+assert.match(game,/function liveSetMarketDraft/);assert.match(game,/id="liveMarketDrop"/);assert.match(game,/liveSetMarketDraft\('unit',uid\)/);assert.match(game,/liveSetMarketDraft\('item',d.i\)/);
+assert.match(game,/live-market-gears/);assert.match(game,/l\.unit\.location==='board'/);assert.match(game,/장착 장비 없음/);assert.match(game,/✓ 거래 완료/);
+assert.doesNotMatch(game,/id="liveMarketUnit"/);assert.doesNotMatch(game,/id="liveMarketItem"/);
+assert.match(css,/#liveMarketPanel .live-market-card\{position:absolute;right:10px/);assert.match(css,/\.live-market-drop\.is-dragover/);
+assert.match(server,/g\.endsAt=Date\.now\(\)\+25000/);assert.match(game,/data-selection-timer>25/);assert.match(game,/live-selection-unit/);assert.match(game,/live-selection-loot/);
+assert.match(css,/\.formation-phase #board \.cell\.teamB/);assert.match(read('m6-pixi-adapter.js'),/app\.canvas\.style\.visibility=formation\?'hidden':'visible'/);assert.match(game,/board\.classList\.toggle\('formation-board',prep\)/);
+assert.match(game,/function liveAuctionUi/);assert.match(game,/live-auction-lots/);assert.match(mp,/auction:amount=>api\('auction',\{amount\}\)/);
+assert.match(server,/if\(url\.pathname==='\/api\/auction'\)/);
+console.log('M8-04 UI CONTRACT PASS: in-field drop market, seller source & gear labels, ready action, 25s draft, strict 3x3, 3-lot auction client/server');
