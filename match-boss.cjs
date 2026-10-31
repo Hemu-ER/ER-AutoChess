@@ -5,11 +5,11 @@ const {CombatEngine}=require('./combat-engine.js');
 const economy=require('./match-economy.cjs');
 const items=require('./items.js');
 const BOSSES=Object.freeze([
- Object.freeze({id:'boss_alpha',name:'알파',weight:40,tier:1,health:6700,attack:105,defense:34,interval:5,pattern:'추적 절단',reward:{credits:5,basics:2,completes:0},buff:{atk:.05}}),
- Object.freeze({id:'boss_omega',name:'오메가',weight:40,tier:2,health:10000,attack:142,defense:49,interval:4,pattern:'충격 파동',reward:{credits:8,basics:2,completes:1},buff:{hp:.08}}),
- Object.freeze({id:'boss_wickeline',name:'위클라인',weight:20,tier:3,health:14200,attack:166,defense:60,interval:3.5,pattern:'맹독 주입',reward:{credits:12,basics:3,completes:2},buff:{amp:.10,as:.05}})
+ Object.freeze({id:'boss_alpha',name:'알파',weight:40,tier:1,health:6700,attack:105,defense:34,interval:5,pattern:'추적 절단',reward:{credits:5,basics:2,completes:0},buff:{adaptive:1}}),
+ Object.freeze({id:'boss_omega',name:'오메가',weight:40,tier:2,health:10000,attack:142,defense:49,interval:4,pattern:'충격 파동',reward:{credits:8,basics:2,completes:1},buff:{defFlat:4}}),
+ Object.freeze({id:'boss_wickeline',name:'위클라인',weight:20,tier:3,health:14200,attack:166,defense:60,interval:3.5,pattern:'맹독 주입',reward:{credits:12,basics:3,completes:2},buff:{wickeline:70}})
 ]);
-const buffNames=Object.freeze({atk:'공격력 +5%',hp:'최대 HP +8%',amp:'스킬 증폭 +10%',as:'공격 속도 +5%'});
+const buffNames=Object.freeze({adaptive:'적응형 ATK +3 또는 AMP +6',defFlat:'DEF +4',wickeline:'실험체별 6초 충전 · 다음 직접 적중에 추가 스킬 피해 70'});
 const find=id=>BOSSES.find(b=>b.id===id);
 function choose(roll=crypto.randomInt(100)){
  if(!Number.isInteger(roll)||roll<0||roll>=100)throw Error('보스 추첨 범위 오류');

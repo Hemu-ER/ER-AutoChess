@@ -12,6 +12,7 @@ const economy=require('./match-economy.cjs');
 const market=require('./match-market.cjs');
 const auction=require('./match-auction.cjs');
 const boss=require('./match-boss.cjs');
+const experiment=require('./match-experiment.cjs');
 const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
 const FARM_LINEUPS={
  1:[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_dog',star:1,x:1,y:0}],
@@ -76,6 +77,7 @@ function playerView(r,p){
   if(g.selection){g.selection={...g.selection,resolved:{[p.slot]:g.selection.resolved[p.slot]||null}}}
   if(g.supplyOptions)g.supplyOptions=Object.fromEntries([[p.slot,r.game.supplyOptions[p.slot]]]);
   if(g.supplyResolved)g.supplyResolved=Object.fromEntries([[p.slot,r.game.supplyResolved[p.slot]]]);
+  if(g.experiment){g.experiment=r.game.experiment.groups.some(t=>t.slots.includes(p.slot))?experiment.view(r.game.experiment,p.slot):null;}
   if(g.market)g.market=market.publicView(g.market);
   if(g.auction)g.auction=auction.view(g.auction);
   if(g.boss){g.boss=boss.view(r.game.boss,p.slot,g.phase);if(g.kind==='boss'&&['combat','result'].includes(g.phase)&&r.game.boss.results[p.slot]){g.seed=r.game.boss.results[p.slot].seed;g.battle={outcome:r.game.boss.results[p.slot].won?'A팀 승리':'B팀 승리',time:r.game.boss.results[p.slot].time,bossWin:r.game.boss.results[p.slot].won};}}
@@ -110,6 +112,7 @@ function finishAbandonedMatch(r,reason='opponent_left',explicitWinnerSlot=null){
 }
 function removePlayer(p){
  const r=rooms.get(p.room);if(!r)return;
+ if(r.game?.experiment&&r.game.experiment.groups.some(t=>t.slots.includes(p.slot)))experiment.disconnect(r.game.experiment,p.slot);
  if(r.game?.market)market.cancelSeller(r,p.slot);if(r.game?.auction)auction.playerLeft(r,p.slot);
  if(r.started&&r.game&&r.game.phase!=='finished')r.game.hp[p.slot]=0;
  r.players.delete(p.id);const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();
@@ -161,6 +164,11 @@ if(url.pathname==='/api/supply-pick'){
  if(r.game.supplyResolved?.[slot])return reply(res,409,{error:'보상을 이미 선택했어.'});
  if(!options||!Number.isInteger(choice)||choice<0||choice>=3)return reply(res,400,{error:'잘못된 보상 선택'});
  r.game.supplyResolved[slot]=options[choice];if(p.assets){economy.grant(p.assets,options[choice],`r${r.game.round}:supply:${slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
+if(url.pathname==='/api/experiment'){
+ const g=r.game;
+ if(!g||g.phase!=='special'||g.specialType!=='experiment'||!g.experiment||g.hp[p.slot]<=0||Number(body.round)!==g.round)return reply(res,409,{error:'실험 진행 단계가 아니야.'});
+ try{experiment.action(g.experiment,p.slot,body);g.version++;broadcast(r);return reply(res,200,{ok:true})}catch(e){return reply(res,409,{error:e.message})}
 }
 if(url.pathname==='/api/boss-done'){
  const g=r.game,entry=g?.boss?.results[p.slot];
@@ -277,11 +285,8 @@ function advanceRoom(r){
    }
    if(g.kind==='experiment'){
     g.experimentId=['stack','zones','divide','bomb','quiz'][crypto.randomInt(5)];
-    if(g.experimentId==='bomb'){
-     const order=pairSurvivors(players,g.hp),teams=order.pairs.map(([a,b],i)=>({id:'B'+i,slots:[a.slot,b.slot],operator:a.slot,expert:b.slot,messages:[]}));
-     // An unpaired survivor receives a bye. They never join a different team's private chat.
-     g.bombBye=order.bye?.slot??null;g.bombTeams=teams;
-    }
+    g.experiment=experiment.open(players,g.experimentId);
+    g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=Date.now()+250;g.version++;broadcast(r);return;
    }
    g.specialNotice='특수 라운드 서버 판정 연동 대기 · 이번 패치에서는 보상을 지급하지 않아.';
    g.earlyEndsAt=null;g.endsAt=Date.now()+(g.kind==='experiment'&&g.experimentId==='bomb'?60000:15000);g.version++;broadcast(r);return;
@@ -343,6 +348,11 @@ function advanceRoom(r){
   for(const p of living(r))if(!g.supplyResolved[p.slot]){g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];if(p.assets){economy.grant(p.assets,g.supplyResolved[p.slot],`r${g.round}:supply:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}}g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
  if(g.phase==='special'){
+  if(g.specialType==='experiment'&&g.experiment){
+   for(const p of r.players.values())if(g.hp[p.slot]<=0)experiment.disconnect(g.experiment,p.slot);
+   if(!experiment.tick(g.experiment)){g.endsAt=Date.now()+250;g.version++;broadcast(r);return;}
+   experiment.settle(r);
+  }
   if(g.specialType==='boss'&&g.boss){
    g.phase='combat';g.pve=true;g.boss.startedAt=Date.now();g.combatStartedAt=g.boss.startedAt;
    for(const ply of living(r))ply.farmDone=false;
@@ -390,7 +400,7 @@ function advanceRoom(r){
  }
  if(g.phase==='result'){
   if(finishGameIfNeeded(r))return;
-  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
+  g.round++;for(const player of living(r))if(player.assets){economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.experiment=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
   g.version++;broadcast(r);
  }
 }

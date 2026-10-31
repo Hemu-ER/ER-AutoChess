@@ -45,7 +45,7 @@ async function run(){
  // QA LAB executes with synthetic DOM to verify actual action handlers, not only source text.
  const elements=new Map();function element(id){if(!elements.has(id))elements.set(id,{id,innerHTML:'',textContent:'',value:'',addEventListener(){},querySelectorAll(){return []}});return elements.get(id)}
  const dummy={getElementById:element,addEventListener(){},querySelectorAll(){return []},activeElement:{tagName:'BODY'}};
- const sandbox={window:{},document:dummy,Date,Math,console,setInterval(){return 1},ERRoster:roster,LIVEItems:items};vm.createContext(sandbox);vm.runInContext(fs.readFileSync(path.join(__dirname,'../qa.js'),'utf8'),sandbox);
+ const sandbox={window:{},document:dummy,Date,Math,console,setInterval(){return 1},ERRoster:roster,LIVEItems:items};vm.createContext(sandbox);vm.runInContext(fs.readFileSync(path.join(__dirname,'../minigame-core.js'),'utf8'),sandbox);sandbox.LIVEMinigame=sandbox.window.LIVEMinigame||sandbox.LIVEMinigame;vm.runInContext(fs.readFileSync(path.join(__dirname,'../qa.js'),'utf8'),sandbox);
  const lab=sandbox.window.LIVEQA;
  lab.select('stack');lab.act('contract','safe');lab.act('drop');assert.equal(lab.snapshot().game.players.A.contract,'safe');assert.equal(lab.snapshot().game.deadline>0,true);
  lab.select('bomb');const bomb=lab.snapshot().game;assert.equal(bomb.modules.length,2);assert.equal(bomb.deadline>0,true);

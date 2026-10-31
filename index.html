@@ -38,6 +38,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
 (function(){if(['combat','round'].includes(new URLSearchParams(location.search).get('qa'))){document.documentElement.classList.add('m611-qa');return;}window.addEventListener('DOMContentLoaded',()=>{let tries=0;const check=()=>{const intro=document.getElementById('live-intro');if(intro&&!intro.classList.contains('live-exit')){document.body.classList.add('m611-intro-cleared');return;}if(++tries<80)setTimeout(check,50);else document.body.classList.add('m611-intro-cleared');};check();});})();
 </script>
 <style>html.m611-qa body::before{display:none!important}</style>
+<link rel="stylesheet" href="online-experiment.css">
 </head>
 <body>
 <div class="app">
@@ -122,5 +123,6 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
  document.body.appendChild(a);
 })();
 </script>
+<script src="online-experiment.js"></script>
 </body>
 </html>
