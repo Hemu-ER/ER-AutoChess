@@ -27,28 +27,6 @@
   function drawTeamChat(){const g=room?.game,active=g?.phase==='special'&&g.specialType==='experiment'&&g.experimentId==='bomb'&&!!g.bombTeamId;teamDock.hidden=!active;if(!active)return;$('#liveTeamMessages').innerHTML=(g.teamMessages||[]).map(m=>`<div><b>${safe(m.name)}</b>: ${safe(m.text)}</div>`).join('');$('#liveTeamMessages').scrollTop=$('#liveTeamMessages').scrollHeight}
 
   const notice=t=>{$('#liveNotice').textContent=t};
-  const battlePanel=document.createElement('aside');battlePanel.id='liveCombatLogPanel';battlePanel.hidden=true;battlePanel.innerHTML='<div class="live-combat-head">전투 로그 <button type="button" id="liveClearCombat">지우기</button></div><div id="liveCombatLines" role="log" aria-live="off"></div>';document.body.appendChild(battlePanel);
-  // Keep only events confidently attributed to a friendly unit.
-  // If names overlap between teams, omit ambiguous character logs rather than leak enemy events.
-  function ownBattleLogLine(raw){
-   if(typeof units==='undefined'||!Array.isArray(units))return false;
-   const strip=s=>String(s).replace(/<[^>]*>/g,'').replace(/^\[\d+(?:\.\d+)?\]\s*/, '');
-   const txt=strip(raw);
-   if(/(?:A팀|B팀)\s*(?:시너지|·)/.test(txt))return /A팀\s*(?:시너지|·)/.test(txt);
-   if(/^(?:A팀 승리|B팀 승리|무승부)/.test(txt))return false; // server supplies the result
-   const own=new Set(units.filter(u=>u.team==='A').map(u=>u.name));
-   const enemy=new Set(units.filter(u=>u.team==='B').map(u=>u.name));
-   const names=[...new Set([...own,...enemy])].sort((a,b)=>b.length-a.length);
-   const hit=names.find(n=>txt.includes(n));
-   if(!hit||!own.has(hit)||enemy.has(hit))return false;
-   // Suppress minor periodic buffs/ticks. Keep major combat events only.
-   if(!/(스킬|처치|부활|소환|시너지|행동 불능|생명 공유|무적|처형|기절|수면|Peacemaker|정신 집중)/.test(txt))return false;
-   return true;
-  }
-  let lastLogMarker='';function addCombatLine(message){const el=document.createElement('div');el.textContent=message;$('#liveCombatLines').prepend(el);while($('#liveCombatLines').children.length>48)$('#liveCombatLines').lastElementChild.remove()}
-  $('#liveClearCombat').onclick=()=>$('#liveCombatLines').replaceChildren();
-  const legacyLog=document.querySelector('#log');if(legacyLog){let lastLines=new Set();new MutationObserver(()=>{const lines=[...legacyLog.children].slice(0,20);for(const el of lines.reverse()){const line=el.textContent.trim();if(line&&!lastLines.has(line)&&ownBattleLogLine(line))addCombatLine(line)}lastLines=new Set([...legacyLog.children].slice(0,80).map(x=>x.textContent.trim()))}).observe(legacyLog,{childList:true,subtree:false})}
-
   // The end overlay uses the server's final result, not independently simulated HP.
   const endScreen=document.createElement('section');endScreen.id='liveMatchEnd';endScreen.hidden=true;
   endScreen.innerHTML='<div class="live-end-card"><small>AGLAIA // MATCH COMPLETE</small><h2 id="liveEndTitle"></h2><p id="liveEndText"></p><button id="liveEndLeave" class="live-primary">로비로 돌아가기</button></div>';
@@ -67,22 +45,16 @@
    $('#liveEndText').textContent=g.endReason==='opponent_left'?'상대 플레이어가 나가 게임이 종료되었습니다.':draw?'생존자가 없어 무승부로 종료됐어.':winner===slot?'마지막까지 살아남았어!':'상대 플레이어가 최후의 생존자야.';
    endScreen.hidden=false;
   }
-  function observeCombat(g){if(!openedGame||!g)return;const marker=g.round+':'+g.phase+':'+g.version;if(marker===lastLogMarker)return;lastLogMarker=marker;const label=g.phase==='combat'?(g.pve?'야생동물 파밍 시작':g.bye?'부전승 · 전투 없음':'플레이어 대전 시작'):g.phase==='special'?'특수 라운드 · '+({shop:'상점',auction:'경매',boss:'보스',experiment:'번외 실험',selection:'선점'}[g.specialType]||g.specialType):g.phase==='supply'?'보급 선택':g.phase==='prep'?'준비 단계':g.phase==='result'?'라운드 종료':g.phase==='finished'?'게임 종료':g.phase;addCombatLine('R'+g.round+' · '+label);if(g.phase==='result'&&g.battle?.outcome){
-   const slot=room?.players.find(p=>p.id===playerId)?.slot||0;
-   const ownWin='A팀 승리';
-   addCombatLine('결과: '+(g.battle.outcome==='무승부'?'무승부':g.battle.outcome===ownWin?'승리':'패배'));
-  }}
-
   let registering=false;function authMode(isRegister){registering=isRegister;$('#authTitle').textContent=isRegister?'회원가입':'로그인';$('#registerFields').hidden=!isRegister;$('#authLogin').hidden=isRegister;$('#authRegister').textContent=isRegister?'계정 만들기':'회원가입 화면';$('#authBack').hidden=!isRegister;$('#authPw').autocomplete=isRegister?'new-password':'current-password'}
   async function api(action,data={}){const res=await fetch('/api/'+action,{method:'POST',headers:{'content-type':'application/json','x-live-token':token,'x-live-session':session},body:JSON.stringify({...data,session})});const obj=await res.json();if(!res.ok)throw Error(obj.error||'요청 실패');return obj}
   const display=(part)=>{ $('#liveAuth').hidden=part!=='auth';$('#liveRooms').hidden=part!=='rooms';$('#liveWaiting').hidden=part!=='waiting'; };
   function setIdentity(j){username=j.username;nickname=j.nickname||j.username;$('#liveAccount').textContent=nickname;$('#liveNickname').value=nickname;}
   function showRoom(){if(!room)return;display('waiting');$('#liveRoomName').textContent='ROOM '+room.code+' · '+room.players.length+'/'+room.maxPlayers+'명';const own=room.players.find(p=>p.id===playerId);$('#liveMemberList').innerHTML=room.players.map(p=>`<div class="live-member"><b>${safe(p.name)}</b><span>${p.connected?'● 접속':'○ 연결 중'} · ${p.ready?'준비 완료':'대기'}</span></div>`).join('');$('#liveReady').textContent=own?.ready?'준비 취소':'준비하기';const ready=room.players.length>=2&&room.players.every(p=>p.ready&&p.connected);$('#liveStart').hidden=own?.slot!==0;$('#liveStart').disabled=!ready;notice(ready?'모두 준비 완료! 방장이 게임을 시작할 수 있어.':'참가자 모두 준비해야 시작할 수 있어.');if(room.started)openGame();}
   function drawChat(){if(!room)return;$('#liveGameCode').textContent=room.code;$('#liveGameMembers').textContent=room.players.length+'/'+room.maxPlayers;$('#liveMessages').innerHTML=room.messages.map(m=>`<div>${m.system?'<i>시스템</i>':`<b>${safe(m.name)}</b>`}: ${safe(m.text)}</div>`).join('');$('#liveMessages').scrollTop=$('#liveMessages').scrollHeight;}
-  function openGame(){if(openedGame)return;openedGame=true;document.body.classList.remove('live-gated');gate.hidden=true;dock.hidden=false;battlePanel.hidden=false;drawTeamChat();$('#devExit')?.setAttribute('hidden','');if(typeof enterAppMode==='function')enterAppMode('game');$('#devExit')?.setAttribute('hidden','');drawChat();lastTeam='';poller=setInterval(pushTeam,700);clock=setInterval(()=>{if(room?.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);},250);pushTeam();}
+  function openGame(){if(openedGame)return;openedGame=true;document.body.classList.remove('live-gated');gate.hidden=true;dock.hidden=false;drawTeamChat();$('#devExit')?.setAttribute('hidden','');if(typeof enterAppMode==='function')enterAppMode('game');$('#devExit')?.setAttribute('hidden','');drawChat();lastTeam='';poller=setInterval(pushTeam,700);clock=setInterval(()=>{if(room?.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);},250);pushTeam();}
   async function pushTeam(){if(!token||!room||!openedGame||room.game?.phase!=='prep'||room.game?.hp?.[room.players.find(p=>p.id===playerId)?.slot]<=0||typeof teams==='undefined'||!Array.isArray(teams.A))return;const team=teams.A.slice(0,3).map(x=>({ownedId:x.ownedId,characterId:x.characterId,x:x.x,y:x.y,star:x.star,items:[...(gameState.owned.find(o=>o.uid===x.ownedId)?.equipment||[])]}));const str=JSON.stringify([team,gameState.masteryLevel]);if(str===lastTeam)return;lastTeam=str;try{await api('team',{team,mastery:gameState.masteryLevel})}catch(e){lastTeam='';console.warn('배치 공유 실패',e)}}
-  function disconnect(){endScreen.hidden=true;dock.hidden=true;teamDock.hidden=true;battlePanel.hidden=true;if(poller)clearInterval(poller);if(clock)clearInterval(clock);clock=null;poller=null;events?.close();events=null;token='';playerId='';room=null;lastTeam='';}
-  function connectMatch(j){token=j.token;playerId=j.playerId;room=j.room;history.replaceState(null,'',location.pathname+'?room='+room.code);showRoom();events=new EventSource('/api/events?token='+encodeURIComponent(token));events.addEventListener('state',e=>{room=JSON.parse(e.data);if(openedGame){drawChat();drawTeamChat();if(room.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);observeCombat(room.game);showMatchEnd(room.game)}else showRoom()});events.onerror=()=>notice('서버 연결 재시도 중…');}
+  function disconnect(){endScreen.hidden=true;dock.hidden=true;teamDock.hidden=true;if(poller)clearInterval(poller);if(clock)clearInterval(clock);clock=null;poller=null;events?.close();events=null;token='';playerId='';room=null;lastTeam='';}
+  function connectMatch(j){token=j.token;playerId=j.playerId;room=j.room;history.replaceState(null,'',location.pathname+'?room='+room.code);showRoom();events=new EventSource('/api/events?token='+encodeURIComponent(token));events.addEventListener('state',e=>{room=JSON.parse(e.data);if(openedGame){drawChat();drawTeamChat();if(room.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);showMatchEnd(room.game)}else showRoom()});events.onerror=()=>notice('서버 연결 재시도 중…');}
   async function join(action,payload){try{connectMatch(await api(action,payload));}catch(e){notice(e.message)}}
   async function recoverMatch(){try{const r=await api('rejoin',{code:new URLSearchParams(location.search).get('room')||''});connectMatch(r);}catch(e){if(e.message!=='복귀할 진행 중 경기가 없어.')console.warn('경기 복귀 실패:',e.message)}}
 
