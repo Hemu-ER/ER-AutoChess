@@ -39,6 +39,44 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
 </script>
 <style>html.m611-qa body::before{display:none!important}</style>
 <link rel="stylesheet" href="online-experiment.css">
+<style id="m8-07-combat-ui">
+/* M8-07 provisional online combat loading and per-hit readout. */
+.arena-card { position: relative; }
+.m807-loading[hidden], .m807-damage-hud[hidden] { display:none!important; }
+.m807-loading { position: absolute; inset: 0; z-index: 120; display: grid; place-items: center;
+  background: radial-gradient(circle at 50% 35%,rgba(70,48,112,.32),transparent 62%),rgba(6,9,19,.94);
+  border-radius: inherit; padding: 28px; text-align:center; color:#eaf0ff; }
+.m807-loading-content { width:min(420px,95%); display:grid; justify-items:center; gap:12px; }
+.m807-loading-mark { color:#ceb4ff; font-size:44px; text-shadow:0 0 25px #ae7dff77; }
+.m807-loading-content b { font-size:clamp(19px,3vw,26px); letter-spacing:.06em; }
+.m807-loading-content p { font-size:13px; line-height:1.6; color:#b9c1d5; margin:0; }
+.m807-loading-content small { font-size:11px; color:#9ba4b9; }
+.m807-loading-track { width:100%; height:4px; background:#30364d; border-radius:10px; overflow:hidden; }
+.m807-loading-track i { display:block; width:35%; height:100%; border-radius:10px; background:#b89bf4;
+  animation:m807-sweep 1.5s ease-in-out infinite alternate; }
+@keyframes m807-sweep { from{transform:translateX(0)} to{transform:translateX(190%)} }
+.m807-damage-hud { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-left:auto;
+  color:#d6e1f9; font-size:12px; font-variant-numeric:tabular-nums; }
+.m807-damage-hud span { padding:5px 8px; border:1px solid #7186a54d; background:#0e1726db; border-radius:8px; white-space:nowrap; }
+.m807-damage-hud strong { font-size:14px; color:#f3dd91; }
+.board-shell { position:relative; }
+.m807-damage-layer { position:absolute; inset:0; pointer-events:none; z-index:55; overflow:hidden; }
+.m807-damage-number { position:absolute; font-size:clamp(13px,2vw,20px); font-weight:800; line-height:1;
+  font-variant-numeric:tabular-nums; text-shadow:0 2px 3px #02050c,0 0 8px #060910;
+  transform:translate(-50%,-50%); animation:m807-float 1.15s ease-out forwards; }
+.m807-hit-enemy { color:#ffe39d; }
+.m807-hit-ally { color:#ff929a; }
+@keyframes m807-float { 0%{opacity:0;transform:translate(calc(-50% + var(--offset)),0) scale(.7)}
+  18%{opacity:1;transform:translate(calc(-50% + var(--offset)),-10px) scale(1.08)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--offset)),-55px) scale(.94)} }
+@media (prefers-reduced-motion:reduce){ .m807-loading-track i {animation:none;width:100%}
+ .m807-damage-number {animation:none;opacity:1;} }
+@media (max-width:850px){.m807-damage-hud{gap:4px;font-size:10px;margin-left:0}
+ .m807-damage-hud span{padding:3px 5px}.m807-damage-hud strong{font-size:11px} }
+
+.m807-damage-hud [data-foe-loss][hidden]{display:none!important}
+
+</style>
 </head>
 <body>
 <div class="app">

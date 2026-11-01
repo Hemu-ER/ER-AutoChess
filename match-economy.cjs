@@ -139,7 +139,9 @@ function roundIncome(a,round){
  a.lastIncomeRound=round;acceptPending(a);
  return true;
 }
-function ownTeam(a){return a.owned.filter(o=>o.location==='board').map(o=>({characterId:o.characterId,star:o.star,x:o.x,y:o.y,items:o.items.slice()}))}
+function ownTeam(a){
+ for(const o of a.owned){const seen=new Set(),keep=[];for(const item of o.items||[]){if(!items.all[item]?.basic&&seen.has(item)){giveItem(a,item);continue}keep.push(item);seen.add(item)}o.items=keep;}
+ return a.owned.filter(o=>o.location==='board').map(o=>({characterId:o.characterId,star:o.star,x:o.x,y:o.y,items:o.items.slice()}))} 
 function action(a,cmd,body={}){
  // Calls are serialized in the single-process HTTP server. Validate first, mutate once.
  const locate=()=>{const o=a.owned.find(x=>x.uid===Number(body.uid));if(!o)throw Error('보유하지 않은 실험체');return o};
@@ -193,10 +195,11 @@ function action(a,cmd,body={}){
    const absorb=items.craft(eq[blood],name);
    if(absorb){eq[blood]=absorb;a.items.splice(i,1);flushOverflow(a);return a;}
   }
+  if(!items.all[name].basic&&eq.includes(name))throw Error('고유 완성 아이템 중복 장착 불가');
   const j=items.all[name].basic?eq.findIndex(n=>items.all[n]?.basic):-1;
   if(j>=0){
    const made=items.craft(eq[j],name);if(!made)throw Error('장비 조합 실패');
-   eq[j]=made;
+   if(eq.some((existing,k)=>k!==j&&existing===made))throw Error('고유 완성 아이템 중복 장착 불가');eq[j]=made;
   }else{if(eq.length>=3)throw Error('장비 슬롯 최대 3개');eq.push(name)}
   a.items.splice(i,1);flushOverflow(a);
  }else throw Error('알 수 없는 경제 명령');

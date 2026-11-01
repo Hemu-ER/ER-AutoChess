@@ -34,7 +34,7 @@ const roster=[
   "baseStats": {
     "hp": 740,
     "atk": 49,
-    "amp": 132,
+    "amp": 145,
     "range": 3,
     "def": 20,
     "as": 0.8
@@ -721,7 +721,7 @@ const roster=[
     ],
     "baseStats": {
       "hp": 730,
-      "atk": 67,
+      "atk": 74,
       "amp": 0,
       "range": 3,
       "def": 17,
@@ -747,7 +747,7 @@ const roster=[
       "amp": 0,
       "range": 2,
       "def": 22,
-      "as": 0.72
+      "as": 0.83
     },
     "implemented": true,
     "main": "atk",
@@ -765,11 +765,11 @@ const roster=[
     ],
     "baseStats": {
       "hp": 705,
-      "atk": 59,
+      "atk": 65,
       "amp": 0,
       "range": 3,
       "def": 16,
-      "as": 0.78
+      "as": 0.84
     },
     "implemented": true,
     "main": "atk",

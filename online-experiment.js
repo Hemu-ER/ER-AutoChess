@@ -5,7 +5,7 @@
  function render(){const room=window.LIVEMultiplayer?.getRoom(),g=room?.game,e=g?.experiment,active=g?.phase==='special'&&g.specialType==='experiment'&&!!e;panel.hidden=!active;if(!active){marker='';return}seq=Math.max(seq,e.seq||0);const key=g.round+':'+e.version;if(key===marker)return;marker=key;
  const values=[...panel.querySelectorAll('input')].map(el=>({id:el.id,name:el.name,value:el.value,checked:el.checked,focus:el===document.activeElement,start:el.selectionStart}));
  const scroll=panel.scrollTop;
- panel.innerHTML=`<h2>번외 실험 · ${e.kind}</h2><p>${e.virtualPartner?'가상 파트너와 진행 · ':''}남은 시간 <b>${Math.max(0,Math.ceil((e.deadline-Date.now())/1000))}초</b></p>`+e.html;
+ panel.innerHTML=`<h2>번외 실험 · ${e.kind}</h2><p>${e.bye?'부전승 · ':e.solo?'혼자 진행 · ':''}남은 시간 <b>${Math.max(0,Math.ceil((e.deadline-Date.now())/1000))}초</b></p>`+e.html;
  for(const v of values){const el=v.id?panel.querySelector('#'+v.id):[...panel.querySelectorAll('input')].find(x=>x.name===v.name&&x.value===v.value);if(!el)continue;el.value=v.value;el.checked=v.checked;if(v.focus){el.focus();if(el.type==='text'||!el.type)el.setSelectionRange?.(v.start,v.start)}}panel.scrollTop=scroll;
  }
  async function send(action,value=''){
@@ -20,4 +20,201 @@
  let searchTimer;panel.addEventListener('input',e=>{if(e.target.id==='qaCodexSearch'){clearTimeout(searchTimer);searchTimer=setTimeout(()=>send('search'),300)}});
  document.addEventListener('keydown',e=>{if(panel.hidden||e.target.matches('input,textarea,select'))return;const action={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'rotate',ArrowDown:'down',' ':'drop'}[e.key];if(action&&window.LIVEMultiplayer.getRoom().game.experiment.kind==='stack'){e.preventDefault();send(action)}});
  setInterval(render,100);
+})();
+
+/* M8-07: UI + local equipment uniqueness; integrated in existing module. */
+/* L.I.V.E. M8-07 provisional presentation-only fix.
+ * No authoritative combat or reward mechanics are changed here.
+ */
+(function () {
+  'use strict';
+  const ID = 'm807-combat-loading';
+  let current = null;
+  let lastRound = null;
+  let adapterWrapped = false;
+  let previousPvPFoeHp = null;
+  let previousPvPRound = null;
+
+  function onlineGame() {
+    const room = window.LIVEMultiplayer?.getRoom?.();
+    return room?.started ? room.game : null;
+  }
+  function getArena() { return document.querySelector('.arena-card'); }
+  function ensureLoading() {
+    let layer = document.getElementById(ID);
+    if (!layer) {
+      const arena = getArena();
+      if (!arena) return null;
+      layer = document.createElement('section');
+      layer.id = ID;
+      layer.className = 'm807-loading';
+      layer.setAttribute('role', 'status');
+      layer.setAttribute('aria-live', 'polite');
+      layer.innerHTML = '<div class="m807-loading-content"><div class="m807-loading-mark" aria-hidden="true">⚔</div><b>전투 준비 중</b><p>대전 데이터를 동기화하고 있어</p><div class="m807-loading-track" aria-hidden="true"><i></i></div><small>준비가 완료되면 자동으로 시작해</small></div>';
+      arena.appendChild(layer);
+    }
+    return layer;
+  }
+  function loadingOn(game) {
+    const layer = ensureLoading();
+    if (!layer) return;
+    const loading = game.phase === 'intro' || (game.phase === 'combat' && game.kind === 'pvp' && !game.bye && !game.battle);
+    layer.hidden = !loading;
+    if (!loading) return;
+    const title = document.querySelector('.round-center strong');
+    if (title) title.textContent = '전투 준비 중';
+    const status = document.getElementById('status');
+    if (status) status.textContent = `ROUND ${game.round} · 전투 준비 중`;
+    const p = layer.querySelector('p');
+    if (p) p.textContent = game.phase === 'intro' ? '상대 편성과 전투 데이터를 동기화하고 있어' : '서버 전투 결과를 확인하고 있어';
+  }
+  function loadingOff() {
+    const layer = document.getElementById(ID);
+    if (layer) layer.hidden = true;
+  }
+  function makeDamageHud() {
+    const arena = getArena();
+    const parent = arena?.querySelector('.arena-top');
+    if (!parent) return null;
+    let hud = parent.querySelector('#m807-damage-hud');
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.id = 'm807-damage-hud';
+      hud.className = 'm807-damage-hud';
+      hud.innerHTML = '<span>준 피해 <strong data-dealt>0</strong></span><span>받은 피해 <strong data-taken>0</strong></span><span data-foe-loss hidden>상대 플레이어 HP <strong data-foe-loss-value></strong></span>';
+      parent.appendChild(hud);
+    }
+    return hud;
+  }
+  function sumMeter(rootId, which) {
+    const root = document.getElementById(rootId);
+    if (!root) return 0;
+    let total = 0;
+    for (const node of root.querySelectorAll('.meter-numbers')) {
+      if (which === 'dealt') total += Number(node.querySelector('b')?.textContent) || 0;
+      else {
+        const match = node.querySelector('small')?.textContent.match(/받은 피해\s+([\d,.]+)/);
+        if (match) total += Number(match[1].replaceAll(',', '')) || 0;
+      }
+    }
+    return Math.round(total);
+  }
+  function damageHud(game) {
+    const hud = makeDamageHud();
+    if (!hud) return;
+    const active = ['combat','result'].includes(game?.phase) && game.kind === 'pvp' && !game.pve && !game.bye && !game.battle?.auto;
+    hud.hidden = !active;
+    if (!active) return;
+    // The existing meter rows come from the live CombatEngine replay, not guessed HP differences.
+    hud.querySelector('[data-dealt]').textContent = String(sumMeter('meterA', 'dealt'));
+    hud.querySelector('[data-taken]').textContent = String(sumMeter('meterA', 'taken'));
+    const lossBox = hud.querySelector('[data-foe-loss]');
+    const opponentHp = Number.isInteger(game.opponentSlot) ? game.hp?.[game.opponentSlot] : undefined;
+    if(game.phase === 'combat' && Number.isFinite(opponentHp)) {
+      previousPvPFoeHp = opponentHp;
+      previousPvPRound = game.round;
+    }
+    const showLoss = game.phase === 'result' && previousPvPRound === game.round && Number.isFinite(opponentHp) && Number.isFinite(previousPvPFoeHp);
+    lossBox.hidden = !showLoss;
+    if(showLoss)hud.querySelector('[data-foe-loss-value]').textContent = '-' + Math.max(0,previousPvPFoeHp - opponentHp);
+  }
+  function showDamage(event) {
+    const game = onlineGame();
+    if (!game || game.phase !== 'combat' || game.kind !== 'pvp' || game.bye || !(event?.amount > 0)) return;
+    const board = document.getElementById('board');
+    const shell = board?.closest('.board-shell');
+    if (!shell) return;
+    let unit = null;
+    for (const element of board.querySelectorAll('.unit[data-id]')) {
+      if (element.dataset.id === event.unitId) { unit = element; break; }
+    }
+    const cell = unit?.closest('.cell');
+    if (!cell) return;
+    const x = Number(cell.dataset.x), y = Number(cell.dataset.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return;
+    let layer = shell.querySelector('.m807-damage-layer');
+    if (!layer) { layer = document.createElement('div'); layer.className = 'm807-damage-layer'; layer.setAttribute('aria-hidden', 'true'); shell.appendChild(layer); }
+    if (layer.children.length > 24) layer.firstElementChild?.remove();
+    const figure = document.createElement('span');
+    figure.className = 'm807-damage-number ' + (event.unitId.startsWith('B:') ? 'm807-hit-enemy' : 'm807-hit-ally');
+    figure.textContent = String(Math.max(1, Math.round(event.amount)));
+    figure.style.left = `${(x + .5) * 100 / 6}%`;
+    figure.style.top = `${(y + .25) * 100 / 3}%`;
+    figure.style.setProperty('--offset', `${(layer.children.length % 5 - 2) * 9}px`);
+    layer.appendChild(figure);
+    figure.addEventListener('animationend', () => figure.remove(), {once: true});
+    setTimeout(() => figure.remove(), 1600);
+  }
+  function wrapImpact() {
+    if (adapterWrapped || !window.M6PixiAdapter || typeof window.M6PixiAdapter.impact !== 'function') return;
+    const adapter = window.M6PixiAdapter;
+    const old = adapter.impact;
+    adapter.impact = function (event) { showDamage(event); return old.call(this, event); };
+    adapterWrapped = true;
+  }
+  function update(game) {
+    if (!game) { current = null; lastRound = null; previousPvPFoeHp = null; previousPvPRound = null; loadingOff(); damageHud(null); return; }
+    if (lastRound !== game.round) {
+      lastRound = game.round; previousPvPFoeHp = null; previousPvPRound = null;
+      document.querySelector('.m807-damage-layer')?.replaceChildren();
+    }
+    current = game;
+    loadingOn(game);
+    damageHud(game);
+    if (game.phase !== 'combat') document.querySelector('.m807-damage-layer')?.replaceChildren();
+  }
+  // Game phase updates are already delivered by the existing authoritative online handler.
+  const original = window.LIVEApplyGame;
+  if (typeof original === 'function') {
+    window.LIVEApplyGame = function (game, slot, players) {
+      const out = original.apply(this, arguments);
+      update(game);
+      return out;
+    };
+  }
+  // The old M8-06 game.js remains untouched. Intercept its local equip action
+  // so M8-07 completed-item uniqueness holds without shipping an outdated game.js.
+  const originalEquip = typeof window.equipItem === 'function' ? window.equipItem : null;
+  if (originalEquip) {
+    window.equipItem = function (uid, index) {
+      if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return originalEquip.apply(this, arguments);
+      const unit = gameState.owned.find(o => o.uid === uid);
+      const item = gameState.items[index];
+      const equipped = unit?.equipment || [];
+      if (item && LIVEItems.all[item] && !LIVEItems.all[item].basic && equipped.includes(item)) {
+        gameState.message = '고유 완성 아이템은 중복 장착할 수 없어.';
+        renderGameEconomy();
+        return;
+      }
+      if (item && LIVEItems.all[item]?.basic) {
+        const j = equipped.findIndex(n => LIVEItems.all[n]?.basic);
+        if (j >= 0) {
+          const crafted = LIVEItems.craft(equipped[j], item);
+          if (crafted && equipped.some((n,k) => k !== j && n === crafted)) {
+            gameState.message = '동일 완성 아이템 중복 장착 불가';
+            renderGameEconomy();
+            return;
+          }
+        }
+      }
+      return originalEquip.apply(this, arguments);
+    };
+  }
+  // Old round display may briefly render `결투 · null초` in the intro.
+  // Adjust the UI after each round render without creating a new game.js copy.
+  const originalRenderRound = typeof window.renderRoundUI === 'function' ? window.renderRoundUI : null;
+  if (originalRenderRound) {
+    window.renderRoundUI = function () {
+      const result = originalRenderRound.apply(this, arguments);
+      if (roundState.phase === 'intro') {
+        const caption = document.querySelector('#roundModePanel .round-center strong');
+        if (caption) caption.textContent = '전투 준비 중';
+      }
+      return result;
+    };
+  }
+  function boot() { wrapImpact(); update(onlineGame()); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, {once: true});
+  else boot();
+  window.LIVEM807UIQA = Object.freeze({update, wrapImpact, showDamage, sumMeter});
 })();
