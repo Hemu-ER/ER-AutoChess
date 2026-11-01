@@ -54,10 +54,20 @@ function action(enc,slot,body,now=Date.now()){
  else group.engine.dispatch(role,body.action,String(body.value??''),body);
  enc.version++;
 }
-function disconnect(enc,slot){const {group,role}=locate(enc,slot);if(!group.bye&&!group.engine.snapshot().game.finished)group.engine.disconnect(role);}
+function disconnect(enc,slot){
+ const {group,role}=locate(enc,slot);
+ if(group.bye||group.engine.snapshot().game.finished)return;
+ if(['divide','bomb'].includes(enc.kind)){
+  // The remaining participant should not lose every reward because their partner left.
+  const other=group.slots.find(s=>s!==slot&&s!==null);
+  if(other!==undefined){group.engine.disconnect(role);group.bye=true;group.byeReason='teammate-left';group.reward={credits:4,exp:enc.kind==='divide'?4:2,items:[items.baseNames[crypto.randomInt(items.baseNames.length)]]};}
+  else group.engine.disconnect(role);
+ }else{group.engine.disconnect(role);group.solo=true;}
+ enc.version++;
+}
 function view(enc,slot){
  const {group,role}=locate(enc,slot);
- if(group.bye)return {kind:enc.kind,version:enc.version,deadline:enc.now,finished:true,bye:true,solo:true,seq:0,html:'<section class="qa-console"><h3>부전승</h3><p>실제 참가자 수가 홀수라 자동 통과했어. 별도의 가상 참가자는 없어.</p><p>보상: '+group.reward.credits+'C · 숙련도 '+group.reward.exp+' EXP · 기본 재료 1개</p></section>',award:enc.awards[slot]||null};
+ if(group.bye)return {kind:enc.kind,version:enc.version,deadline:enc.now,finished:true,bye:true,solo:true,seq:0,html:'<section class="qa-console"><h3>부전승</h3><p>'+(group.byeReason==='teammate-left'?'상대 참가자가 퇴장해서 자동 통과했어.':'실제 참가자 수가 홀수라 자동 통과했어. 별도의 가상 참가자는 없어.')+'</p><p>보상: '+group.reward.credits+'C · 숙련도 '+group.reward.exp+' EXP · 기본 재료 1개</p></section>',award:enc.awards[slot]||null};
  const g=group.engine.snapshot().game;
  return {kind:enc.kind,version:enc.version,deadline:g.deadline,finished:g.finished,solo:!!group.solo,seq:group.seq[slot]||0,html:group.engine.renderFor(role),award:enc.awards[slot]||null};
 }
