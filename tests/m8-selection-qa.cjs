@@ -21,7 +21,10 @@ async function run(){
   if(n>2){const wrong=await request(outsider,0);assert.equal(wrong.status,409,'cannot pick before turn')}
   assert.equal((await request(first,0)).status,200);
   assert.equal((await request(first,1)).status,409,'no duplicate player reward');
-  const second=g.selection.order[1];assert.equal((await request(second,0)).status,409,'no duplicate candidate award');
+  const second=g.selection.order[1];assert.equal((await request(second,0)).status,409,'only the current HP-ranked participant may select');
+  assert.equal((await request(second,1)).status,409,'next participant must wait until the server advances the wave');
+  g.endsAt=Date.now()-1;advanceRoom(room);assert.equal(g.selection.wave,1);
+  assert.equal((await request(second,0)).status,409,'no duplicate candidate award');
   assert.equal((await request(second,1)).status,200);
   let guard=0;while(g.phase==='special'&&guard++<10){g.endsAt=Date.now()-1;advanceRoom(room)}
   assert.equal(g.phase,'result');assert.equal(Object.keys(g.selection.resolved).length,n);

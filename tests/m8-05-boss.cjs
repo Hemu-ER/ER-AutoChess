@@ -43,7 +43,7 @@ async function post(port,p,round){const response=await fetch('http://127.0.0.1:'
    game.endsAt=Date.now()-1;advanceRoom(r);assert.equal(game.phase,'prep');assert.equal(game.boss,null);rooms.delete(r.code);
   }
   // Expected boss stats and counter-attack scale by round.
-  for(const b of boss.BOSSES){const sample={team:team('cathy','rio','sua'),mastery:1,progress:{}};const a=boss.fight(sample,b,7,1729),z=boss.fight(sample,b,15,1729);assert(a.time>0&&a.time<=60.1);assert(z.time>0&&z.time<=60.1);assert(Number.isFinite(a.bossHp));assert(Number.isFinite(z.bossHp));const cfg=boss.configFor(sample,b,7,1729);const battle=new CombatEngine(cfg).run();assert.equal(battle.units.filter(u=>u.role==='보스').length,1);assert.equal(battle.units.find(u=>u.role==='보스').maxHp,b.health);}
+  for(const b of boss.BOSSES){const sample={team:team('cathy','rio','sua'),mastery:1,progress:{}};const a=boss.fight(sample,b,7,1729),z=boss.fight(sample,b,15,1729);assert(a.time>0&&a.time<=60.1);assert(z.time>0&&z.time<=60.1);assert(Number.isFinite(a.bossHp));assert(Number.isFinite(z.bossHp));const cfg=boss.configFor(sample,b,7,1729);const battle=new CombatEngine(cfg).run();assert.equal(battle.units.filter(u=>u.role==='보스').length,1);assert.equal(battle.units.find(u=>u.role==='보스').maxHp,boss.publicInfo(b,7).health);}
   // Faulty percentage damage must not wreck high-HP boss scaling.
   const dummy={team:[{characterId:'cathy',star:2,x:2,y:1,items:[]}],mastery:1,progress:{}};
   for(const b of boss.BOSSES){const r=boss.fight(dummy,b,15,1977);assert(Number.isFinite(r.bossHp));}

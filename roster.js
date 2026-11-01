@@ -864,9 +864,9 @@ const roster=[
     "implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/wild_bear.webp"}
   }
 
-,{"id":"boss_alpha","name":"알파","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":6700,"atk":105,"amp":0,"range":1,"def":34,"as":0.65},"implemented":true,"main":"atk","pveOnly":true},
-{"id":"boss_omega","name":"오메가","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":10000,"atk":142,"amp":0,"range":1,"def":49,"as":0.65},"implemented":true,"main":"atk","pveOnly":true},
-{"id":"boss_wickeline","name":"위클라인","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":14200,"atk":166,"amp":0,"range":1,"def":60,"as":0.70},"implemented":true,"main":"atk","pveOnly":true}
+,{"id":"boss_alpha","name":"알파","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":6700,"atk":105,"amp":0,"range":1,"def":34,"as":0.65},"implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/boss_alpha.webp"}},
+{"id":"boss_omega","name":"오메가","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":10000,"atk":142,"amp":0,"range":1,"def":49,"as":0.65},"implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/boss_omega.webp"}},
+{"id":"boss_wickeline","name":"위클라인","cost":0,"role":"보스","affiliations":[],"baseStats":{"hp":14200,"atk":166,"amp":0,"range":1,"def":60,"as":0.70},"implemented":true,"main":"atk","pveOnly":true,"asset":{"sd":"assets/characters/boss_wickeline.webp"}}
 
 ];
 function freeze(v){if(v&&typeof v==='object'){Object.freeze(v);for(const x of Object.values(v))freeze(x)}return v}

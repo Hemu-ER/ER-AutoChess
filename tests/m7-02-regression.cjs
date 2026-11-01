@@ -7,7 +7,7 @@ const os=require('node:os');
 const root=path.join(__dirname,'..');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 for(const x of ['m6-pixi-adapter.css','pixi.min.js','m6-pixi-adapter.js','m611-first-paint','m611-qa'])assert(html.includes(x),'Missing M6 presentation boot asset/guard: '+x);
-assert(html.includes('L.I.V.E. M7-01'),'M7 content/build label lost');
+assert(/L\.I\.V\.E\. M(?:7|8)-0[1-9]/.test(html),'L.I.V.E. content/build label lost');
 assert(html.indexOf('pixi.min.js')<html.indexOf('m6-pixi-adapter.js'),'Pixi library must load before adapter');
 const {CombatEngine}=require('../combat-engine.js');
 const mk=(id,star=1)=>({characterId:id,star,x:0,y:1});

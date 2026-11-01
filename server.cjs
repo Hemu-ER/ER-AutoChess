@@ -97,7 +97,7 @@ function playerView(r,p){
   if(g.farmResults){g.farmKills=g.farmResults[p.slot]?.killed||0;g.seed=g.farmResults[p.slot]?.seed||0;delete g.farmResults;}
   delete g.pairs;
  }
- return {code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,...(x.id===p.id?{assets:x.assets||null}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
+ return {code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,...(x.id===p.id?{assets:x.assets||null,auctionEffects:(x.auctionEffects||[]).map(a=>({...a,info:auction.EFFECTS.find(e=>e.id===a.id)||null}))}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
 }
 const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{round:r.game.round,phase:r.game.phase,kind:r.game.kind,hp:r.game.hp,schedule:r.game.schedule}:null});
 function broadcast(r){r.revision++;for(const p of r.players.values()){const res=clients.get(p.id);if(res&&!res.destroyed)try{res.write(`event: state\ndata: ${JSON.stringify(playerView(r,p))}\n\n`)}catch{}}}
@@ -182,7 +182,7 @@ if(url.pathname==='/api/start'){if(p.slot!==0)return reply(res,403,{error:'방�
 if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/selection-pick'){
  const g=r.game,sel=g?.selection;if(g?.phase!=='special'||g.specialType!=='selection'||!sel)return reply(res,409,{error:'선점 진행 중이 아니야.'});
- const wave=sel.order.slice(sel.wave*2,sel.wave*2+2);
+ const wave=sel.order.slice(sel.wave,sel.wave+1);
  if(!wave.includes(p.slot)||g.hp[p.slot]<=0||sel.resolved[p.slot])return reply(res,409,{error:'현재 선점 차례가 아니야.'});
  const choice=Number(body.choice),candidate=sel.candidates[choice];if(!Number.isInteger(choice)||!candidate||candidate.claimedBy!==null)return reply(res,409,{error:'이미 선택됐거나 존재하지 않는 후보야.'});
  candidate.claimedBy=p.slot;sel.resolved[p.slot]={characterId:candidate.characterId,star:1,item:candidate.item};if(p.assets){economy.grant(p.assets,{type:'selection',...sel.resolved[p.slot]},`r${g.round}:selection:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}
@@ -364,12 +364,12 @@ function advanceRoom(r){
   }
   if(g.specialType==='shop'&&g.market)market.close(r);
   if(g.specialType==='selection'&&g.selection){
-   const sel=g.selection,wave=sel.order.slice(sel.wave*2,sel.wave*2+2);
+   const sel=g.selection,wave=sel.order.slice(sel.wave,sel.wave+1);
    for(const slot of wave)if(!sel.resolved[slot]){
     const remaining=sel.candidates.filter(c=>c.claimedBy===null);if(!remaining.length)throw Error('선점 후보 부족');
     const candidate=remaining[crypto.randomInt(remaining.length)];candidate.claimedBy=slot;sel.resolved[slot]={characterId:candidate.characterId,star:1,item:candidate.item};const who=[...r.players.values()].find(p=>p.slot===slot);if(who?.assets){economy.grant(who.assets,{type:'selection',...sel.resolved[slot]},`r${g.round}:selection:${slot}`);who.team=economy.ownTeam(who.assets);who.mastery=who.assets.level;}
    }
-   sel.wave++;if(sel.wave*2<sel.order.length){g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;}
+   sel.wave++;if(sel.wave<sel.order.length){g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;}
   }
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }

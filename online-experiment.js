@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
- const panel=document.createElement('section');panel.id='liveExperiment';panel.hidden=true;panel.className='qa-stage';panel.style.cssText='position:fixed;inset:4vh 6vw;z-index:1200;overflow:auto;background:#10191e;color:#e7f0ec;padding:24px;border:1px solid #639c88;border-radius:12px';document.body.appendChild(panel);
+ const panel=document.createElement('section');panel.id='liveExperiment';panel.hidden=true;panel.className='qa-stage';panel.style.cssText='position:fixed;inset:0;z-index:25000;overflow:auto;background:#10191e;color:#e7f0ec;padding:32px;border:0;border-radius:0';document.body.appendChild(panel);
  let marker='',busy=false,seq=0;
  function render(){const room=window.LIVEMultiplayer?.getRoom(),g=room?.game,e=g?.experiment,active=g?.phase==='special'&&g.specialType==='experiment'&&!!e;panel.hidden=!active;if(!active){marker='';return}seq=Math.max(seq,e.seq||0);const key=g.round+':'+e.version;if(key===marker)return;marker=key;
  const values=[...panel.querySelectorAll('input')].map(el=>({id:el.id,name:el.name,value:el.value,checked:el.checked,focus:el===document.activeElement,start:el.selectionStart}));
