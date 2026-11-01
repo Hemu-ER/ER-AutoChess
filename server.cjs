@@ -87,7 +87,7 @@ function playerView(r,p){
   if(pair){
    g.seed=pair.seed;
    const original=pair.battle;
-   g.battle=original?{...original,outcome:pair.b===p.slot?(original.outcome==='A팀 승리'?'B팀 승리':original.outcome==='B팀 승리'?'A팀 승리':original.outcome):original.outcome,personaTierA:pair.b===p.slot?original.personaTierB:original.personaTierA,personaTierB:pair.b===p.slot?original.personaTierA:original.personaTierB}:null;
+   g.battle=original?{...original,outcome:pair.b===p.slot?(original.outcome==='A팀 승리'?'B팀 승리':original.outcome==='B팀 승리'?'A팀 승리':original.outcome):original.outcome,personaTierA:pair.b===p.slot?original.personaTierB:original.personaTierA,personaTierB:pair.b===p.slot?original.personaTierA:original.personaTierB,damageRanks:pair.b===p.slot?(original.damageB||[]):(original.damageA||[])}:null;if(g.battle){delete g.battle.damageA;delete g.battle.damageB;}
   }else if(g.kind==='pvp'){g.battle=null;g.seed=0}
   // Do not reveal hidden pair results; they are only visible when each participant's fight starts.
   // Each participant receives only their own deterministic PvE seed and loot data remains server-private.
@@ -281,7 +281,7 @@ function advanceRoom(r){
    }
    if(g.kind==='selection'){
     g.selection={candidates:makeCandidates(g.round,players.length),order:draftOrder(players,g.hp),wave:0,resolved:{}};
-    g.earlyEndsAt=null;g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;
+    g.earlyEndsAt=null;g.endsAt=Date.now()+15000;g.version++;broadcast(r);return;
    }
    if(g.kind==='experiment'){
     g.experimentId=['stack','zones','divide','bomb','quiz'][crypto.randomInt(5)];
@@ -334,7 +334,8 @@ function advanceRoom(r){
     const seed=crypto.randomInt(1,2147483647);let battle;
     try{
      if(!a.team.length||!b.team.length)battle={outcome:!a.team.length&&!b.team.length?'양 팀 패배':!a.team.length?'B팀 승리':'A팀 승리',time:1,auto:true,personaTierA:0,personaTierB:0};
-     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}}).run();battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0}}
+     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}}).run();const damageRanks=side=>(result.units||[]).filter(u=>u.team===side&&u.role!=='소환수').map(u=>({id:u.id,name:u.name,damage:Math.round(Object.values(u.damage||{}).reduce((s,n)=>s+(Number(n)||0),0))})).sort((x,y)=>y.damage-x.damage);
+     battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
     }catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
     if(battle.error||!Number.isFinite(battle.time)||battle.time<=0){g.endsAt=Date.now()+10000;g.prepNotice='전투 계산 재시도 대기 · 서버 전투 오류';g.earlyEndsAt=null;g.version++;console.warn('[M8-01] PvP invalid',{room:r.code,round:g.round,a:a.slot,b:b.slot,battle});broadcast(r);return}
     duration=Math.max(duration,Math.min(60,Math.ceil(battle.time)+2));g.pairs.push({a:a.slot,b:b.slot,seed,battle});
@@ -369,7 +370,7 @@ function advanceRoom(r){
     const remaining=sel.candidates.filter(c=>c.claimedBy===null);if(!remaining.length)throw Error('선점 후보 부족');
     const candidate=remaining[crypto.randomInt(remaining.length)];candidate.claimedBy=slot;sel.resolved[slot]={characterId:candidate.characterId,star:1,item:candidate.item};const who=[...r.players.values()].find(p=>p.slot===slot);if(who?.assets){economy.grant(who.assets,{type:'selection',...sel.resolved[slot]},`r${g.round}:selection:${slot}`);who.team=economy.ownTeam(who.assets);who.mastery=who.assets.level;}
    }
-   sel.wave++;if(sel.wave<sel.order.length){g.endsAt=Date.now()+25000;g.version++;broadcast(r);return;}
+   sel.wave++;if(sel.wave<sel.order.length){g.endsAt=Date.now()+15000;g.version++;broadcast(r);return;}
   }
   g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
  }
