@@ -438,3 +438,50 @@ body.m808-experiment .game-bottom-dock,body.m808-experiment #liveItemsPanel,body
 body.m808-experiment #m809LiveHpStandings,body.m808-experiment #m809DamagePanel,body.m808-experiment #m809MatchResult{visibility:hidden!important}
 @media(max-width:950px){#m809LiveHpStandings,#m809DamagePanel{right:5px;width:145px}#m809LiveHpStandings{top:80px;max-height:27dvh}#m809LiveHpStandings .live-hp-standings{max-height:calc(27dvh - 40px)}#m809DamagePanel{top:calc(80px + 27dvh + 7px);max-height:21dvh} .m809-rank-row{grid-template-columns:10px minmax(28px,1fr) 28px 30px;gap:3px;font-size:9px}}
 @media(max-width:600px){#roundModePanel .m809-top-actions button{font-size:10px;padding:5px 7px}#m809LiveHpStandings,#m809DamagePanel{width:112px;opacity:.95}#m809LiveHpStandings .m808-hp-player{padding:4px}.m809-panel-title{font-size:10px;padding:6px}#m809MatchResult{top:42%;padding:16px}}
+
+/* M9-01: shared-tier, personal-offer augment selection overlay. */
+#liveAugmentPanel[hidden]{display:none!important}
+#liveAugmentPanel{position:fixed;inset:0;z-index:16000;display:grid;place-items:center;box-sizing:border-box;padding:clamp(12px,3vw,36px);background:rgba(4,8,15,.91);backdrop-filter:blur(11px);color:#eaf2f6;font-family:inherit;overflow:auto}
+#liveAugmentPanel *{box-sizing:border-box}
+.m901-augment-modal{width:min(1040px,100%);max-height:min(95dvh,950px);overflow:auto;border-radius:16px;border:1px solid #6b788b;background:linear-gradient(145deg,#202b36,#0e1720 70%);padding:clamp(16px,3vw,32px);box-shadow:0 25px 80px #000c}
+.m901-augment-modal.blue{border-color:#638de3}.m901-augment-modal.purple{border-color:#aa83d8}
+.m901-augment-modal>header{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid #ffffff24;padding-bottom:16px}
+.m901-augment-modal>header small{font-size:11px;letter-spacing:.1em;color:#afc8d0}
+.m901-augment-modal h2{margin:7px 0 5px;font-size:clamp(23px,4vw,35px);color:#f1f5fa}
+.m901-augment-modal p{margin:6px 0 0;color:#bdcbd3;font-size:13px}
+.m901-augment-clock{min-width:80px;display:grid;text-align:center;gap:2px}.m901-augment-clock strong{font:700 38px/1.1 ui-monospace,Consolas,monospace;color:#faf3d6}
+.m901-augment-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:22px 0}
+.m901-augment-card{display:flex;flex-direction:column;gap:14px;align-items:stretch;min-width:0;min-height:225px;padding:20px 16px;border:1px solid #758996;border-radius:10px;background:#1c303f;color:#f7f8f9;text-align:left;cursor:pointer;font:inherit;transition:border-color .15s,transform .15s}
+.blue .m901-augment-card{background:#17243c;border-color:#4266a0}.purple .m901-augment-card{background:#2a2039;border-color:#805aa6}
+.m901-augment-card:hover:not(:disabled){border-color:#c3e7e5;transform:translateY(-3px)}.m901-augment-card:disabled{opacity:.65;cursor:default}
+.m901-augment-card small{color:#a7b9c6;font-size:10px}.m901-augment-card strong{font-size:21px}.m901-augment-card span{font-size:13px;color:#d5e3e5;line-height:1.6;flex:1}.m901-augment-card em{font-style:normal;color:#e7ba92;font-size:11px}.m901-augment-card b{border-top:1px solid #ffffff22;padding-top:10px;color:#c4f0e2;font-size:12px}
+.m901-augment-modal footer{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:12px}.m901-augment-warning{flex:1;min-width:220px;color:#ffd19b}.m901-augment-modal footer button{padding:10px 14px;border:1px solid #86a6a8;border-radius:8px;color:#eaf9f9;background:#2c4b57;cursor:pointer}.m901-augment-modal footer button:disabled{opacity:.5;cursor:default}
+#m901AugmentNotice{min-height:16px;font-size:12px;color:#badad9}
+@media(max-width:700px){.m901-augment-cards{grid-template-columns:1fr}.m901-augment-card{min-height:145px;padding:12px;gap:6px}.m901-augment-modal{max-height:93dvh}}
+
+.m901-owned-augments{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#d6e2e9}.m901-owned-augments b{color:#dfd8b9;margin-right:4px}.m901-owned-augments span{border:1px solid #647b89;border-radius:6px;background:#13232d;padding:3px 7px}.m901-owned-augments .blue{border-color:#547bbd}.m901-owned-augments .purple{border-color:#9271bd}.m901-owned-augments small{color:#e7b88b}
+
+/* M9-01 balance follow-up: left-bottom chat, scouting and live interest. */
+body[data-app-mode="game"] #liveGameChat{left:10px;right:auto;top:auto;bottom:205px;height:min(245px,39dvh);min-height:110px;max-height:42dvh}
+/* A drag uses an inline top and bottom:auto, so the player can freely move the chat. */
+body[data-app-mode="game"] #liveGameChat[style*="top:"]{bottom:auto}
+.m901-interest{display:grid;gap:3px;margin:5px 0 7px;padding:6px;border:1px solid #49675f;border-radius:6px;background:rgba(61,98,82,.17);color:#c8e4d5;font-size:10px;line-height:1.4}
+.m901-interest>b{font-size:11px;color:#dff6db}.m901-interest>span,.m901-interest>small{font-size:9px;color:#91b9a8}
+.m901-interest-steps{display:flex;gap:3px;height:4px}.m901-interest-steps i{flex:1;border-radius:5px;background:#425259}.m901-interest-steps i.active{background:#8acc98}
+#m809LiveHpStandings .m808-hp-player{width:100%;font:inherit;color:inherit;cursor:pointer;display:block;text-align:left;background:transparent;border:1px solid transparent;box-sizing:border-box}
+#m809LiveHpStandings .m808-hp-player:hover,#m809LiveHpStandings .m808-hp-player:focus-visible{background:rgba(100,161,143,.17);border-color:#6bb0a0;outline:none}
+#roundModePanel .round-side.enemy[data-scout-slot]{cursor:pointer;border-radius:5px}
+#roundModePanel .round-side.enemy[data-scout-slot]:hover{background:rgba(91,161,150,.15)}
+#m901Scouting{position:fixed;right:205px;top:18%;z-index:11500;width:min(350px,calc(100vw - 25px));padding:14px;color:#e7f0ed;background:rgba(12,23,32,.98);border:1px solid #65968c;border-radius:12px;box-shadow:0 16px 45px #000c;box-sizing:border-box}
+#m901Scouting[hidden]{display:none!important}
+#m901Scouting header{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid #45605c;padding-bottom:9px}
+#m901Scouting header div{display:grid;gap:3px}#m901Scouting header small{font-size:10px;letter-spacing:.1em;color:#92b8ac}#m901Scouting header strong{font-size:15px}
+#m901Scouting header button{border:1px solid #567b72;border-radius:5px;padding:2px 9px;background:#233b3c;color:#eaf8ee;cursor:pointer;font-size:18px}
+#m901Scouting p{color:#99b4b0;font-size:11px;line-height:1.5;margin:9px 0 0}
+.m901-scout-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;margin-top:13px}
+.m901-scout-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;aspect-ratio:1;border:1px solid #557d75;border-radius:5px;background:#172a30;overflow:hidden;padding:3px;box-sizing:border-box}
+.m901-scout-cell.empty{align-items:center;justify-content:center;color:#56736b;border-style:dashed;background:#142128}
+.m901-scout-cell b{font-size:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:relative;z-index:2;text-shadow:0 1px 4px black}
+.m901-scout-cell small{font-size:10px;color:#f1d38c;position:relative;z-index:2;text-shadow:0 1px 4px black}
+.m901-scout-portrait{position:absolute;inset:2px 2px 0;overflow:hidden}.m901-scout-portrait img{position:absolute;max-width:none;bottom:-35%;left:0;width:100%;height:150%;object-fit:contain;object-position:top center}
+@media(max-width:730px){#m901Scouting{left:6px;right:6px;top:16%;width:auto;max-width:350px}body[data-app-mode="game"] #liveGameChat{width:165px;bottom:240px;height:180px}}

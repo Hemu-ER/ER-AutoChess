@@ -172,34 +172,7 @@
       return out;
     };
   }
-  // The old M8-06 game.js remains untouched. Intercept its local equip action
-  // so M8-07 completed-item uniqueness holds without shipping an outdated game.js.
-  const originalEquip = typeof window.equipItem === 'function' ? window.equipItem : null;
-  if (originalEquip) {
-    window.equipItem = function (uid, index) {
-      if (typeof isOnlineMatch === 'function' && isOnlineMatch()) return originalEquip.apply(this, arguments);
-      const unit = gameState.owned.find(o => o.uid === uid);
-      const item = gameState.items[index];
-      const equipped = unit?.equipment || [];
-      if (item && LIVEItems.all[item] && !LIVEItems.all[item].basic && equipped.includes(item)) {
-        gameState.message = '고유 완성 아이템은 중복 장착할 수 없어.';
-        renderGameEconomy();
-        return;
-      }
-      if (item && LIVEItems.all[item]?.basic) {
-        const j = equipped.findIndex(n => LIVEItems.all[n]?.basic);
-        if (j >= 0) {
-          const crafted = LIVEItems.craft(equipped[j], item);
-          if (crafted && equipped.some((n,k) => k !== j && n === crafted)) {
-            gameState.message = '동일 완성 아이템 중복 장착 불가';
-            renderGameEconomy();
-            return;
-          }
-        }
-      }
-      return originalEquip.apply(this, arguments);
-    };
-  }
+  // Duplicate finished items are legal. Stats stack; CombatEngine keys unique effects once.
   // Old round display may briefly render `결투 · null초` in the intro.
   // Adjust the UI after each round render without creating a new game.js copy.
   const originalRenderRound = typeof window.renderRoundUI === 'function' ? window.renderRoundUI : null;

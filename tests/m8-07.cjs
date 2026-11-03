@@ -26,15 +26,18 @@ for(const seed of [1,2,3,47,150]){
  assert(x.battleOver);assert.deepEqual(x,y);
  for(const u of x.units)assert(Number.isFinite(u.hp));
 }
-// 3) Reject duplicate completed items even when supplied directly to CombatEngine.
-assert.throws(()=>fight([c('rio',2,0,1,['레가투스','레가투스'])],[c('kenneth')]),/중복/);
-const a=economy.makeInitial();const uid=a.owned[0].uid;
+// 3) Updated item policy: duplicates stack statistics but each unique effect fires once.
+const one=new CombatEngine({teamA:[c('rio',2,0,1,['레가투스'])],teamB:[c('kenneth')],masteryA:1,masteryB:1,seed:7});
+const two=new CombatEngine({teamA:[c('rio',2,0,1,['레가투스','레가투스'])],teamB:[c('kenneth')],masteryA:1,masteryB:1,seed:7});
+one.start();two.start();
+const oneUnit=one.runtime.units.find(x=>x.team==='A'),twoUnit=two.runtime.units.find(x=>x.team==='A');
+assert(twoUnit.as>oneUnit.as);assert(twoUnit.critChance>oneUnit.critChance);
+assert.deepEqual(Object.keys(twoUnit.itemEffects),['레가투스']);
+const a=economy.makeInitial(),uid=a.owned[0].uid;
 a.items.push('레가투스','레가투스');economy.action(a,'equip',{uid,index:a.items.length-2});
-assert.throws(()=>economy.action(a,'equip',{uid,index:a.items.length-1}),/중복/);
-assert.equal(a.owned[0].items.filter(x=>x==='레가투스').length,1);
-a.owned[0].items.push('레가투스');const oldAllItems=a.items.length;
-economy.ownTeam(a);assert.equal(a.owned[0].items.filter(x=>x==='레가투스').length,1);
-assert.equal(a.items.length+a.overflowItems.length,oldAllItems+1);
+economy.action(a,'equip',{uid,index:a.items.length-1});
+assert.equal(a.owned[0].items.filter(x=>x==='레가투스').length,2);
+economy.ownTeam(a);assert.equal(a.owned[0].items.filter(x=>x==='레가투스').length,2);
 // 4) No live virtual participant. Odd cooperative slot gets an immediate reward bye;
 // personal minigame keeps solo player interactive and the unused seat inactive.
 for(const n of [3,5,7])for(const kind of experiment.KINDS){
@@ -87,4 +90,4 @@ for(let i=0;i<heroes.length;i++)for(let star of [1,2,3])for(let seed=0;seed<3;se
  assert(result.battleOver);assert(result.time<=60.05);assert(result.units.every(x=>Number.isFinite(x.hp)));
  ran++;
 }
-console.log('M8-07 PASS: balance constants, dual Aozai, 28-item duplicate policy, odd-person byes, Wickeline shield, boss gating,',ran,'3v3 smoke combats');
+console.log('M8-07 PASS: balance constants, dual Aozai, duplicate completed item statistics / unique proc policy, odd-person byes, Wickeline shield, boss gating,',ran,'3v3 smoke combats');
