@@ -186,7 +186,7 @@ function action(a,cmd,body={}){
   Object.assign(a1,pos2);Object.assign(b1,pos1);
  }else if(cmd==='sell-item'){
   const i=Number(body.index);if(!Number.isInteger(i)||i<0||i>=a.items.length)throw Error('아이템 위치 오류');
-  const item=a.items[i];a.credits+=itemSellPrice(item);a.items.splice(i,1);flushOverflow(a);
+  const item=a.items[i];a.credits+=itemSellPrice(item);if((a.infusionIds||[]).includes('B013')){a.credits+=1;a.blueErebosSales=Math.min(10,(a.blueErebosSales||0)+1)}a.items.splice(i,1);flushOverflow(a);
  }else if(cmd==='craft'){
   const i=Number(body.index),j=Number(body.otherIndex);
   if(!Number.isInteger(i)||!Number.isInteger(j)||i===j||i<0||j<0||i>=a.items.length||j>=a.items.length)throw Error('조합 선택 오류');

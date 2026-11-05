@@ -101,7 +101,7 @@ function playerView(r,p){
   if(g.farmResults){g.farmKills=g.farmResults[p.slot]?.killed||0;g.seed=g.farmResults[p.slot]?.seed||0;delete g.farmResults;}
   delete g.pairs;
  }
- return {code:r.code,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,...(x.id===p.id?{assets:x.assets||null,auctionEffects:(x.auctionEffects||[]).map(a=>({...a,info:auction.EFFECTS.find(e=>e.id===a.id)||null})),augments:(x.augments||[]).map(augId=>{const c=Object.values(augment.CARDS).flat().find(c=>c.id===augId);return c||null}).filter(Boolean)}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
+ return {code:r.code,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,infusionIds:[...(x.augments||[])],...(x.id===p.id?{assets:x.assets||null,auctionEffects:(x.auctionEffects||[]).map(a=>({...a,info:auction.EFFECTS.find(e=>e.id===a.id)||null})),augments:(x.augments||[]).map(augId=>{const c=Object.values(augment.CARDS).flat().find(c=>c.id===augId);return c||null}).filter(Boolean)}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
 }
 const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{round:r.game.round,phase:r.game.phase,kind:r.game.kind,hp:r.game.hp,schedule:r.game.schedule}:null});
 function broadcast(r){r.revision++;for(const p of r.players.values()){const res=clients.get(p.id);if(res&&!res.destroyed)try{res.write(`event: state\ndata: ${JSON.stringify(playerView(r,p))}\n\n`)}catch{}}}
@@ -254,7 +254,7 @@ if(url.pathname==='/api/economy'){
   if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'준비 단계에서만 경제 동작을 할 수 있어.'});
   const allowed=['buy','reroll','lock','invest','sell-unit','sell-item','craft','equip','deploy','recall','swap'];
   if(!allowed.includes(body.cmd))return reply(res,400,{error:'경제 명령이 올바르지 않아.'});
-  try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
+  try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.progress.blueErebosSales=p.assets.blueErebosSales||0;p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
   broadcast(r);return reply(res,200,{ok:true});
  }
  if(url.pathname==='/api/team'&&p.assets){
@@ -372,7 +372,7 @@ function advanceRoom(r){
    for(const ply of players){
     try{
      const seed=crypto.randomInt(1,2147483647);
-     const result=new CombatEngine({teamA:ply.team,teamB:FARM_LINEUPS[g.round]||FARM_LINEUPS[3],masteryA:ply.mastery||1,masteryB:1,seed,moveInterval:.5,persistent:{A:ply.progress,B:{}}}).run();
+     const result=new CombatEngine({teamA:ply.team,teamB:FARM_LINEUPS[g.round]||FARM_LINEUPS[3],masteryA:ply.mastery||1,masteryB:1,seed,moveInterval:.5,infusions:{A:ply.augments||[],B:[]},persistent:{A:{...ply.progress,blueErebosSales:ply.assets?.blueErebosSales||0},B:{}}}).run();
      g.farmResults[ply.slot]={seed,time:result.time,killed:(result.units||[]).filter(u=>u.team==='B'&&u.dead&&m7Roster[u.characterId]?.pveOnly).length};
     }catch(e){console.warn('PvE server simulation failed',e);g.farmResults[ply.slot]={seed:0,time:60,killed:0};}
    }
@@ -388,8 +388,8 @@ function advanceRoom(r){
     const seed=crypto.randomInt(1,2147483647);let battle;
     try{
      if(!a.team.length||!b.team.length)battle={outcome:!a.team.length&&!b.team.length?'양 팀 패배':!a.team.length?'B팀 승리':'A팀 승리',time:1,auto:true,personaTierA:0,personaTierB:0};
-     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,persistent:{A:a.progress,B:b.progress}}).run();const damageRanks=side=>(result.units||[]).filter(u=>u.team===side&&u.role!=='소환수').map(u=>({id:u.id,name:u.name,damage:Math.round(Object.values(u.damage||{}).reduce((s,n)=>s+(Number(n)||0),0))})).sort((x,y)=>y.damage-x.damage);
-     battle={outcome:result.outcome,time:result.time,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
+     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,infusions:{A:a.augments||[],B:b.augments||[]},persistent:{A:{...a.progress,blueErebosSales:a.assets?.blueErebosSales||0},B:{...b.progress,blueErebosSales:b.assets?.blueErebosSales||0}}}).run();const damageRanks=side=>(result.units||[]).filter(u=>u.team===side&&u.role!=='소환수').map(u=>({id:u.id,name:u.name,damage:Math.round(Object.values(u.damage||{}).reduce((s,n)=>s+(Number(n)||0),0))})).sort((x,y)=>y.damage-x.damage);
+     battle={outcome:result.outcome,time:result.time,huntSuccessA:!!result.blueHunts?.A,huntSuccessB:!!result.blueHunts?.B,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
     }catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
     if(battle.error||!Number.isFinite(battle.time)||battle.time<=0){g.endsAt=Date.now()+10000;g.prepNotice='전투 계산 재시도 대기 · 서버 전투 오류';g.earlyEndsAt=null;g.version++;console.warn('[M8-01] PvP invalid',{room:r.code,round:g.round,a:a.slot,b:b.slot,battle});broadcast(r);return}
     duration=Math.max(duration,Math.min(60,Math.ceil(battle.time)+2));g.pairs.push({a:a.slot,b:b.slot,seed,battle});
@@ -449,6 +449,8 @@ function advanceRoom(r){
     if(outcome==='A팀 승리')g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage-(pair.battle.personaTierA>=3?2:pair.battle.personaTierA>=2?1:0));
     if(outcome==='B팀 승리')g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage-(pair.battle.personaTierB>=3?2:pair.battle.personaTierB>=2?1:0));
     if(outcome==='양 팀 패배'){g.hp[pair.a]=Math.max(0,g.hp[pair.a]-damage);g.hp[pair.b]=Math.max(0,g.hp[pair.b]-damage)}
+    if(pair.battle.huntSuccessA&&[...(r.players.values())].some(p=>p.slot===pair.a&&p.augments?.includes('B022'))){const w=[...r.players.values()].find(p=>p.slot===pair.a);w.progress.blueHunts=Math.min(8,(w.progress.blueHunts||0)+1)}
+    if(pair.battle.huntSuccessB&&[...(r.players.values())].some(p=>p.slot===pair.b&&p.augments?.includes('B022'))){const w=[...r.players.values()].find(p=>p.slot===pair.b);w.progress.blueHunts=Math.min(8,(w.progress.blueHunts||0)+1)}
     auction.onPvP(r,pair.a,outcome==='A팀 승리',outcome==='B팀 승리'||outcome==='양 팀 패배');
     auction.onPvP(r,pair.b,outcome==='B팀 승리',outcome==='A팀 승리'||outcome==='양 팀 패배');
    }
