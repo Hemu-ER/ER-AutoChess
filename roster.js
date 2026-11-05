@@ -7,7 +7,8 @@ const roster=[
   "cost": 2,
   "role": "원거리 평타",
   "affiliations": [
-    "카페"
+    "카페",
+    "저격수"
   ],
   "baseStats": {
     "hp": 750,
@@ -29,7 +30,8 @@ const roster=[
   "cost": 3,
   "role": "원거리 스킬",
   "affiliations": [
-    "카페"
+    "카페",
+    "무기상인"
   ],
   "baseStats": {
     "hp": 740,
@@ -209,8 +211,9 @@ const roster=[
     "cost": 2,
     "role": "전사",
     "affiliations": [
-      "파자마"
-    ],
+      "파자마",
+    "검사"
+  ],
     "baseStats": {
       "hp": 1110,
       "atk": 72,
@@ -320,8 +323,9 @@ const roster=[
     "cost": 3,
     "role": "전사",
     "affiliations": [
-      "수영복"
-    ],
+      "수영복",
+    "검사"
+  ],
     "baseStats": {
       "hp": 965,
       "atk": 80,
@@ -342,8 +346,9 @@ const roster=[
     "cost": 2,
     "role": "탱커",
     "affiliations": [
-      "수영복"
-    ],
+      "수영복",
+    "피의 나선"
+  ],
     "baseStats": {
       "hp": 1260,
       "atk": 60,
@@ -408,8 +413,9 @@ const roster=[
     "cost": 1,
     "role": "전사",
     "affiliations": [
-      "수영복"
-    ],
+      "수영복",
+    "검사"
+  ],
     "baseStats": {
       "hp": 1060,
       "atk": 70,
@@ -453,8 +459,9 @@ const roster=[
     "cost": 1,
     "role": "전사",
     "affiliations": [
-      "마츠리"
-    ],
+      "마츠리",
+    "피의 나선"
+  ],
     "baseStats": {
       "hp": 1015,
       "atk": 73,
@@ -475,8 +482,9 @@ const roster=[
     "cost": 3,
     "role": "근거리 스킬",
     "affiliations": [
-      "마츠리"
-    ],
+      "마츠리",
+    "고양이"
+  ],
     "baseStats": {
       "hp": 850,
       "atk": 56,
@@ -563,8 +571,9 @@ const roster=[
     "cost": 1,
     "role": "전사",
     "affiliations": [
-      "프리즌"
-    ],
+      "프리즌",
+    "피의 나선"
+  ],
     "baseStats": {
       "hp": 990,
       "atk": 60,
@@ -585,8 +594,9 @@ const roster=[
     "cost": 1,
     "role": "서포터",
     "affiliations": [
-      "군악대"
-    ],
+      "군악대",
+    "헌신"
+  ],
     "baseStats": {
       "hp": 845,
       "atk": 46,
@@ -629,8 +639,9 @@ const roster=[
     "cost": 1,
     "role": "원거리 평타",
     "affiliations": [
-      "새해"
-    ],
+      "새해",
+    "리로드"
+  ],
     "baseStats": {
       "hp": 750,
       "atk": 72,
@@ -695,8 +706,9 @@ const roster=[
     "cost": 1,
     "role": "서포터",
     "affiliations": [
-      "악마사냥꾼"
-    ],
+      "악마사냥꾼",
+    "헌신"
+  ],
     "baseStats": {
       "hp": 830,
       "atk": 44,
@@ -717,8 +729,9 @@ const roster=[
     "cost": 3,
     "role": "원거리 평타",
     "affiliations": [
-      "악마사냥꾼"
-    ],
+      "악마사냥꾼",
+    "사냥꾼"
+  ],
     "baseStats": {
       "hp": 730,
       "atk": 74,
@@ -739,8 +752,9 @@ const roster=[
     "cost": 2,
     "role": "원거리 평타",
     "affiliations": [
-      "악마사냥꾼"
-    ],
+      "악마사냥꾼",
+    "사냥꾼"
+  ],
     "baseStats": {
       "hp": 780,
       "atk": 58,
@@ -761,8 +775,9 @@ const roster=[
     "cost": 1,
     "role": "원거리 평타",
     "affiliations": [
-      "메이드"
-    ],
+      "메이드",
+    "리로드"
+  ],
     "baseStats": {
       "hp": 705,
       "atk": 65,
@@ -783,8 +798,9 @@ const roster=[
     "cost": 3,
     "role": "원거리 스킬",
     "affiliations": [
-      "메이드"
-    ],
+      "메이드",
+    "저격수"
+  ],
     "baseStats": {
       "hp": 720,
       "atk": 48,
@@ -827,8 +843,9 @@ const roster=[
     "cost": 1,
     "role": "서포터",
     "affiliations": [
-      "치유의 노래"
-    ],
+      "치유의 노래",
+    "헌신"
+  ],
     "baseStats": {
       "hp": 860,
       "atk": 43,

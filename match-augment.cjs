@@ -66,16 +66,30 @@ const GRAY_ROWS=[
 ];
 const gray=GRAY_ROWS.map(([id,name,description])=>Object.freeze({id,name,description,tier:'gray',implemented:false,prototype:false}));
 // Deliberately NOT designed augments: placeholders for M9-01 flow QA only.
-const pending=tier=>Array.from({length:16},(_,i)=>Object.freeze({id:`M901_${tier.toUpperCase()}_${String(i+1).padStart(2,'0')}`,name:`${LABELS[tier]} 증강 설계 대기 ${i+1}`,description:'M9-03/04에서 효과가 확정될 예정인 테스트 슬롯이야. 현재는 게임 능력에 아무 영향도 주지 않아.',tier,implemented:false,prototype:true}));
-const CARDS=Object.freeze({gray:Object.freeze(gray),blue:Object.freeze(pending('blue')),purple:Object.freeze(pending('purple'))});
+const pending=tier=>Array.from({length:16},(_,i)=>Object.freeze({id:`M901_${tier.toUpperCase()}_${String(i+1).padStart(2,'0')}`,name:`${LABELS[tier]} 인퓨전 설계 대기 ${i+1}`,description:'M9-03/04에서 효과가 확정될 예정인 테스트 슬롯이야. 현재는 게임 능력에 아무 영향도 주지 않아.',tier,implemented:false,prototype:true}));
+const BLUE_TARGETS=Object.freeze(["현우정신", "파자마", "바니걸", "수영복", "마츠리", "프리즌", "군악대", "새해", "악마사냥꾼", "메이드", "애증", "치유의 노래", "에레보스", "카페", "페르소나", "여행자", "고양이", "헌신", "피의 나선", "무기상인", "저격수", "사냥꾼", "검사", "리로드", "전사", "탱커", "원거리 평타", "원거리 스킬", "근거리 스킬", "암살자", "서포터"]);
+// Unique battle effects have not been specified. Only shop-selection weighting is live.
+const blue=BLUE_TARGETS.map((target,i)=>Object.freeze({id:'B'+String(i+1).padStart(3,'0'),name:target+' 인퓨전',description:target+' 관련 실험체의 상점 등장 가중치 ×1.5. 고유 효과는 추후 확정.',tier:'blue',target,targetType:i<24?'affiliation':'role',implemented:true,uniqueEffectPending:true,prototype:false}));
+const CARDS=Object.freeze({gray:Object.freeze(gray),blue:Object.freeze(blue),purple:Object.freeze(pending('purple'))});
 function drawTier(randomInt=crypto.randomInt){return TIERS[randomInt(3)]}
-function sample(cards,n,randomInt=crypto.randomInt){if(cards.length<n)throw Error('증강 후보 부족');const bag=[...cards];for(let i=0;i<n;i++){const j=i+randomInt(bag.length-i);[bag[i],bag[j]]=[bag[j],bag[i]]}return bag.slice(0,n)}
+function sample(cards,n,randomInt=crypto.randomInt){if(cards.length<n)throw Error('인퓨전 후보 부족');const bag=[...cards];for(let i=0;i<n;i++){const j=i+randomInt(bag.length-i);[bag[i],bag[j]]=[bag[j],bag[i]]}return bag.slice(0,n)}
 function drawOffers(tier,owned=[],exclude=[],randomInt=crypto.randomInt){const used=new Set([...owned,...exclude]);return sample(CARDS[tier].filter(c=>!used.has(c.id)),3,randomInt).map(c=>c.id)}
 const byId=new Map(Object.values(CARDS).flat().map(card=>[card.id,card]));
-function open(players,round,randomInt=crypto.randomInt){if(!ROUNDS.includes(round))throw Error('증강 라운드가 아니야');const tier=drawTier(randomInt),offers={};for(const p of players)offers[p.slot]=drawOffers(tier,p.augments||[],[],randomInt);return {tier,round,offers,rerolls:{},picks:{},revision:1}}
-function view(s,slot){return {tier:s.tier,round:s.round,offers:(s.offers[slot]||[]).map(id=>byId.get(id)),rerollsLeft:s.rerolls[slot]?0:1,selected:s.picks[slot]?byId.get(s.picks[slot]):null,readyCount:Object.keys(s.picks).length,implementation:'선택 시스템 시범 구현 · 증강 효과 미적용'}}
-function reroll(s,p,randomInt=crypto.randomInt){if(s.picks[p.slot])throw Error('이미 증강을 선택했어.');if(s.rerolls[p.slot])throw Error('무료 새로고침을 이미 사용했어.');if(!s.offers[p.slot])throw Error('참가 후보가 없어.');s.offers[p.slot]=drawOffers(s.tier,p.augments||[],s.offers[p.slot],randomInt);s.rerolls[p.slot]=true;s.revision++;return view(s,p.slot)}
-function pick(s,p,choice){if(s.picks[p.slot])throw Error('이미 증강을 선택했어.');const offers=s.offers[p.slot];if(!offers||!Number.isInteger(choice)||choice<0||choice>2)throw Error('잘못된 증강 선택이야.');const id=offers[choice];if(!id||p.augments?.includes(id))throw Error('획득할 수 없는 증강이야.');s.picks[p.slot]=id;p.augments??=[];p.augments.push(id);s.revision++;return byId.get(id)}
+function open(players,round,randomInt=crypto.randomInt){if(!ROUNDS.includes(round))throw Error('인퓨전 라운드가 아니야');const tier=drawTier(randomInt),offers={};for(const p of players)offers[p.slot]=drawOffers(tier,p.augments||[],[],randomInt);return {tier,round,offers,rerolls:{},picks:{},revision:1}}
+function view(s,slot){return {tier:s.tier,round:s.round,offers:(s.offers[slot]||[]).map(id=>byId.get(id)),rerollsLeft:3-(s.rerolls[slot]||[]).length,rerollsUsed:s.rerolls[slot]||[],selected:s.picks[slot]?byId.get(s.picks[slot]):null,readyCount:Object.keys(s.picks).length,implementation:'파랑 인퓨전은 상점 가중치만 적용 · 개별 효과 미설계 · 회색/보라는 선택만 구현'}}
+function reroll(s,p,index=0,randomInt=crypto.randomInt){
+ if(typeof index==='function'){randomInt=index;index=0} // compatibility with historical callers
+ if(s.picks[p.slot])throw Error('이미 인퓨전을 선택했어.');
+ if(!s.offers[p.slot])throw Error('참가 후보가 없어.');
+ if(!Number.isInteger(index)||index<0||index>2)throw Error('인퓨전 카드 위치 오류');
+ const used=s.rerolls[p.slot]||[];
+ if(used.includes(index))throw Error('이 카드의 새로고침을 이미 사용했어.');
+ const blocked=new Set([...(p.augments||[]),...s.offers[p.slot]]);
+ const next=sample(CARDS[s.tier].filter(c=>!blocked.has(c.id)),1,randomInt)[0];
+ s.offers[p.slot][index]=next.id;
+ s.rerolls[p.slot]=[...used,index];s.revision++;return view(s,p.slot);
+}
+function pick(s,p,choice){if(s.picks[p.slot])throw Error('이미 인퓨전을 선택했어.');const offers=s.offers[p.slot];if(!offers||!Number.isInteger(choice)||choice<0||choice>2)throw Error('잘못된 인퓨전 선택이야.');const id=offers[choice];if(!id||p.augments?.includes(id))throw Error('획득할 수 없는 인퓨전이야.');s.picks[p.slot]=id;p.augments??=[];p.augments.push(id);s.revision++;return byId.get(id)}
 function autoPick(s,players,randomInt=crypto.randomInt){for(const p of players){if(!s.picks[p.slot]&&s.offers[p.slot])pick(s,p,randomInt(3))}}
 function allChosen(s,players){return players.every(p=>!!s.picks[p.slot])}
-module.exports={TIERS,LABELS,ROUNDS,DURATION_MS,CARDS,drawTier,drawOffers,open,view,reroll,pick,autoPick,allChosen};
+module.exports={TIERS,LABELS,ROUNDS,DURATION_MS,CARDS,BLUE_TARGETS,drawTier,drawOffers,open,view,reroll,pick,autoPick,allChosen};

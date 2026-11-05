@@ -2,6 +2,7 @@
 // M8-02. Authoritative, match-scoped economy. All mutations are server-only.
 const crypto=require('node:crypto');
 const {roster}=require('./roster.js');
+const {CARDS}=require('./match-augment.cjs');
 const items=require('./items.js');
 const playable=roster.filter(u=>!u.pveOnly&&[1,2,3].includes(u.cost));
 const byId=new Map(playable.map(u=>[u.id,u]));
@@ -33,13 +34,20 @@ function eligible(a){
   return copies<POOL_CAP[u.cost];
  });
 }
+function weightedInfusionPick(pool,ids){
+ const active=(ids||[]).map(id=>CARDS.blue.find(c=>c.id===id)).filter(Boolean);
+ const weights=pool.map(u=>Math.min(2,active.reduce((w,c)=>w*((c.targetType==='role'?u.role===c.target:u.affiliations.includes(c.target))?1.5:1),1)));
+ const total=weights.reduce((sum,w)=>sum+w,0);let roll=crypto.randomInt(1000000)/1000000*total;
+ for(let i=0;i<pool.length;i++){roll-=weights[i];if(roll<0)return pool[i]}
+ return pool.at(-1);
+}
 function oneShop(a){
  const pool=eligible(a);if(!pool.length)return null;
  const row=COST_WEIGHTS.find(w=>a.level<=w[0])||COST_WEIGHTS.at(-1);
  const costs=[1,2,3].filter(k=>pool.some(u=>u.cost===k)&&row[k]>0);
  let roll=crypto.randomInt(costs.reduce((n,k)=>n+row[k],0)),cost=costs.at(-1);
  for(const k of costs){roll-=row[k];if(roll<0){cost=k;break}}
- return pick(pool.filter(u=>u.cost===cost)).id;
+ return weightedInfusionPick(pool.filter(u=>u.cost===cost),a.infusionIds||[]).id;
 }
 function refreshShop(a,free=false){
  if(!free){if(a.credits<2)throw Error('리롤 크레딧 부족');a.credits-=2}

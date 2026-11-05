@@ -209,9 +209,10 @@ if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.pha
 if(url.pathname==='/api/start'){if(p.id!==r.hostPlayerId)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;member.augments=[];}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'augment',endsAt:Date.now()+augment.DURATION_MS,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};r.game.augment=augment.open(living(r),1);for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/augment-reroll'||url.pathname==='/api/augment-pick'){
  const g=r.game;
- if(!g||g.phase!=='augment'||!g.augment||g.hp[p.slot]<=0||g.round!==Number(body.round)||Date.now()>=g.endsAt||g.earlyEndsAt&&Date.now()>=g.earlyEndsAt)return reply(res,409,{error:'증강 선택 시간이 아니야.'});
+ if(!g||g.phase!=='augment'||!g.augment||g.hp[p.slot]<=0||g.round!==Number(body.round)||Date.now()>=g.endsAt||g.earlyEndsAt&&Date.now()>=g.earlyEndsAt)return reply(res,409,{error:'인퓨전 선택 시간이 아니야.'});
  try{
-  const result=url.pathname==='/api/augment-reroll'?augment.reroll(g.augment,p):augment.pick(g.augment,p,body.choice);
+  const result=url.pathname==='/api/augment-reroll'?augment.reroll(g.augment,p,body.choice):augment.pick(g.augment,p,body.choice);
+  if(url.pathname==='/api/augment-pick'&&p.assets)p.assets.infusionIds=[...(p.augments||[])];
   if(augment.allChosen(g.augment,living(r)))g.earlyEndsAt=Date.now()+250;
   g.version++;broadcast(r);return reply(res,200,{ok:true,result});
  }catch(e){return reply(res,409,{error:e.message})}
@@ -253,7 +254,7 @@ if(url.pathname==='/api/economy'){
   if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'준비 단계에서만 경제 동작을 할 수 있어.'});
   const allowed=['buy','reroll','lock','invest','sell-unit','sell-item','craft','equip','deploy','recall','swap'];
   if(!allowed.includes(body.cmd))return reply(res,400,{error:'경제 명령이 올바르지 않아.'});
-  try{economy.action(p.assets,body.cmd,body);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
+  try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
   broadcast(r);return reply(res,200,{ok:true});
  }
  if(url.pathname==='/api/team'&&p.assets){
