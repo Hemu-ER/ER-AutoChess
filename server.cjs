@@ -251,7 +251,9 @@ if(url.pathname==='/api/selection-pick'){
  }
  if(url.pathname==='/api/advance'){return reply(res,403,{error:'라운드 변경은 서버가 관리해.'})}
 if(url.pathname==='/api/economy'){
-  if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'준비 단계에서만 경제 동작을 할 수 있어.'});
+  if(!r.game||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'경제 동작을 할 수 없어.'});
+  const inventoryCombat=r.game.phase==='combat'&&r.game.kind==='pvp'&&!r.game.pve;
+  if(r.game.phase!=='prep'&&!(inventoryCombat&&['craft','sell-item'].includes(body.cmd)))return reply(res,409,{error:'결투 중에는 인벤토리 아이템 합성·판매만 가능해.'});
   const allowed=['buy','reroll','lock','invest','sell-unit','sell-item','craft','equip','deploy','recall','swap'];
   if(!allowed.includes(body.cmd))return reply(res,400,{error:'경제 명령이 올바르지 않아.'});
   try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.progress.blueErebosSales=p.assets.blueErebosSales||0;p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
