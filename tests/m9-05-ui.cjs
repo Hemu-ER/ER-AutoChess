@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');const read=p=>fs.readFileSync(path.join(root,p),'utf8');let checked=0;const ok=(cond,label)=>{assert.ok(cond,label);checked++};
+const index=read('index.html'),g=read('game.js'),qa=read('qa.html'),combat=read('qa-combat.html'),css=read('m905-ui-repair.css'),js=read('qa-combat-v3.js');
+ok(index.includes('m905-ui-repair.css'),'M9-05 CSS linked after legacy style');
+ok(css.includes('#liveAugmentPanel .m902-infusion-card{display:flex'),'card layout exists');
+ok(css.includes('#liveCodex .codex-character-details{grid-column:2'),'codex details own column');
+ok(g.includes('<article class="codex-character-card" tabindex="0"'),'codex card focusable');
+ok(g.includes('m905-codex-detail'),'full character detail not squeezed into card');
+ok(!g.includes('card.append(d);btn.setAttribute'),'old card-expansion path removed');
+ok(!qa.includes('minigame-core.js')&&!qa.includes('보급 적재'),'retired minigame QA removed');
+ok(qa.includes('qa-combat.html'),'QA hub links to workbench');
+for(const tab of ['formation','environment','infusion','analysis'])ok(combat.includes(`data-qa-tab="${tab}"`)&&combat.includes(`data-qa-view="${tab}"`),`QA tab ${tab} exists`);
+for(const id of ['board','teams','qaInfA','qaInfB','qaRound','qaBoss','qaSave','qaImport','analytics','batchResult'])ok(combat.includes(`id="${id}"`),`QA element ${id} present`);
+const ids=[...combat.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);ok(new Set(ids).size===ids.length,'QA ID unique');
+ok(js.includes('qa-inf-option'),'infusion search card UI available');
+ok(combat.includes('qa-combat-v3.js'),'QA handlers linked');
+console.log(`M9-05 UI STATIC PASS ${checked} checks`);
