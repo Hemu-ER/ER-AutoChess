@@ -762,7 +762,7 @@ function renderGameEconomy(){
  liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&[1,3,10].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
- if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();window.dispatchEvent(new Event('live:m10:economy'));return}
+ if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(r.cost)}</span></button>`}).join('');
  preloadVisibleCharacters();
@@ -781,90 +781,7 @@ function renderGameEconomy(){
  const m909Bar=dock.querySelector('.mastery-track i');
  if(m909Bar){m909Bar.offsetWidth;requestAnimationFrame(()=>{if(m909Bar.isConnected)m909Bar.style.width=pct+'%'})}
  m909MasteryLevel=gameState.masteryLevel;m909MasteryProgress=pct;
- window.dispatchEvent(new Event('live:m10:economy'));
 }
-
-/* M10-01: read-only view of the existing authoritative economy plus action adapters.
-   No shop odds, purchase validation, networking or roster rules are duplicated here. */
-window.LIVEM10Bridge=Object.freeze({
- snapshot(){return {
-  mode:appMode,phase:roundState.phase,round:roundState.round,credits:gameState.credits,
-  shopLocked:!!gameState.shopLocked,
-  offers:gameState.shop.map((id,index)=>{
-   const r=id&&byId[id];if(!r)return {index,empty:true};
-   return {index,id,name:displayName(r),role:r.role||'',cost:r.cost||0,
-    portrait:r.asset?.sd||'',affiliations:[...(r.affiliations||[])],
-    focused:m910FocusMatches(r).length>0,owned:gameState.owned.filter(o=>o.characterId===id).length};
-  })
- }},
- buy(index){if(Number.isInteger(index)&&index>=0&&index<gameState.shop.length)buyShop(index)},
- reroll(){rerollShop()},lock(){toggleShopLock()}
-});
-
-/* M10-02: The preparation renderer consumes read-only game state and delegates
- * every mutation to existing M9-10 methods (including authoritative multiplayer economy).
- * This adapter does not change match rules, shop odds or starting resources. */
-window.LIVEM10PrepBridge=Object.freeze({
- snapshot(){
-  const core=window.LIVEM10Bridge.snapshot();
-  const fromOwned=o=>{const r=byId[o.characterId]||{};const stat=r.baseStats||{};
-   return {uid:o.uid,id:o.characterId,name:displayName(r),role:r.role||'',
-    affiliations:[...(r.affiliations||[])],portrait:r.asset?.sd||'',star:o.star||1,
-    location:o.location,x:o.x,y:o.y,equipment:[...(o.equipment||[])],
-    hp:stat.hp??0,atk:stat.atk??0,def:stat.def??0,as:stat.as??0}
-  };
-  const owned=gameState.owned.map(fromOwned),bench=owned.filter(o=>o.location==='bench');
-  const formation=teams.A.map(u=>{const o=owned.find(x=>x.uid===u.ownedId);return o?{...o,x:u.x,y:u.y,location:'board'}:null}).filter(Boolean);
-  const unique=new Map();for(const u of formation)unique.set(u.id,u);
-  const counts=new Map();for(const u of unique.values())for(const name of u.affiliations)counts.set(name,(counts.get(name)||0)+1);
-  // Reuse M9's actual tier/role activation logic; do not infer a synergy tier from a raw count.
-  const synergyDom=document.createElement('div');synergyDom.innerHTML=synergySummary('A');
-  const synergies=[...synergyDom.querySelectorAll('.synergy-tip-chip')].map(node=>{
-   const name=node.dataset.synergyName||'',tier=Number(node.dataset.synergyTier||1);
-   return {name,label:node.textContent.trim(),tier,active:node.classList.contains('synergy-on'),
-    count:counts.get(name)||0,description:synergyEffectText(name,tier)}
-  });
-  const level=gameState.masteryLevel||1,expMax=masteryExpToNext();
-  const room=window.LIVEMultiplayer?.getRoom?.(),online=!!room?.started;
-  const me=online?room.players?.find(p=>p.id===window.LIVEMultiplayer.getPlayerId?.()):null;
-  const readyButton=document.querySelector('#roundOnlineReady,#roundSkip');
-  const pve=[1,3,10].includes(roundState.round);
-  return {...core,remaining:roundState.remaining,hpA:roundState.hp.A,hpB:roundState.hp.B,
-   owned,bench,formation,maxUnits:m907TeamLimit('A'),items:gameState.items.map(name=>({name:LIVEItems.displayName(name),raw:name,icon:itemIcon(name)})),
-   focus:[...m910ShopFocus],focusOptions:[...new Set(playableRoster().flatMap(r=>[...(r.affiliations||[]),r.role]))].sort((a,b)=>a.localeCompare(b,'ko')),
-   synergies,interest:roundInterest(),level,exp:gameState.masteryProgress||0,expMax,online,
-   readyLabel:online?(me?.roundReady?'준비 취소':'준비 완료'):'준비 완료',
-   readyAvailable:roundState.phase==='prep'&&!!readyButton&&!readyButton.disabled,
-   message:gameState.message||'',schedule:[1,2,3].map(i=>`R${roundState.round+i} ${liveRoundKind(roundState.round+i)}`),
-   pve};
- },
- buy(index){window.LIVEM10Bridge.buy(index)},
- reroll(){window.LIVEM10Bridge.reroll()},
- lock(){window.LIVEM10Bridge.lock()},
- invest(){investMastery()},
- place(uid,x,y){
-  const gx=Number(x),gy=Number(y);if(!Number.isInteger(gx)||gx<0||gx>2||!Number.isInteger(gy)||gy<0||gy>2)return;
-  const unit=gameState.owned.find(o=>o.uid===uid);if(!unit)return;
-  if(isOnlineMatch()){
-   const other=gameState.owned.find(o=>o.uid!==uid&&o.location==='board'&&o.x===gx&&o.y===gy);
-   if(other&&unit.location==='board')return onlineEconomyAction('swap',{uid,otherUid:other.uid});
-   return onlineEconomyAction('deploy',{uid,x:gx,y:gy});
-  }
-  moveOwnedToCell(uid,{dataset:{x:String(gx),y:String(gy)}});
- },
- deploy(uid){deployOwned(uid)},
- recall(uid){benchOwned(uid)},
- sellUnit(uid){sellOwned(uid)},
- equip(uid,index){equipItem(uid,index)},
- craft(i,j){inventoryCraft(i,j)},
- sellItem(index){sellInventoryItem(index)},
- focus(name){if(m910ShopFocus.has(name))m910ShopFocus.delete(name);else if(m910ShopFocus.size<3)m910ShopFocus.add(name);
-  else{gameState.message='관심 시너지는 최대 3개까지 지정할 수 있어.';renderGameEconomy();return}
-  try{localStorage.setItem('live_m910_shop_focus',JSON.stringify([...m910ShopFocus]))}catch{}
-  renderGameEconomy();
- },
- ready(){document.querySelector('#roundOnlineReady,#roundSkip')?.click()}
-});
 
 function startRoundMode(){
  window.LIVEOpponentExploration=null;clearRoundTimer();
@@ -1392,13 +1309,23 @@ function liveAugmentUi(net,slot){
   panel.querySelectorAll('[data-augment-pick]').forEach(btn=>btn.onclick=()=>request('pick',Number(btn.dataset.augmentPick)));
   panel.querySelectorAll('[data-augment-reroll]').forEach(btn=>btn.onclick=()=>request('reroll',Number(btn.dataset.augmentReroll)));
  }
- const timer=panel.querySelector('#m901AugmentTime');if(timer)timer.textContent=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+ // M10-03: augment-sync uses Number.MAX_SAFE_INTEGER as a *server sentinel*, not a countdown.
+ // Keep the server's phase/handshake intact; only replace the displayed timer while downloading.
+ const augmentSync=net.phase==='augment-sync';
+ const augmentClock=panel.querySelector('.m901-augment-clock');
+ if(augmentClock){
+  const captions=augmentClock.querySelectorAll('small');
+  if(captions[0])captions[0].textContent=augmentSync?'에셋 동기화':'연결 종료까지';
+  if(captions[1])captions[1].textContent=augmentSync?'':'SEC';
+ }
+ const timer=panel.querySelector('#m901AugmentTime');
+ if(timer)timer.textContent=augmentSync?'대기':Math.max(0,Math.ceil((Math.min(net.endsAt,net.earlyEndsAt||Infinity)-Date.now())/1000));
 }
 
 window.LIVEApplyGame=function(net,slot,players){
  if(!roundState.active||!net)return;
  document.body?.classList?.toggle('m808-experiment',net.phase==='special'&&net.specialType==='experiment');
- const foeSlot=Number.isInteger(net.opponentSlot)?net.opponentSlot:slot;const other=players?.find(p=>p.slot===foeSlot);window.LIVEOpponentExploration=other?.progress?.exploration||{stacks:0,visited:[]};window.LIVEOpponentAuctionBuffs=other?.progress?.auctionBuffs||{};window.LIVEOpponentBossBuffs=other?.progress?.bossBuffs||{};const me=players?.find(p=>p.slot===slot);if(me?.assets)applyLiveEconomy(me.assets,net.phase);gameState.auctionEffects=me?.auctionEffects||[];if(me?.progress){const pr=me.progress;gameState.auctionBuffs=pr.auctionBuffs||{};gameState.bossBuffs=pr.bossBuffs||{};gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;if(!me.assets)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;if(!me.assets)pushItem('혈색반월')}}const rem=Math.max(0,Math.ceil((net.endsAt-Date.now())/1000));
+ const foeSlot=Number.isInteger(net.opponentSlot)?net.opponentSlot:slot;const other=players?.find(p=>p.slot===foeSlot);window.LIVEOpponentExploration=other?.progress?.exploration||{stacks:0,visited:[]};window.LIVEOpponentAuctionBuffs=other?.progress?.auctionBuffs||{};window.LIVEOpponentBossBuffs=other?.progress?.bossBuffs||{};const me=players?.find(p=>p.slot===slot);if(me?.assets)applyLiveEconomy(me.assets,net.phase);gameState.auctionEffects=me?.auctionEffects||[];if(me?.progress){const pr=me.progress;gameState.auctionBuffs=pr.auctionBuffs||{};gameState.bossBuffs=pr.bossBuffs||{};gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;if(!me.assets)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;if(!me.assets)pushItem('혈색반월')}}const rem=net.phase==='augment-sync'?0:Math.max(0,Math.ceil((Math.min(net.endsAt,net.earlyEndsAt||Infinity)-Date.now())/1000));
  // Server owns phase, timer and total health. Team side is player-relative.
  if(net.round!==5)liveSupplyApplied=false;if(!me?.assets){liveApplySupplyReward(net,slot);if(typeof liveApplySelectionReward==='function')liveApplySelectionReward(net,slot);}liveSupplyUi(net,slot);if(typeof liveSelectionUi==='function')liveSelectionUi(net,slot);if(typeof liveMarketUi==='function')liveMarketUi(net,slot,players);if(typeof liveAuctionUi==='function')liveAuctionUi(net,slot,players);if(typeof liveBossUi==='function')liveBossUi(net,slot);if(typeof liveAugmentUi==='function')liveAugmentUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[foeSlot]??100;
  if(net.version!==livePhaseVersion){
