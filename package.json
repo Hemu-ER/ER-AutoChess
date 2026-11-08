@@ -14,6 +14,7 @@
     "test:m8-05": "node tests/m8-05-boss.cjs && node tests/m8-05-balance.cjs && node tests/m8-05-ui-regression.cjs",
     "test:m8-06": "npm run test:m8-04 && npm run test:m8-05 && node tests/m8-06-experiment.cjs && node tests/m8-06-buffs.cjs",
     "test:m9-01": "node tests/m9-01-augment.cjs && node tests/m9-01-online.cjs",
-    "test:m9-07": "npm run test:m8-06 && npm run test:m9-01 && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs"
+    "test:m9-07": "npm run test:m8-06 && npm run test:m9-01 && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs",
+    "test:m9-08": "npm run test:m9-07 && node tests/m9-04.cjs && node tests/m9-05-ui.cjs && node tests/m9-08-restoration.cjs"
   }
 }

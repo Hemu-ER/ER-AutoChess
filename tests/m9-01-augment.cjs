@@ -17,9 +17,9 @@ for(let count=2;count<=8;count++){
    test(aug.TIERS.includes(s.tier),`${count}인 공통등급`);
    for(const p of players){
     const v=aug.view(s,p.slot);test(v.offers.length===3,'처음 카드 3장');test(new Set(v.offers.map(c=>c.id)).size===3,'처음 3장 중복 방지');
-    if(p.slot%2===0){const before=v.offers.map(c=>c.id),after=aug.reroll(s,p).offers.map(c=>c.id);test(after.length===3&&after.every(id=>!before.includes(id)),'무료 새로고침 전체 교체');assert.throws(()=>aug.reroll(s,p),/이미 사용/);checks++}
+    if(p.slot%2===0){const before=v.offers.map(c=>c.id),after=aug.reroll(s,p,0).offers.map(c=>c.id);test(after.length===3&&after[0]!==before[0]&&after[1]===before[1]&&after[2]===before[2],'카드별 재수신');assert.throws(()=>aug.reroll(s,p,0),/이미/);checks++}
     const selected=aug.pick(s,p,1);test(p.augments.includes(selected.id),'선택이 소유 내역에 반영');
-    assert.throws(()=>aug.pick(s,p,0),/이미 증강/);checks++;
+    assert.throws(()=>aug.pick(s,p,0),/이미 (?:증강|인퓨전)/);checks++;
    }
    test(aug.allChosen(s,players),'전원 선택 완료');
   }
@@ -37,7 +37,7 @@ for(const tierIndex of [0,1,2]){
  for(const round of aug.ROUNDS){
   const state=aug.open([p],round,stableTier);
   test(state.offers[0].every(id=>!p.augments.includes(id)),`${round} 중복 후보 없음`);
-  aug.reroll(state,p,stableTier);
+  aug.reroll(state,p,0,stableTier);
   aug.pick(state,p,1);
  }
  test(new Set(p.augments).size===3,'세 번 획득한 증강 모두 서로 다름');
