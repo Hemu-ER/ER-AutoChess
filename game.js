@@ -762,7 +762,7 @@ function renderGameEconomy(){
  liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&[1,3,10].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
- if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
+ if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();window.dispatchEvent(new Event('live:m10:economy'));return}
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(r.cost)}</span></button>`}).join('');
  preloadVisibleCharacters();
@@ -781,7 +781,25 @@ function renderGameEconomy(){
  const m909Bar=dock.querySelector('.mastery-track i');
  if(m909Bar){m909Bar.offsetWidth;requestAnimationFrame(()=>{if(m909Bar.isConnected)m909Bar.style.width=pct+'%'})}
  m909MasteryLevel=gameState.masteryLevel;m909MasteryProgress=pct;
+ window.dispatchEvent(new Event('live:m10:economy'));
 }
+
+/* M10-01: read-only view of the existing authoritative economy plus action adapters.
+   No shop odds, purchase validation, networking or roster rules are duplicated here. */
+window.LIVEM10Bridge=Object.freeze({
+ snapshot(){return {
+  mode:appMode,phase:roundState.phase,round:roundState.round,credits:gameState.credits,
+  shopLocked:!!gameState.shopLocked,
+  offers:gameState.shop.map((id,index)=>{
+   const r=id&&byId[id];if(!r)return {index,empty:true};
+   return {index,id,name:displayName(r),role:r.role||'',cost:r.cost||0,
+    portrait:r.asset?.sd||'',affiliations:[...(r.affiliations||[])],
+    focused:m910FocusMatches(r).length>0,owned:gameState.owned.filter(o=>o.characterId===id).length};
+  })
+ }},
+ buy(index){if(Number.isInteger(index)&&index>=0&&index<gameState.shop.length)buyShop(index)},
+ reroll(){rerollShop()},lock(){toggleShopLock()}
+});
 
 function startRoundMode(){
  window.LIVEOpponentExploration=null;clearRoundTimer();

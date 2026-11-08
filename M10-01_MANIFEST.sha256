@@ -1,0 +1,15 @@
+M10-01 overlay / relative paths from project root
+SHA256  BYTES  PATH
+5599409ee4ec30b4eb0cce9cd2d3fe1bd76f64bac47cb0ffda34f8ea823ddd6a    243089  game.js
+dfe53f02686ae83d74ce395cabefe4566369dac55456d3266e9625b3595014d3      9459  index.html
+ee1edd585b796422a0cfe06b4a0149d9f17981e5c60b829000c33ea6ce513c6b      1641  package.json
+69e77d7c1a55ec854be77b039d21a8abd738575f3f131c48e8996987f1bce3b3     11003  m1001-research-ui.js
+1343ee4be7716745babe72ee37e6c4a1d8d6a7c8e485fc6591428d8c16d04928      2507  m1001-research-ui.css
+94d9de861837d6c976ff8bc68dac9e73a9b347b8300e2af9ba676aa68b210695       710  assets/m10/ui/card-shell.svg
+a7c43ddcffc4b58ae4bbd4af2d0a2a36c87005af5bd23f9fb6a2f52b1d076dbe       522  assets/m10/ui/console-header.svg
+be67654b6c7c68cbea912924293b93093448678dc0b1d3fbb21965e988e45bbf       378  assets/m10/ui/research-mark.svg
+8e9ed4980c8653d352f3339bcb5e86edc2f070b4a733e2e00fc346f3ce7f8322       482  assets/m10/ui/README.md
+0a0af98fbebdd1d10ffe3b33d55bd67ba0872a6746826957954b9647bc5082f5      3312  tests/m10-01-regression.cjs
+6c6c497f67e5cb6b61df39bcfcc2cfe183afdfb12769c78ab9211fa883be44a0      4937  tests/m10-01-browser-qa.py
+66fe641f24dcb0c3d9e2d81d84953e1689cf6d5af000294021c1a4dfe5c899d0      4603  M10-01_INSTALL.md
+39b736009696fdfc710dca76343465d64dc5d42b2197b32dcc3163f27425f315      1482  M10-01_DESIGN.md

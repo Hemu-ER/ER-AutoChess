@@ -1,0 +1,20 @@
+/* L.I.V.E. M10-01 / Research Console prototype mount.
+   Layout-only CSS. Visible shop art/text/interactions are PixiJS objects. */
+#m1001ModeToggle{position:fixed;right:14px;bottom:calc(min(44dvh,420px) + 7px);z-index:8900;border:1px solid #578293;background:#0e1c28ed;color:#cbe8ea;border-radius:7px;padding:8px 11px;font:600 11px/1.3 system-ui,sans-serif;cursor:pointer;box-shadow:0 5px 18px #000a}
+#m1001ModeToggle[data-active="true"]{border-color:#7ed7e1;color:#e5fcff;box-shadow:0 0 0 1px #64bcc433,0 5px 18px #000a}
+#m1001ModeToggle:focus-visible{outline:2px solid #d3edf4;outline-offset:2px}
+#m1001ModeToggle[hidden]{display:none!important}
+#m1001CanvasMount{min-width:0;position:relative;height:220px;overflow-x:auto;overflow-y:hidden;border-radius:9px;scrollbar-color:#547a89 #101721;scrollbar-width:thin;contain:layout style}
+#m1001CanvasMount canvas{display:block;max-width:none;touch-action:pan-x;cursor:default}
+body.m1001-active[data-app-mode="game"] #gameBottomDock .dock-center > .dock-shop{display:none!important}
+body.m1001-active[data-app-mode="game"] #gameBottomDock .dock-center{gap:6px!important}
+body.m1001-active[data-app-mode="game"] #gameBottomDock{--m1001-shop-height:220px}
+.m1001-screen-reader{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.m1001-screen-reader:focus-within{position:relative!important;width:auto!important;height:auto!important;margin:5px!important;overflow:visible!important;clip-path:none!important;display:flex!important;gap:5px!important;flex-wrap:wrap}
+.m1001-screen-reader button{font:600 12px system-ui;padding:6px;border:1px solid #7cc6da;background:#0b2531;color:#fff}
+@media(max-width:760px){#m1001ModeToggle{bottom:auto;top:70px;right:8px;padding:6px;font-size:10px}#m1001CanvasMount{height:205px}}
+@media(prefers-reduced-motion:reduce){#m1001ModeToggle{transition:none}}
+
+/* Keep an explicit DOM hit target for the M9-10 item/unit drag-to-sell flow. */
+#m1001CanvasMount .m1001-sell-zone.dock-shop{display:block!important;position:absolute;bottom:3px;left:190px;width:135px;height:19px;z-index:2;box-sizing:border-box;padding:2px 4px;text-align:center;line-height:13px;font:600 9px/13px system-ui,sans-serif;color:#d8bf9a;background:#2b2530e8;border:1px solid #90725888;border-radius:4px;cursor:default}
+#m1001CanvasMount .m1001-sell-zone.dock-shop::after{white-space:nowrap}
