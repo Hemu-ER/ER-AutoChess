@@ -1,0 +1,26 @@
+/* M10-02: only canvas mounting, existing-layout fallback, and an accessible mode toggle use CSS.
+   All game panels, cells, cards, and labels are rendered as PixiJS display objects. */
+#m1002PrepMount{position:fixed;inset:0;z-index:8750;overflow:hidden;background:#070c12;isolation:isolate}
+#m1002PrepMount .m1002-viewport{position:absolute;inset:0;overflow:hidden}
+#m1002PrepMount .m1002-canvas{width:100%;height:100%;display:block;touch-action:none}
+#m1002Toggle{position:fixed;z-index:8801;left:12px;bottom:10px;padding:6px 10px;
+ font:600 11px system-ui,sans-serif;background:#17232b;color:#b7cbd1;border:1px solid #536874;
+ border-radius:5px;cursor:pointer;opacity:.88}
+#m1002Toggle:hover,#m1002Toggle:focus-visible{opacity:1;outline-color:#b5cbd0}
+#m1002Toggle[hidden]{display:none!important}
+body.m1002-prep-active #m1001ModeToggle{display:none!important}
+/* Core overlays (character details, modals, chat, multiplayer dialogs) need not be rewritten in this milestone. */
+body.m1002-prep-active #unitInspector,
+body.m1002-prep-active #characterCursorTip,
+body.m1002-prep-active #liveItemCursorTip,
+body.m1002-prep-active #live-intro,
+body.m1002-prep-active .live-dialog,
+body.m1002-prep-active [role="dialog"]{z-index:8950!important}
+@media(prefers-reduced-motion:reduce){#m1002PrepMount *{animation:none!important}}
+
+/* Legacy top HUD is kept in DOM to handle existing multiplayer-ready clicks,
+   but visually suppressed: M10 draws its own Pixi header in prep. */
+body.m1002-prep-active #roundModePanel{visibility:hidden!important;pointer-events:none!important}
+/* Chat still needs an actual text input. Open only when requested in the Pixi header. */
+body.m1002-prep-active.m1002-chat-open #liveGameChat,
+body.m1002-prep-active.m1002-chat-open #liveTeamChat{z-index:8880!important;visibility:visible!important;pointer-events:auto!important}

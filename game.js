@@ -801,6 +801,71 @@ window.LIVEM10Bridge=Object.freeze({
  reroll(){rerollShop()},lock(){toggleShopLock()}
 });
 
+/* M10-02: The preparation renderer consumes read-only game state and delegates
+ * every mutation to existing M9-10 methods (including authoritative multiplayer economy).
+ * This adapter does not change match rules, shop odds or starting resources. */
+window.LIVEM10PrepBridge=Object.freeze({
+ snapshot(){
+  const core=window.LIVEM10Bridge.snapshot();
+  const fromOwned=o=>{const r=byId[o.characterId]||{};const stat=r.baseStats||{};
+   return {uid:o.uid,id:o.characterId,name:displayName(r),role:r.role||'',
+    affiliations:[...(r.affiliations||[])],portrait:r.asset?.sd||'',star:o.star||1,
+    location:o.location,x:o.x,y:o.y,equipment:[...(o.equipment||[])],
+    hp:stat.hp??0,atk:stat.atk??0,def:stat.def??0,as:stat.as??0}
+  };
+  const owned=gameState.owned.map(fromOwned),bench=owned.filter(o=>o.location==='bench');
+  const formation=teams.A.map(u=>{const o=owned.find(x=>x.uid===u.ownedId);return o?{...o,x:u.x,y:u.y,location:'board'}:null}).filter(Boolean);
+  const unique=new Map();for(const u of formation)unique.set(u.id,u);
+  const counts=new Map();for(const u of unique.values())for(const name of u.affiliations)counts.set(name,(counts.get(name)||0)+1);
+  // Reuse M9's actual tier/role activation logic; do not infer a synergy tier from a raw count.
+  const synergyDom=document.createElement('div');synergyDom.innerHTML=synergySummary('A');
+  const synergies=[...synergyDom.querySelectorAll('.synergy-tip-chip')].map(node=>{
+   const name=node.dataset.synergyName||'',tier=Number(node.dataset.synergyTier||1);
+   return {name,label:node.textContent.trim(),tier,active:node.classList.contains('synergy-on'),
+    count:counts.get(name)||0,description:synergyEffectText(name,tier)}
+  });
+  const level=gameState.masteryLevel||1,expMax=masteryExpToNext();
+  const room=window.LIVEMultiplayer?.getRoom?.(),online=!!room?.started;
+  const me=online?room.players?.find(p=>p.id===window.LIVEMultiplayer.getPlayerId?.()):null;
+  const readyButton=document.querySelector('#roundOnlineReady,#roundSkip');
+  const pve=[1,3,10].includes(roundState.round);
+  return {...core,remaining:roundState.remaining,hpA:roundState.hp.A,hpB:roundState.hp.B,
+   owned,bench,formation,maxUnits:m907TeamLimit('A'),items:gameState.items.map(name=>({name:LIVEItems.displayName(name),raw:name,icon:itemIcon(name)})),
+   focus:[...m910ShopFocus],focusOptions:[...new Set(playableRoster().flatMap(r=>[...(r.affiliations||[]),r.role]))].sort((a,b)=>a.localeCompare(b,'ko')),
+   synergies,interest:roundInterest(),level,exp:gameState.masteryProgress||0,expMax,online,
+   readyLabel:online?(me?.roundReady?'준비 취소':'준비 완료'):'준비 완료',
+   readyAvailable:roundState.phase==='prep'&&!!readyButton&&!readyButton.disabled,
+   message:gameState.message||'',schedule:[1,2,3].map(i=>`R${roundState.round+i} ${liveRoundKind(roundState.round+i)}`),
+   pve};
+ },
+ buy(index){window.LIVEM10Bridge.buy(index)},
+ reroll(){window.LIVEM10Bridge.reroll()},
+ lock(){window.LIVEM10Bridge.lock()},
+ invest(){investMastery()},
+ place(uid,x,y){
+  const gx=Number(x),gy=Number(y);if(!Number.isInteger(gx)||gx<0||gx>2||!Number.isInteger(gy)||gy<0||gy>2)return;
+  const unit=gameState.owned.find(o=>o.uid===uid);if(!unit)return;
+  if(isOnlineMatch()){
+   const other=gameState.owned.find(o=>o.uid!==uid&&o.location==='board'&&o.x===gx&&o.y===gy);
+   if(other&&unit.location==='board')return onlineEconomyAction('swap',{uid,otherUid:other.uid});
+   return onlineEconomyAction('deploy',{uid,x:gx,y:gy});
+  }
+  moveOwnedToCell(uid,{dataset:{x:String(gx),y:String(gy)}});
+ },
+ deploy(uid){deployOwned(uid)},
+ recall(uid){benchOwned(uid)},
+ sellUnit(uid){sellOwned(uid)},
+ equip(uid,index){equipItem(uid,index)},
+ craft(i,j){inventoryCraft(i,j)},
+ sellItem(index){sellInventoryItem(index)},
+ focus(name){if(m910ShopFocus.has(name))m910ShopFocus.delete(name);else if(m910ShopFocus.size<3)m910ShopFocus.add(name);
+  else{gameState.message='관심 시너지는 최대 3개까지 지정할 수 있어.';renderGameEconomy();return}
+  try{localStorage.setItem('live_m910_shop_focus',JSON.stringify([...m910ShopFocus]))}catch{}
+  renderGameEconomy();
+ },
+ ready(){document.querySelector('#roundOnlineReady,#roundSkip')?.click()}
+});
+
 function startRoundMode(){
  window.LIVEOpponentExploration=null;clearRoundTimer();
  if(running||battle)reset();

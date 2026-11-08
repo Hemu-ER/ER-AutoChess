@@ -18,6 +18,7 @@
     "test:m9-08": "npm run test:m9-07 && node tests/m9-04.cjs && node tests/m9-05-ui.cjs && node tests/m9-08-restoration.cjs",
     "test:m9-09": "npm run test:m9-08 && node tests/m9-09-ux-regression.cjs",
     "test:m9-10": "npm run test:m9-09 && node tests/m9-10-regression.cjs",
-    "test:m10-01": "node tests/m9-10-regression.cjs && node tests/m10-01-regression.cjs"
+    "test:m10-01": "node tests/m9-10-regression.cjs && node tests/m10-01-regression.cjs",
+    "test:m10-02": "npm run test:m10-01 && node tests/m10-02-regression.cjs"
   }
 }
