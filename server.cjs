@@ -103,7 +103,7 @@ function playerView(r,p){
  }
  return {code:r.code,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,infusionIds:[...(x.augments||[])],...(x.id!==p.id&&g&&g.phase!=='augment'&&g.phase!=='augment-sync'?{scout:{bench:economy.reserveTeam(x.assets),inventory:[...(x.assets?.items||[])],credits:x.assets?.credits||0,purpleChoice:x.purpleChoice||{},purpleLosses:x.purpleLosses||0,augments:(x.augments||[]).map(augId=>Object.values(augment.CARDS).flat().find(c=>c.id===augId)).filter(Boolean),synergies:{affiliations:[...new Set((x.team||[]).flatMap(e=>m7Roster[e.characterId]?.affiliations||[]))].map(name=>({name,count:new Set((x.team||[]).filter(e=>m7Roster[e.characterId]?.affiliations?.includes(name)).map(e=>e.characterId)).size})),roles:(x.team||[]).map(e=>({name:m7Roster[e.characterId]?.name||e.characterId,role:m7Roster[e.characterId]?.role||''}))}}}:{}),...(x.id===p.id?{assets:x.assets||null,purpleChoice:x.purpleChoice||{},purpleLosses:x.purpleLosses||0,auctionEffects:(x.auctionEffects||[]).map(a=>({...a,info:auction.EFFECTS.find(e=>e.id===a.id)||null})),augments:(x.augments||[]).map(augId=>{const c=Object.values(augment.CARDS).flat().find(c=>c.id===augId);return c||null}).filter(Boolean)}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
 }
-const publicRoom=r=>({code:r.code,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{round:r.game.round,phase:r.game.phase,kind:r.game.kind,hp:r.game.hp,schedule:r.game.schedule}:null});
+const publicRoom=r=>({code:r.code,displayName:r.displayName||'공개 대기실',isPublic:r.isPublic!==false,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{round:r.game.round,phase:r.game.phase,kind:r.game.kind,hp:r.game.hp,schedule:r.game.schedule}:null});
 function broadcast(r){r.revision++;for(const p of r.players.values()){const res=clients.get(p.id);if(res&&!res.destroyed)try{res.write(`event: state\ndata: ${JSON.stringify(playerView(r,p))}\n\n`)}catch{}}}
 function cleanupRoom(r){if(r.players.size===0)rooms.delete(r.code)}
 // In 2–8-player games an intentional leave eliminates only the leaver.
@@ -163,10 +163,20 @@ if(url.pathname==='/api/me'){const username=authAccount(req,body);return usernam
   return reply(res,200,{token:found.p.token,playerId:found.p.id,room:playerView(found.r,found.p)});
  }
 if(url.pathname==='/api/nickname'){const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요해.'});const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});accounts[username].nickname=nickname;await saveAccounts();for(const r of rooms.values()){let modified=false;for(const p of r.players.values())if(p.username===username){p.name=nickname;modified=true}if(modified)broadcast(r)}return reply(res,200,{nickname})}
-if(url.pathname==='/api/logout'){sessions.delete(String(req.headers['x-live-session']||body.session||''));return reply(res,200,{ok:true})}
+if(url.pathname==='/api/rooms'){
+  const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요합니다.'});
+  const list=[...rooms.values()].filter(r=>r.isPublic!==false&&!r.started&&r.players.size<r.maxPlayers)
+    .map(r=>({code:r.code,name:r.displayName||'공개 대기실',maxPlayers:r.maxPlayers,playerCount:r.players.size,hostName:r.players.get(r.hostPlayerId)?.name||'방장',createdAt:r.createdAt||0}))
+    .sort((a,b)=>b.createdAt-a.createdAt).slice(0,50);
+  return reply(res,200,{rooms:list});
+ }
+
+ if(url.pathname==='/api/logout'){sessions.delete(String(req.headers['x-live-session']||body.session||''));return reply(res,200,{ok:true})}
 if(url.pathname==='/api/create'){
  const username=authAccount(req,body);if(!username)return reply(res,401,{error:'먼저 로그인해.'});
- const code=crypto.randomBytes(3).toString('hex').toUpperCase();const r={code,maxPlayers:Math.min(8,Math.max(2,Number(body.maxPlayers)||2)),players:new Map(),hostPlayerId:null,messages:[],revision:0};rooms.set(code,r);return join(r,res,username);
+ let code;do{code=crypto.randomBytes(3).toString('hex').toUpperCase()}while(rooms.has(code));
+  const displayName=String(body.roomName||'').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,32)||'공개 대기실';
+  const r={code,displayName,isPublic:body.isPublic!==false,createdAt:Date.now(),maxPlayers:Math.min(8,Math.max(2,Number(body.maxPlayers)||2)),players:new Map(),hostPlayerId:null,messages:[],revision:0};rooms.set(code,r);return join(r,res,username);
 }
 if(url.pathname==='/api/join'){
  const username=authAccount(req,body);if(!username)return reply(res,401,{error:'먼저 로그인해.'});

@@ -1,0 +1,12 @@
+M9-10 OVERLAY MANIFEST — M9-09 base only
+SHA256  BYTES  FILE
+f7f09c4648eeece2d069bad1ece9ea167fa030fbbb505424009688d371f884d5     55692  server.cjs
+faee11b6559df64d90785fcd91e45ac2987bf4a6de708c23557fa327b8627c7a     17917  multiplayer.js
+8aeda6e74e1550a1fdf52051e96bd3395760b51f590914d22dff1d8b8e3da0a7    242124  game.js
+cb91a106f7cde191113c1919316c67c4520bfccba46e3f200b885c20addad7df     24480  purple-combat.js
+69f5b5f9d5984313a5db7cef00de7018d8003a87807b3c0fa92aa4c08d85edac      9353  index.html
+ed82da56b4b50f6cf251b5da552e00af21ea0e8036ad359b77c8381230c6f761     12077  m910-polish.css
+5ac55f732cd027d5c2fff1e1cc2ae310cc5fb4717bd9e36870bc56bd02cbbdad      2689  m910-system-language.js
+ce360c237e73dbc44f03ad4f13b6ff7ab867b4c29fe479c485be29890e8f06ec      1551  package.json
+ab59ca527f4273434591cbb067513bbf851c2c12fd4aa52959ff08f2430eb6a6      7661  tests/m9-10-regression.cjs
+cf6cc56a7df2a1583ea2332fb5cb26ada5668062c207d9b8ea0d6eeb4343b8e5      5099  M9-10_INSTALL.md

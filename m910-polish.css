@@ -1,0 +1,93 @@
+/* L.I.V.E. M9-10 — lobby / shop / combat-information progressive polish.
+   Loaded AFTER M9-04, M9-05, M9-07 and M9-09; never overwrite existing animations. */
+:root{--m910-accent:#96d9d3;--m910-ink:#eff5f4}
+[hidden]{display:none!important}
+/* Lobby: browse public games, copy code, keep the existing six-digit direct join. */
+#liveGate .live-gate-card{max-height:min(94dvh,900px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+#liveGate .m910-create-options{display:grid;gap:8px;margin:10px 0}
+#liveGate .m910-create-options>input{min-width:0;width:100%;box-sizing:border-box}
+#liveGate .m910-create-options label{display:flex;align-items:center;gap:7px;font-size:12px;color:#b5c9c6}
+#liveGate .m910-create-options input[type=checkbox]{accent-color:#a8e6d9;width:16px;height:16px}
+#liveGate .m910-room-browser{margin-top:16px;border-top:1px solid #94ddcd30;padding-top:12px}
+#liveGate .m910-room-browser-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+#liveGate .m910-room-browser-head button,#liveGate #liveCopyRoomId{border:1px solid #537b7b;background:#1a3438;color:#d6f2e9;border-radius:8px;padding:7px 10px;cursor:pointer}
+#liveGate .m910-room-results{display:grid;gap:7px;max-height:min(28dvh,255px);min-height:60px;overflow:auto;padding-right:2px}
+#liveGate .m910-room-results>p{margin:0;padding:13px;color:#94aeb0;font-size:12px;line-height:1.6}
+#liveGate .m910-room-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid #46636a;border-radius:9px;background:#12252c}
+#liveGate .m910-room-result span{display:grid;gap:4px;min-width:0}
+#liveGate .m910-room-result b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#liveGate .m910-room-result small{font-size:11px;color:#9cb5b7}
+#liveGate .m910-room-result button{flex:none;border:1px solid #84cabe85;border-radius:6px;color:#e5fbf5;background:#20504b;padding:8px 13px;cursor:pointer}
+#liveGate .m910-room-result button:hover,#liveGate #liveCopyRoomId:hover{background:#347368}
+#liveGate #liveWaiting>.live-line:first-child{flex-wrap:wrap}
+/* Shop: art stays unobstructed; metadata and role + affiliation tags flow below. */
+.game-bottom-dock{max-width:calc(100vw - 12px)!important;box-sizing:border-box}
+.game-bottom-dock .dock-shop{grid-template-columns:repeat(var(--m910-shop-columns,5),minmax(100px,1fr))!important;overflow-x:auto;scrollbar-width:thin;padding-bottom:3px}
+.game-bottom-dock .shop-card{display:grid!important;grid-template-rows:clamp(75px,10vh,110px) auto minmax(40px,auto)!important;min-height:153px!important}
+.game-bottom-dock .shop-portrait{position:relative;min-height:0!important;height:100%;overflow:hidden!important}
+.game-bottom-dock .shop-synergies{position:static!important;left:auto!important;right:auto!important;top:auto!important;display:flex!important;flex-wrap:wrap!important;gap:3px!important;align-items:flex-start!important;max-height:37px;overflow:hidden!important;pointer-events:auto!important;margin:2px 0 0}
+.game-bottom-dock .shop-synergies .synergy-tip-chip{max-width:100%!important;min-width:0;flex-shrink:1;font-size:9px}
+.game-bottom-dock .shop-meta{padding:1px 6px 6px!important;display:flex!important;align-items:flex-start!important;gap:5px;min-height:38px}
+.game-bottom-dock .shop-meta-label{display:flex;flex-direction:column;gap:0;flex:1;min-width:0}
+.game-bottom-dock .shop-meta-label>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#a7bed0;font-size:10px;font-weight:700}
+.game-bottom-dock .shop-meta .credit-price{flex:none;align-self:flex-start;margin-top:2px}
+.game-bottom-dock .shop-name{display:flex;align-items:center;justify-content:space-between;gap:2px;padding:5px 6px 2px;min-height:21px;font-size:12px}
+.game-bottom-dock .shop-card:has(.m910-focus-mark){border-color:#eac883!important;box-shadow:inset 0 0 0 1px #d9c78245,0 0 14px #ebbc7041}
+.game-bottom-dock .m910-focus-mark{color:#f7d987;font-style:normal;flex:none;font-size:13px;text-shadow:0 0 9px #f3c06d}
+.game-bottom-dock .shop-synergies .m910-favorite{color:#f8da91;border-color:#deb968;background:#644b2690}
+/* User-created interest filters: display only; never modify offer rates. */
+.game-bottom-dock .m910-focus{position:relative;min-width:0}
+.game-bottom-dock #m910ShopFocusToggle{border:1px solid #5d7682;border-radius:7px;background:#1d2938;color:#e5eeee;font:600 11px/1.3 inherit;padding:7px 9px;text-align:left;width:100%;cursor:pointer}
+.game-bottom-dock #m910ShopFocusToggle:hover{background:#2b4255}
+.game-bottom-dock .m910-focus-options{position:absolute;z-index:180;bottom:calc(100% + 7px);left:0;width:min(380px,86vw);max-height:min(275px,40dvh);display:flex;flex-wrap:wrap;align-content:flex-start;gap:5px;overflow-y:auto;padding:12px;border:1px solid #79a2a8;border-radius:12px;background:#0d1b26f7;box-shadow:0 18px 45px #000c;scrollbar-width:thin}
+.game-bottom-dock .m910-focus-options button{border:1px solid #455f6b;border-radius:999px;padding:5px 8px;background:#21313d;color:#bfcfd1;font:600 11px/1.35 inherit;cursor:pointer}
+.game-bottom-dock .m910-focus-options button.active{background:#635234;border-color:#eac480;color:#ffe8b3}
+.game-bottom-dock .m910-focus>small{display:block;font-size:10px;line-height:1.45;color:#91a9b4;margin-top:3px}
+/* 1st class infusions: shift to expand a readable detailed text; hover remains stable. */
+#m904InfusionTooltip{max-width:min(420px,calc(100vw - 16px))!important;min-width:min(230px,calc(100vw - 24px));z-index:100050!important;pointer-events:none!important;line-height:1.6;white-space:normal}
+#m904InfusionTooltip b{display:block;font-size:13px;margin-bottom:4px;color:#f7f7ff}
+#m904InfusionTooltip small{color:#b6a0ea}
+#m904InfusionTooltip p{margin:0;color:#d8e6ec;font-size:12px;line-height:1.7}
+#m904InfusionTooltip span{display:block;color:#9ab7be;font-size:10px;margin-top:8px}
+#m904InfusionTooltip.m910-detailed{padding:13px 16px!important;background:#101525fa;border-color:#9672d1;box-shadow:0 12px 45px #000b}
+/* Collapsed infographic still has its timer and restored toggle, without obscuring play. */
+#liveAugmentPanel>.m910-augment-collapse{position:fixed;right:clamp(8px,3vw,26px);top:clamp(9px,2vh,20px);z-index:100055;pointer-events:auto;padding:9px 13px;border:1px solid #bc9bf3;border-radius:9px;color:#f2e9ff;background:#352553ee;box-shadow:0 5px 26px #0009;cursor:pointer;font-weight:700}
+#liveAugmentPanel.m910-collapsed{inset:auto!important;right:0!important;top:0!important;left:auto!important;bottom:auto!important;width:0!important;height:0!important;background:transparent!important;pointer-events:none!important}
+#liveAugmentPanel.m910-collapsed .m901-augment-modal{display:none!important}
+#liveAugmentPanel.m910-collapsed>.m910-augment-collapse{position:fixed}
+/* Current status is readable in the SAME unit information panel, not a flickering HUD. */
+#characterCursorTip .m910-character-status{margin-top:8px;padding:9px 8px;display:grid;gap:6px;border:1px solid #9fb3c040;border-radius:8px;background:#131e28}
+#characterCursorTip .m910-character-status>b{font-size:11px;color:#bce7d8}
+#characterCursorTip .m910-character-status>small{display:block;font-size:10px;color:#bfd0db;line-height:1.6}
+#characterCursorTip .m910-status-items{display:grid;gap:4px}
+#characterCursorTip .m910-status-items>small{font-size:10px;color:#93a8ac}
+#characterCursorTip .m910-status-row{display:flex;gap:10px;align-items:baseline;justify-content:space-between;border-bottom:1px solid #ffffff0c;font-size:10px}
+#characterCursorTip .m910-status-row b{color:#e1eff3;font-size:10px}
+#characterCursorTip .m910-status-row small{color:#e9cb91;font-size:10px}
+/* No global aug popups. Dice's random outcome is a single quiet, meaningful status display. */
+#m910DiceResult{position:fixed;left:clamp(12px,2vw,35px);top:clamp(74px,13vh,135px);z-index:14030;max-width:min(360px,75vw);border:1px solid #c29ce5;border-left:3px solid #d7b3ff;border-radius:9px;padding:9px 13px;background:#1e1b31ec;color:#f1e5ff;box-shadow:0 8px 25px #000a;font-size:12px;font-weight:700;pointer-events:none}
+#m910DiceResult.m910-new-result{animation:m910-dice-in .3s ease-out both}
+@keyframes m910-dice-in{from{opacity:0;transform:translateX(-13px)}to{opacity:1;transform:translateX(0)}}
+/* Scout uses exactly the inventory visual language; synergies include a useful short summary. */
+#m901Scouting .m910-scout-item{display:flex;align-items:center;gap:9px;min-width:0}
+#m901Scouting .m910-scout-item>img,#m901Scouting .m910-scout-fallback{width:40px;height:40px;object-fit:contain;background:#141d2c;border:1px solid #62778e55;border-radius:6px;flex:none;padding:3px}
+#m901Scouting .m910-scout-item>span:not(.m910-scout-fallback){min-width:0;display:grid;gap:4px}
+#m901Scouting .m910-scout-item b{font-size:12px}
+#m901Scouting .m910-scout-item small,#m901Scouting .m910-scout-synergy small{display:block;font-size:10px;color:#a8bccb;line-height:1.6;white-space:normal;overflow-wrap:anywhere}
+#m901Scouting .m910-scout-synergy{display:grid;gap:5px}
+/* Preparation strategy: make designated bait unambiguous. */
+#m907PurpleStrategy .m910-bait-status{padding:9px;border-radius:7px;background:#3e35576b;color:#f3e8ff;border:1px solid #ae9be06e;font-size:12px}
+/* Selection's claim terminal identity, instead of a plain instant card. */
+#liveSelectionPanel .m910-selection-stage{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 75% -20%,#ad875f2b,transparent 58%),linear-gradient(145deg,#16252f,#0b131b 70%);border-color:#ad936c!important;box-shadow:0 32px 100px #000d,inset 0 0 0 1px #fff1}
+#liveSelectionPanel .m910-selection-crest{display:flex;gap:10px;align-items:center;margin:0 0 12px;color:#e9cc96;font:700 clamp(14px,2vw,21px)/1.3 system-ui;letter-spacing:.09em}
+#liveSelectionPanel .m910-selection-crest span{font-size:10px;letter-spacing:.16em;color:#cbbba3}
+#liveSelectionPanel .live-selection-option{animation:m910-claim-rise .5s cubic-bezier(.2,.7,.2,1) both}
+#liveSelectionPanel .live-selection-option:nth-child(2){animation-delay:.07s}
+#liveSelectionPanel .live-selection-option:nth-child(3){animation-delay:.14s}
+#liveSelectionPanel .live-selection-option:nth-child(4){animation-delay:.21s}
+@keyframes m910-claim-rise{from{opacity:0;transform:translateY(18px) scale(.965)}to{opacity:1;transform:translateY(0) scale(1)}}
+/* Scaling and 125%-250% browser zoom compatibility: responsive CSS viewport, not device pixels. */
+@media(max-width:1120px){.game-bottom-dock{gap:6px!important;padding:7px!important;grid-template-columns:minmax(105px,1fr) minmax(0,3.8fr)!important}.game-bottom-dock .dock-mastery{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;min-width:0}.game-bottom-dock .dock-center{min-width:0}.game-bottom-dock .dock-shop{grid-template-columns:repeat(var(--m910-shop-columns,5),minmax(95px,1fr))!important}}
+@media(max-width:760px){.game-bottom-dock{max-height:min(54dvh,460px);overflow-y:auto;grid-template-columns:1fr!important}.game-bottom-dock .dock-side{grid-template-columns:auto 1fr auto;gap:6px;align-items:center}.game-bottom-dock .dock-side>.m901-interest{grid-column:1/-1}.game-bottom-dock .dock-center{order:1}.game-bottom-dock .dock-shop{grid-template-columns:repeat(var(--m910-shop-columns,5),minmax(104px,1fr))!important}.game-bottom-dock .dock-mastery{order:2;grid-column:1/-1;grid-template-columns:1fr 1fr}.game-bottom-dock .shop-card{grid-template-rows:85px auto auto!important}.game-bottom-dock .shop-synergies{max-height:38px}.game-bottom-dock .bench-row{overflow-x:auto;display:flex;gap:5px}.game-bottom-dock .bench-unit{flex:0 0 62px}.game-bottom-dock .m910-focus-options{bottom:calc(100% + 7px)}}
+@media(max-height:650px){#liveGate .live-gate-card{max-height:96dvh}#liveAugmentPanel .m901-augment-modal{max-height:93dvh!important;overflow-y:auto}.game-bottom-dock{max-height:45dvh;overflow-y:auto}}
+@media(prefers-reduced-motion:reduce){#m910DiceResult.m910-new-result,#liveSelectionPanel .live-selection-option{animation:none!important}}
