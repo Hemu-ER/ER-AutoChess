@@ -25,8 +25,13 @@ async function run(){
   assert.equal(aview.offersBySlot,undefined,'다른 참가자 후보 비공개');checks+=4;
   const wrongPhase=await post('round-ready',{ready:true},a.token);assert.equal(wrongPhase.status,409);checks++;
   const invalid=await post('augment-pick',{round:1,choice:3},a.token);assert.equal(invalid.status,409);checks++;
-  const re=await post('augment-reroll',{round:1},a.token);assert.equal(re.status,200);checks++;
-  const re2=await post('augment-reroll',{round:1},a.token);assert.equal(re2.status,409);checks++;
+  // M9-09: 서버는 선택된 카드 위치만 재수신해야 한다. 위치 누락은 잘못된 요청이다.
+  assert.equal((await post('augment-reroll',{round:1},a.token)).status,409);checks++;
+  const beforeOffers=playerView(r,ap).game.augment.offers.map(o=>o.id);
+  const re=await post('augment-reroll',{round:1,choice:2},a.token);assert.equal(re.status,200);checks++;
+  const afterOffers=playerView(r,ap).game.augment.offers.map(o=>o.id);
+  assert.equal(afterOffers[0],beforeOffers[0]);assert.equal(afterOffers[1],beforeOffers[1]);assert.notEqual(afterOffers[2],beforeOffers[2]);checks+=3;
+  const re2=await post('augment-reroll',{round:1,choice:2},a.token);assert.equal(re2.status,409);checks++;
   const picked=await Promise.all([post('augment-pick',{round:1,choice:0},a.token),post('augment-pick',{round:1,choice:2},b.token)]);
   assert(picked.every(v=>v.status===200));assert(r.game.earlyEndsAt>Date.now());checks+=2;
   const double=await post('augment-pick',{round:1,choice:1},a.token);assert.equal(double.status,409);checks++;

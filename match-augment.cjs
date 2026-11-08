@@ -78,8 +78,9 @@ function drawOffers(tier,owned=[],exclude=[],randomInt=crypto.randomInt){const u
 const byId=new Map(Object.values(CARDS).flat().map(card=>[card.id,card]));
 function open(players,round,randomInt=crypto.randomInt){if(!ROUNDS.includes(round))throw Error('인퓨전 라운드가 아니야');const tier=drawTier(randomInt),offers={};for(const p of players)offers[p.slot]=drawOffers(tier,p.augments||[],[],randomInt);return {tier,round,offers,rerolls:{},picks:{},downloads:{},revision:1}}
 function view(s,slot){return {tier:s.tier,round:s.round,offers:(s.offers[slot]||[]).map(id=>byId.get(id)),rerollsLeft:3-(s.rerolls[slot]||[]).length,rerollsUsed:s.rerolls[slot]||[],selected:s.picks[slot]?byId.get(s.picks[slot]):null,readyCount:Object.keys(s.picks).length,downloadReadyCount:Object.keys(s.downloads||{}).filter(k=>s.downloads[k]).length,downloadReady:!!s.downloads?.[slot],implementation:'파랑 인퓨전·보라 인퓨전 전투 효과 연결 · 회색은 선택만 구현'}}
-function reroll(s,p,index=0,randomInt=crypto.randomInt){
- if(typeof index==='function'){randomInt=index;index=0} // compatibility with historical callers
+function reroll(s,p,index,randomInt=crypto.randomInt){
+ if(typeof index==='function'){randomInt=index;index=0} // old QA caller compatibility
+ // Network requests must explicitly include the slot; undefined is invalid.
  if(s.picks[p.slot])throw Error('이미 인퓨전을 선택했어.');
  if(!s.offers[p.slot])throw Error('참가 후보가 없어.');
  if(!Number.isInteger(index)||index<0||index>2)throw Error('인퓨전 카드 위치 오류');

@@ -1,0 +1,46 @@
+/* L.I.V.E. M9-09: deliberate motion, compact Korean labels, face-first shop portraits.
+   Keep M9-04/M9-05 download animation intact. */
+#m809LiveHpStandings .m808-hp-player.is-me{cursor:default!important;pointer-events:none!important;border-color:#45635c!important;filter:saturate(.9)}
+#m809LiveHpStandings .m808-hp-player.is-me:hover{transform:none!important;background:inherit!important}
+/* Closeup is calculated against the actual opaque sprite bounds in normalizePortraitImage. */
+.game-bottom-dock .shop-portrait>img[data-alpha-ready="1"],
+.game-bottom-dock .bench-portrait>img[data-alpha-ready="1"]{transform:none!important;object-fit:fill!important;object-position:top left!important;transform-origin:top left!important;max-width:none!important;max-height:none!important}
+.game-bottom-dock .shop-card{grid-template-rows:88px auto auto!important;min-height:130px!important}
+.game-bottom-dock .shop-portrait{min-height:86px!important}
+.game-bottom-dock .bench-unit{height:67px!important}
+.game-bottom-dock .bench-row{min-height:67px!important}
+.game-bottom-dock .bench-portrait{height:100%!important}
+/* Progress: width animation persists across DOM replacement via last-value snapshots.
+   The drifting highlight gives a contained water-fill impression. */
+.game-bottom-dock .mastery-track{position:relative;height:12px!important;border-radius:999px!important;overflow:hidden!important;border:1px solid #436b70!important;background:#101b2c!important;box-shadow:inset 0 2px 5px #000b!important}
+.game-bottom-dock .mastery-track>i{position:relative!important;display:block!important;height:100%!important;border-radius:999px!important;overflow:hidden!important;background:linear-gradient(180deg,#b5fff2 0%,#4dc4c8 38%,#287ca5 100%)!important;box-shadow:0 0 16px #67d5ea75!important;transition:width .95s cubic-bezier(.18,.72,.26,1)!important}
+.game-bottom-dock .mastery-track>i::before{content:"";position:absolute;inset:-8px -90% -8px -90%;border-radius:45%;background:repeating-linear-gradient(105deg,transparent 0 14px,#e0fcff3c 14px 25px,transparent 25px 54px);animation:m909WaterFlow 3.8s linear infinite;pointer-events:none}
+.game-bottom-dock .mastery-track>i::after{content:"";position:absolute;inset:1px 0 auto;height:2px;background:linear-gradient(90deg,#91f0ff00,#e1ffffa8,#91f0ff00);animation:m909WaterGlint 2.6s ease-in-out infinite;pointer-events:none}
+@keyframes m909WaterFlow{to{transform:translateX(54px)}}
+@keyframes m909WaterGlint{0%,100%{opacity:.3}50%{opacity:1}}
+/* Stage tabs are not code IDs or a separate loot category. */
+#liveCodex .m909-codex-stages{display:flex;align-items:center;gap:8px;padding:10px 17px 7px;border-bottom:1px solid #344750;flex:none}
+#liveCodex .m909-codex-stages[hidden]{display:none!important}
+#liveCodex .m909-codex-stages button{flex:1;padding:9px 12px;border:1px solid #47616b;border-radius:9px;background:#13252c;color:#d6e5e6;font:inherit;font-size:13px;cursor:pointer}
+#liveCodex .m909-codex-stages button[data-stage="gray"]{--tier:#9ba9ae}
+#liveCodex .m909-codex-stages button[data-stage="blue"]{--tier:#70adf7}
+#liveCodex .m909-codex-stages button[data-stage="purple"]{--tier:#bf8cf5}
+#liveCodex .m909-codex-stages button.active{border-color:var(--tier);background:color-mix(in srgb,var(--tier),transparent 81%);color:#fff;box-shadow:inset 0 -2px var(--tier)}
+#liveCodex .m909-infusion-detail{line-height:1.66!important;padding:17px!important}
+#liveCodex .m909-infusion-detail h4{font-size:17px;margin:7px 0 12px}
+#liveCodex .m909-infusion-detail p{font-size:13px!important;line-height:1.8!important;color:#dfebec!important;white-space:pre-line}
+#liveCodex .m909-infusion-detail>small{color:#a8b8c2;font-size:11px}
+#liveAugmentPanel .m902-infusion-card>p{line-height:1.75!important;font-size:13px!important;max-height:25vh;overflow-y:auto;overflow-wrap:break-word}
+/* Only panel entrance is newly animated. Internal per-card download choreography remains untouched. */
+@keyframes m909PanelEnter{0%{opacity:0;transform:translateY(38px) scale(.955);filter:blur(5px)}58%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes m909BackdropEnter{from{opacity:0}to{opacity:1}}
+#liveAugmentPanel.m909-opening .m901-augment-modal{animation:m909PanelEnter .78s cubic-bezier(.16,.82,.22,1) both!important}
+#liveAuctionPanel.m909-opening .live-auction-card{animation:m909PanelEnter .72s cubic-bezier(.16,.82,.22,1) both!important}
+#liveMarketPanel.m909-opening .live-market-card{animation:m909PanelEnter .72s cubic-bezier(.16,.82,.22,1) both!important}
+#liveAuctionPanel.m909-opening .live-auction-lot,#liveMarketPanel.m909-opening .live-market-listing{animation:m909PanelEnter .67s cubic-bezier(.2,.8,.2,1) both}
+#liveAuctionPanel.m909-opening .live-auction-lot:nth-child(2),#liveMarketPanel.m909-opening .live-market-listing:nth-child(2){animation-delay:.08s}
+#liveAuctionPanel.m909-opening .live-auction-lot:nth-child(3),#liveMarketPanel.m909-opening .live-market-listing:nth-child(3){animation-delay:.15s}
+/* Infusion popups are intentionally removed. Effects still run. */
+.m907-purple-vfx{display:none!important}
+@media(max-width:700px){#liveCodex .m909-codex-stages{padding:8px;gap:5px}#liveCodex .m909-codex-stages button{padding:8px 4px;font-size:12px}.game-bottom-dock .shop-card{grid-template-rows:77px auto auto!important;min-height:118px!important}.game-bottom-dock .shop-portrait{min-height:76px!important}}
+@media(prefers-reduced-motion:reduce){.m909-opening .m901-augment-modal,.m909-opening .live-auction-card,.m909-opening .live-market-card,.m909-opening .live-auction-lot,.m909-opening .live-market-listing{animation:none!important}.game-bottom-dock .mastery-track>i{transition:none!important}.game-bottom-dock .mastery-track>i::before,.game-bottom-dock .mastery-track>i::after{animation:none!important}}

@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="style.css" />
 <link rel="stylesheet" href="live-gate.css" />
 <link rel="stylesheet" href="m907-polish.css" />
+<link rel="stylesheet" href="m909-polish.css" />
 <link rel="stylesheet" href="battlefield.css" />
 <style id="test-board-width-hotfix">
 /* QA/test mode must always use the full 3x6 battlefield.
@@ -150,6 +151,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
 <link rel="stylesheet" href="m904-polish.css">
 <link rel="stylesheet" href="m905-ui-repair.css">
 <script src="infusion-catalog.js"></script>
+<script src="m909-infusion-text.js"></script>
 <script src="game.js"></script>
 <script src="live-intro.js"></script>
 <script src="multiplayer.js"></script>
@@ -160,8 +162,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
 /* Restored M6-07 development QA shortcut; respects authentication for game mode. */
 (()=>{
  const query=new URLSearchParams(location.search);
- const devHost=['localhost','127.0.0.1','[::1]'].includes(location.hostname);
- if(!devHost&&query.get('devqa')!=='1')return;
+ if(query.get('devqa')!=='1')return; // QA shortcut only when explicitly requested; never during normal gameplay.
  const a=document.createElement('a');a.href='qa-combat.html';a.textContent='⚒ 전투 QA 바로가기';
  a.setAttribute('aria-label','전투 QA 실험실 열기');
  a.style.cssText='position:fixed;right:16px;bottom:16px;z-index:100020;padding:11px 16px;border:1px solid #83d9e4;border-radius:9px;background:#0b1b26f2;color:#d7faff;font:700 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 3px 24px #000b';

@@ -1,0 +1,44 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.join(__dirname,'..');const read=name=>fs.readFileSync(path.join(root,name),'utf8');
+const aug=require('../match-augment.cjs'),ec=require('../match-economy.cjs');
+let checks=0;const ok=(x,msg)=>{assert.ok(x,msg);checks++};
+const client=read('multiplayer.js'),ui=read('game.js'),html=read('index.html'),css=read('m909-polish.css'),descriptions=read('m909-infusion-text.js'),catalog=read('infusion-catalog.js');
+ok(/augmentReroll:\(round,choice\)=>api\('augment-reroll',\{round,choice\}\)/.test(client),'client reroll passes choice');
+ok(ui.includes('augmentReroll(net.round,choice)'),'game rerolls selected slot');
+ok(ui.includes('data-augment-reroll="${i}"'),'card index preserved');
+const people=[{slot:0,augments:[]},{slot:1,augments:[]}],state=aug.open(people,1,()=>1),before=state.offers[0].slice();
+assert.throws(()=>aug.reroll(state,people[0],undefined,()=>1));checks++;
+const b=aug.reroll(state,people[0],2,()=>1).offers.map(c=>c.id);
+ok(b[0]===before[0]&&b[1]===before[1]&&b[2]!==before[2],'slot 3 reroll changes only slot 3');
+const a=aug.reroll(state,people[0],0,()=>1).offers.map(c=>c.id);
+ok(a[0]!==b[0]&&a[1]===b[1]&&a[2]===b[2],'slot 1 works independently');
+assert.throws(()=>aug.reroll(state,people[0],0,()=>1));checks++;
+const account=ec.makeInitial();const starter=account.owned.find(x=>x.location==='board');assert(starter);checks++;
+let bought=false;for(let i=0;i<account.shop.length;i++){let id=account.shop[i];if(id){try{ec.action(account,'buy',{index:i});bought=true;break;}catch(e){if(e.message!=='크레딧 부족')throw e;}}}
+ok(bought,'shop buy possible');const kept=account.owned.find(x=>x.uid===starter.uid);
+ok(!!kept&&kept.characterId===starter.characterId&&kept.star===starter.star&&kept.location==='board','starter invariant first purchase');
+ok(ui.includes('if(isOnlineMatch()){')&&ui.includes('if(me?.assets)applyLiveEconomy(me.assets'),'online starter initializes from authoritative server');
+ok(ui.includes('const changed=JSON.stringify(teams.A)!==JSON.stringify(authoritative)')&&ui.includes("if(phase!=='combat')"),'online board mirrors authoritative state at every noncombat phase');
+ok(!/class="m904-qa-link"/.test(ui),'no QA lab inside inventory');
+ok(ui.includes("p.slot===slot?'div':'button type=\"button\""),'self standings row is not clickable button');
+ok(html.includes('m909-polish.css')&&html.includes('m909-infusion-text.js'),'new visuals and descriptions loaded');
+for(const key of ['m909-opening','m902-infusion-card','m902-download','m904-selected','m904StarBadge','m905-codex-detail'])ok(ui.includes(key),'legacy animations preserved '+key);
+ok(ui.includes('data-codex-stages')&&ui.includes('data-stage="gray"')&&ui.includes('data-stage="blue"')&&ui.includes('data-stage="purple"'),'codex separated by stage');
+ok(ui.includes('LIVEInfusionText.explain(c)')&&ui.includes('LIVEInfusionText.stage(c.tier)'),'infusion codex has complete sentence descriptions and stage labels');
+ok(css.includes('.mastery-track>i')&&css.includes('m909WaterFlow'),'mastery bar has smooth liquid fill');
+ok(css.includes('shop-portrait')&&css.includes('bench-portrait')&&ui.includes('const closeup='),'shop and bench cropped faces');
+ok(css.includes('.m907-purple-vfx{display:none'),'infusion effect notifications suppressed');
+ok(css.includes('m909PanelEnter')&&css.includes('liveAuctionPanel')&&css.includes('liveMarketPanel'),'panel entrance animations');
+const stageCount={gray:aug.CARDS.gray.length,blue:aug.CARDS.blue.length,purple:aug.CARDS.purple.length};
+ok(stageCount.gray===54&&stageCount.blue===31&&stageCount.purple===46,'real infusion 54/31/46 counts');
+const vm=require('node:vm');const catalogWindow={};vm.runInNewContext(catalog,{window:catalogWindow});
+for(const tier of ['gray','blue','purple'])ok(catalogWindow.LIVEInfusionCatalog.filter(c=>c.tier===tier).length===stageCount[tier],'catalog '+tier);
+const fakeWindow={};vm.runInNewContext(descriptions,{globalThis:fakeWindow});
+const inf=fakeWindow.LIVEInfusionText;ok(!!inf,'display text module loaded');
+for(const card of [...aug.CARDS.blue,...aug.CARDS.purple]){
+ const description=inf.explain(card);ok(typeof description==='string'&&description.length>=50&&/[.!?]$/.test(description),'complete description '+card.id);
+}
+ok(inf.stage('gray')==='1단계'&&inf.stage('blue')==='2단계'&&inf.stage('purple')==='3단계','stage labels correct');
+for(const term of ['ATK','AMP','AS','DEF','HP'])ok(ui.includes("replace(/\\b"+term+"\\b/g,")||ui.includes("replace(/\b"+term+"\b/g,"),'term display mapping '+term);
+console.log('M9-09 UX REGRESSION PASS:',checks,'checks · starter, 3-slot reroll, stage text, portraits, animations');
