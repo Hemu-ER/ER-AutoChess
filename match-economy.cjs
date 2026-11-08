@@ -4,6 +4,7 @@ const crypto=require('node:crypto');
 const {roster}=require('./roster.js');
 const {CARDS}=require('./match-augment.cjs');
 const items=require('./items.js');
+const gray=require('./gray-economy.cjs');
 const playable=roster.filter(u=>!u.pveOnly&&[1,2,3].includes(u.cost));
 const byId=new Map(playable.map(u=>[u.id,u]));
 const COST_WEIGHTS=[
@@ -73,11 +74,12 @@ function refreshShop(a,free=false){
 }
 function addExp(a,n){
  if(!Number.isSafeInteger(n)||n<0)throw Error('잘못된 EXP');
+ const oldLevel=a.level;
  a.exp+=n;
  while(a.level<20&&a.exp>=(EXP_TO_NEXT[a.level]||Infinity)){
   a.exp-=EXP_TO_NEXT[a.level];a.level++;
  }
- if(a.level===20)a.exp=0;
+ if(a.level===20)a.exp=0;gray.levelUp(a,oldLevel);
 }
 function giveItem(a,id){
  if(!isValidItem(id))throw Error('알 수 없는 아이템');
@@ -104,7 +106,7 @@ function tryMerge(a){
    for(const item of other.items||[])giveItem(a,item);
   }
   a.owned=a.owned.filter(o=>!triple.includes(o)||o===survivor);
-  survivor.star++;
+  survivor.star++;gray.afterMerge(a,survivor.star);
  }
 }
 function acceptPending(a){
@@ -158,11 +160,13 @@ function grant(a,reward,key){
 }
 function roundIncome(a,round){
  if(round<=a.lastIncomeRound)return false;
+ const extraExp=gray.beforeNextRound(a);
  const interest=Math.min(3,Math.floor(a.credits/10));
- a.credits+=5+interest;addExp(a,4);
+ gray.ensure(a).round=round;
+ a.credits+=5+interest;addExp(a,4+extraExp);
  if(!a.locked)refreshShop(a,true);
  if(a.augmentIds?.includes('P09')){a.purpleShopRoundCount=(a.purpleShopRoundCount||0)+1;if(a.purpleShopRoundCount%2===0){const made=items.recipes[crypto.randomInt(items.recipes.length)]?.[0];if(made)giveItem(a,made);}}
- a.lastIncomeRound=round;acceptPending(a);
+ a.lastIncomeRound=round;gray.afterIncome(a,round,interest);acceptPending(a);
  return true;
 }
 function ownTeam(a){
@@ -173,20 +177,20 @@ function action(a,cmd,body={}){
  const locate=()=>{const o=a.owned.find(x=>x.uid===Number(body.uid));if(!o)throw Error('보유하지 않은 실험체');return o};
  if(cmd==='buy'){
   const i=Number(body.index);if(!Number.isInteger(i)||i<0||i>=a.shop.length)throw Error('상점 위치 오류');
-  const id=a.shop[i],cost=costOf(id);if(!id||!cost)throw Error('이미 팔린 상품');
+  const id=a.shop[i],baseCost=costOf(id),cost=gray.buyCost(a,id,i,baseCost);if(!id||!baseCost)throw Error('이미 팔린 상품');
   if(a.credits<cost)throw Error('크레딧 부족');
   const possibleMerge=a.owned.filter(o=>o.characterId===id&&o.star===1).length>=2;
   if(benchCount(a)>=8&&!possibleMerge)throw Error('벤치 부족');
-  a.credits-=cost;a.shop[i]=null;grantUnit(a,id,1);
- }else if(cmd==='reroll'){if(a.purpleFreeReroll>0){a.purpleFreeReroll--;refreshShop(a,true)}else refreshShop(a);}
+  a.credits-=cost;a.shop[i]=null;const uid=grantUnit(a,id,1);gray.afterBuy(a,uid,cost);
+ }else if(cmd==='reroll'){if(a.purpleFreeReroll>0){a.purpleFreeReroll--;refreshShop(a,true)}else if(gray.takeFreeReroll(a))refreshShop(a,true);else{refreshShop(a);gray.afterReroll(a,true)}}
  else if(cmd==='lock')a.locked=!a.locked;
  else if(cmd==='invest'){
   if(a.level===20||a.credits<2)throw Error('숙련도 투자 불가');
-  a.credits-=2;addExp(a,2);
+  const old=a.level;a.credits-=2;addExp(a,2);gray.afterInvest(a,old);
  }else if(cmd==='sell-unit'){
   const u=locate();a.credits+=saleUnitValue(u);
   for(const item of u.items||[])giveItem(a,item);
-  a.owned.splice(a.owned.indexOf(u),1);acceptPending(a);
+  a.owned.splice(a.owned.indexOf(u),1);gray.afterSell(a,u);acceptPending(a);
  }else if(cmd==='deploy'){
   const u=locate(),x=Number(body.x),y=Number(body.y);
   if(!Number.isInteger(x)||x<0||x>2||!Number.isInteger(y)||y<0||y>2)throw Error('좌표 오류');
@@ -212,7 +216,7 @@ function action(a,cmd,body={}){
   if(!Number.isInteger(i)||!Number.isInteger(j)||i===j||i<0||j<0||i>=a.items.length||j>=a.items.length)throw Error('조합 선택 오류');
   const combined=items.craft(a.items[i],a.items[j]);if(!combined)throw Error('조합 불가');
   for(const index of [i,j].sort((x,y)=>y-x))a.items.splice(index,1);
-  giveItem(a,combined);flushOverflow(a);
+  giveItem(a,combined);gray.afterCraft(a);flushOverflow(a);
  }else if(cmd==='forge'){
   if(!a.augmentIds?.includes('P19'))throw Error('초월의 대장간 인퓨전이 필요해.');
   if((a.purpleForgeCount||0)>=2)throw Error('초월 장비는 게임당 최대 2개까지 제작할 수 있어.');
@@ -235,7 +239,7 @@ function action(a,cmd,body={}){
   const j=items.all[name].basic?eq.findIndex(n=>items.all[n]?.basic):-1;
   if(j>=0){
    const made=items.craft(eq[j],name);if(!made)throw Error('장비 조합 실패');
-   eq[j]=made;
+   eq[j]=made;gray.afterCraft(a);
   }else{if(eq.length>=(a.augmentIds?.includes('P09')?4:3))throw Error('장비 슬롯 제한');eq.push(name)}
   a.items.splice(i,1);flushOverflow(a);
  }else throw Error('알 수 없는 경제 명령');

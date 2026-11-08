@@ -1,6 +1,6 @@
 'use strict';
 // M9-07: server-authoritative augment selection + purple balance v1.0 registry.
-// Gray and blue remain their own unimplemented/prototype status; purple contains approved cards.
+// Gray, blue and purple all expose implemented combat/economy effects.
 const crypto=require('node:crypto');
 const {CARDS:PURPLE}=require('./purple-cards.js');
 const TIERS=Object.freeze(['gray','blue','purple']);
@@ -63,7 +63,7 @@ const GRAY_ROWS=[
  ['G071','장비의 조화','서로 다른 완성 아이템 2개 이상 장착 시 첫 스킬 피해 +8%'],
  ['G072','치명타의 여운','치명타 적중 시 공속 +8%, 3초 (전투당 1회)']
 ];
-const gray=GRAY_ROWS.map(([id,name,description])=>Object.freeze({id,name,description,tier:'gray',implemented:false,prototype:false}));
+const gray=GRAY_ROWS.map(([id,name,description])=>Object.freeze({id,name,description,tier:'gray',implemented:true,prototype:false}));
 // Deliberately NOT designed augments: placeholders for M9-01 flow QA only.
 const pending=tier=>Array.from({length:16},(_,i)=>Object.freeze({id:`M901_${tier.toUpperCase()}_${String(i+1).padStart(2,'0')}`,name:`${LABELS[tier]} 인퓨전 설계 대기 ${i+1}`,description:'M9-03/04에서 효과가 확정될 예정인 테스트 슬롯이야. 현재는 게임 능력에 아무 영향도 주지 않아.',tier,implemented:false,prototype:true}));
 const BLUE_TARGETS=Object.freeze(["현우정신", "파자마", "바니걸", "수영복", "마츠리", "프리즌", "군악대", "새해", "악마사냥꾼", "메이드", "애증", "치유의 노래", "에레보스", "카페", "페르소나", "여행자", "고양이", "헌신", "피의 나선", "무기상인", "저격수", "사냥꾼", "검사", "리로드", "전사", "탱커", "원거리 평타", "원거리 스킬", "근거리 스킬", "암살자", "서포터"]);
@@ -77,7 +77,7 @@ function sample(cards,n,randomInt=crypto.randomInt){if(cards.length<n)throw Erro
 function drawOffers(tier,owned=[],exclude=[],randomInt=crypto.randomInt){const used=new Set([...owned,...exclude]);return sample(CARDS[tier].filter(c=>!used.has(c.id)),3,randomInt).map(c=>c.id)}
 const byId=new Map(Object.values(CARDS).flat().map(card=>[card.id,card]));
 function open(players,round,randomInt=crypto.randomInt){if(!ROUNDS.includes(round))throw Error('인퓨전 라운드가 아니야');const tier=drawTier(randomInt),offers={};for(const p of players)offers[p.slot]=drawOffers(tier,p.augments||[],[],randomInt);return {tier,round,offers,rerolls:{},picks:{},downloads:{},revision:1}}
-function view(s,slot){return {tier:s.tier,round:s.round,offers:(s.offers[slot]||[]).map(id=>byId.get(id)),rerollsLeft:3-(s.rerolls[slot]||[]).length,rerollsUsed:s.rerolls[slot]||[],selected:s.picks[slot]?byId.get(s.picks[slot]):null,readyCount:Object.keys(s.picks).length,downloadReadyCount:Object.keys(s.downloads||{}).filter(k=>s.downloads[k]).length,downloadReady:!!s.downloads?.[slot],implementation:'파랑 인퓨전·보라 인퓨전 전투 효과 연결 · 회색은 선택만 구현'}}
+function view(s,slot){return {tier:s.tier,round:s.round,offers:(s.offers[slot]||[]).map(id=>byId.get(id)),rerollsLeft:3-(s.rerolls[slot]||[]).length,rerollsUsed:s.rerolls[slot]||[],selected:s.picks[slot]?byId.get(s.picks[slot]):null,readyCount:Object.keys(s.picks).length,downloadReadyCount:Object.keys(s.downloads||{}).filter(k=>s.downloads[k]).length,downloadReady:!!s.downloads?.[slot],implementation:'1·2·3단계 인퓨전 실제 효과 적용'}}
 function reroll(s,p,index,randomInt=crypto.randomInt){
  if(typeof index==='function'){randomInt=index;index=0} // old QA caller compatibility
  // Network requests must explicitly include the slot; undefined is invalid.

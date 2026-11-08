@@ -268,7 +268,7 @@ function applyLiveEconomy(assets,phase){
  if(sameData&&phase===liveEconomyPhase)return;
  const oldPhase=liveEconomyPhase;
  liveEconomyStamp=stamp;liveEconomyPhase=phase;
- gameState.credits=assets.credits;gameState.shop=[...(assets.shop||[])];
+ gameState.credits=assets.credits;gameState.shop=[...(assets.shop||[])];gameState.m1004GrayState=assets.grayState||null;gameState.m1004InfusionIds=[...(assets.augmentIds||[])];
  gameState.shopLocked=assets.locked;
  gameState.masteryLevel=assets.level;gameState.masteryProgress=assets.exp;
  gameState.items=[...(assets.items||[])];
@@ -368,7 +368,7 @@ function showMasteryLevelUp(level){
 function openLiveCodex(){
  let dlg=document.querySelector('#liveCodex');if(!dlg){dlg=document.createElement('div');dlg.id='liveCodex';document.body.appendChild(dlg)}
  const entries={
- infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.target||'공통')}</small><h4>${esc(c.name)}</h4><p>${esc(m910Effect(window.LIVEInfusionText.explain(c)))}</p><small>${c.tier==='gray'?'1단계 효과는 현재 구현 준비 중입니다.':c.tier==='blue'?'2단계 · 관련 실험체 상점 가중치 1.5배 적용':'3단계 · 전투 및 경제 효과 적용'}</small></article>`})),
+ infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.target||'공통')}</small><h4>${esc(c.name)}</h4><p>${esc(m910Effect(window.LIVEInfusionText.explain(c)))}</p><small>${c.tier==='gray'?'1단계 · 경제 및 전투 효과 적용':c.tier==='blue'?'2단계 · 관련 실험체 상점 가중치 1.5배 적용':'3단계 · 전투 및 경제 효과 적용'}</small></article>`})),
  items:Object.keys(LIVEItems.all).map(n=>({search:n+' '+itemStatsText(n)+' '+(ITEM_EFFECT_HINTS[n]||'')+' '+(LIVEItems.all[n].materials||[]).join(' '),html:`<article class="codex-item-card"><div class="codex-item-head">${itemIconMarkup(n)}<h4>${esc(n)}</h4></div><p class="codex-item-stats">${esc(m909DisplayStat(itemStatsText(n)))}</p>${ITEM_EFFECT_HINTS[n]?`<p class="codex-item-effect"><b>고유효과</b> ${esc(m910Effect(ITEM_EFFECT_HINTS[n]))}</p>`:''}${LIVEItems.all[n].basic?'':`<p class="codex-tier">조합: ${esc((LIVEItems.all[n].materials||[]).join(' + '))}</p>`}</article>`})),
  synergy:Object.keys(SYNERGY_EFFECT_TEXT).map(n=>{const stages=codexSynergyStages(n);return {search:n+' '+stages.map(x=>x[0]+' '+x[1]).join(' '),html:`<article class="codex-synergy-card"><h4>${esc(n)}</h4>${stages.map(([label,effect])=>`<div class="codex-synergy-stage"><b>${esc(label)}</b><p>${esc(m909DisplayStat(effect))}</p></div>`).join('')}</article>`}}),
  characters:roster.filter(r=>!r.pveOnly).map(r=>{const skill=skillInfo[r.id]||{};const active=skill.active||[];const passive=skill.passive||[];const nickname=skinName(r);return {search:[r.name,displayName(r),nickname,r.role,...(r.affiliations||[]),...active,...passive].join(' '),html:`<article class="codex-character-card" tabindex="0" role="button" aria-label="${esc(displayName(r))} 상세 스킬 및 성급별 계수 열기" data-codex-card="${esc(r.id)}"><div class="codex-character-art">${characterPortrait(r,'codex-character-portrait')}</div><div class="codex-character-details"><h4>${esc(displayName(r))}</h4><p class="codex-character-nickname">${esc(nickname)}</p><p class="codex-character-meta">${esc(r.cost)}C · ${esc(r.role)} · ${esc((r.affiliations||[]).join(' / '))}</p><div class="codex-skill"><b>ACTIVE · ${esc(active[0]||'없음')}</b><p>${esc(m910Effect(active[1]||'설명 없음'))}</p></div><div class="codex-skill"><b>PASSIVE · ${esc(passive[0]||'없음')}</b><p>${esc(m910Effect(passive[1]||'설명 없음'))}</p></div><button type="button" class="m904-codex-detail-trigger" data-codex-unit="${esc(r.id)}" aria-label="${esc(displayName(r))} 상세 정보 열기">상세 스킬 · 성급별 계수 보기 →</button></div></article>`}})
@@ -573,7 +573,7 @@ function m901OwnedAugmentHud(){
  const live=window.LIVEMultiplayer?.getRoom?.(),me=live?.players?.find(p=>p.id===window.LIVEMultiplayer?.getPlayerId?.());
  const owned=me?.augments||[];if(!live?.started||!owned.length)return '';
  const colors={gray:'1단계',blue:'2단계',purple:'3단계'};
- return `<div class="m901-owned-augments" aria-label="보유 인퓨전"><b>보유 인퓨전 ${owned.length}/3</b>${owned.map(a=>`<span tabindex="0" class="m904-infusion-tip ${esc(a.tier)}" data-infusion-id="${esc(a.id)}" data-infusion-help="${esc(window.LIVEFormalText.infusion(a))}">${esc(colors[a.tier]||a.tier)} · ${esc(a.name)}</span>`).join('')}<small>파랑·보라 인퓨전 효과 적용 · 회색 효과 준비 중</small></div>`;
+ return `<div class="m901-owned-augments" aria-label="보유 인퓨전"><b>보유 인퓨전 ${owned.length}/3</b>${owned.map(a=>`<span tabindex="0" class="m904-infusion-tip ${esc(a.tier)}" data-infusion-id="${esc(a.id)}" data-infusion-help="${esc(window.LIVEFormalText.infusion(a))}">${esc(colors[a.tier]||a.tier)} · ${esc(a.name)}</span>`).join('')}<small>회색·파랑·보라 인퓨전 효과 적용</small></div>`;
 }
 function m904BindInfusionTips(){
  if(document.body.dataset.m904InfusionBound)return;document.body.dataset.m904InfusionBound='1';
@@ -636,7 +636,10 @@ function creditHtml(amount,cls='credit-price'){
 function characterPortrait(r,cls='econ-portrait'){
  if(!r)return `<span class="${cls} fallback">?</span>`;
  const name=esc(displayName(r)),initial=esc(displayName(r).slice(0,1));
- return r.asset?.sd?`<span class="${cls}"><img data-alpha-normalize="1" data-face-id="${esc(r.id)}" src="${esc(r.asset.sd)}" alt="${name}" loading="eager" decoding="async" draggable="false" onerror="this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
+ const fixed=cls==='shop-portrait'||cls==='bench-portrait';
+ const path=fixed?`assets/m10/shop-portraits/${encodeURIComponent(r.id)}.webp`:r.asset?.sd;
+ const attrs=fixed?'class="m1004-card-portrait"':`data-alpha-normalize="1" data-face-id="${esc(r.id)}"`;
+ return path?`<span class="${cls}"><img ${attrs} src="${esc(path)}" alt="${name}" loading="eager" decoding="async" draggable="false" onerror="this.parentElement.classList.add('fallback');this.parentElement.textContent='${initial}'"></span>`:`<span class="${cls} fallback">${initial}</span>`;
 }
 function alphaBounds(img){
  const key=img.currentSrc||img.src;if(alphaBoundsCache.has(key))return alphaBoundsCache.get(key);if(!img.naturalWidth||!img.naturalHeight)return null;
@@ -758,13 +761,21 @@ function bindShopSynergyTags(root){
 function m7ErebusGrant(){if(!roundState.active||!['prep','combat'].includes(roundState.phase)||gameState.bloodMoonGranted)return;const distinct=new Set(teams.A.filter(e=>byId[e.characterId]?.affiliations?.includes('에레보스')).map(e=>e.characterId));if(distinct.size>=3){gameState.bloodMoonGranted=true;pushItem('혈색반월');gameState.message='에레보스 3 · 혈색반월 획득'}}
 function m7InfiltrationAward(count){const n=Math.max(0,Number(count)||0);gameState.infiltration+=n;while(gameState.infiltration>=5){gameState.infiltration-=5;gameState.infiltrationRewards++;pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])} }
 function m7TravelAward(region){if(!region||!ERCombat.ARENA_REGIONS[region])return;const e=gameState.exploration;if(e.visited.includes(region))return;if(teams.A.some(x=>x.characterId==='silvia')){e.visited.push(region);e.stacks=Math.min(10,e.stacks+1)}}
+// M10-04: displayed online shop prices must match server-authoritative gray discounts.
+function m1004ShopPrice(id,base){
+ if(!id||!isOnlineMatch())return base;
+ const ids=gameState.m1004InfusionIds||[],s=gameState.m1004GrayState||{};
+ if(s.buys>0)return base;
+ const off=Number(ids.includes('G013'))+Number(ids.includes('G017')&&s.lockedShop)+Number(ids.includes('G036')&&gameState.shop.filter(x=>x===id).length>=2);
+ return Math.max(0,base-off);
+}
 function renderGameEconomy(){
  liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
  const farmingBattle=appMode==='game'&&[1,3,10].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
  if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
- const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(r.cost)}</span></button>`}).join('');
+ const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(m1004ShopPrice(id,r.cost))}</span></button>`}).join('');
  preloadVisibleCharacters();
   const benchOwned=gameState.owned.filter(o=>o.location==='bench');
  const bench=benchOwned.map(o=>{const r=byId[o.characterId];return `<article class="bench-unit star-${o.star}" data-owned-drag="${o.uid}" tabindex="0" data-inspect-character="${esc(r.id)}" data-inspect-star="${o.star}" title="${esc(displayName(r))} · 드래그해서 배치 / 상점에 놓아 판매">${characterPortrait(r,'bench-portrait')}<span class="bench-star">${m904StarBadge(o.star)}</span>${equippedSlots(o)}</article>`}).join('')||'<span class="bench-empty">벤치가 비어 있어.</span>';

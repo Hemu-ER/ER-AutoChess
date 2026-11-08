@@ -149,19 +149,25 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
 <script src="items.js"></script>
 <script src="purple-cards.js"></script>
 <script src="purple-combat.js"></script>
+<script src="gray-combat.js"></script>
 <script src="combat-engine.js"></script>
 <link rel="stylesheet" href="m904-polish.css">
 <link rel="stylesheet" href="m905-ui-repair.css">
 <!-- M10-03: cosmetic-only skin; M9-10 DOM geometry and interaction are retained. -->
 <link rel="stylesheet" href="m1003-industrial-skin.css" id="m1003IndustrialSkin">
+<link rel="stylesheet" href="m1004-graphic-skin.css" id="m1004GraphicSkin">
 <script>
 /* Visual-only fallback; persists across room URL changes and refreshes. */
 try {
  const choice=new URLSearchParams(location.search).get('m1003skin');
  if(choice==='0'||choice==='1')sessionStorage.setItem('live_m1003_skin',choice);
  if(sessionStorage.getItem('live_m1003_skin')==='0')document.getElementById('m1003IndustrialSkin').disabled=true;
+ const m4=new URLSearchParams(location.search).get('m1004skin');
+ if(m4==='0'||m4==='1')sessionStorage.setItem('live_m1004_skin',m4);
+ if(sessionStorage.getItem('live_m1004_skin')==='0')document.getElementById('m1004GraphicSkin').disabled=true;
 } catch (_) {
  if(new URLSearchParams(location.search).get('m1003skin')==='0')document.getElementById('m1003IndustrialSkin').disabled=true;
+ if(new URLSearchParams(location.search).get('m1004skin')==='0')document.getElementById('m1004GraphicSkin').disabled=true;
 }
 </script>
 <script src="infusion-catalog.js"></script>

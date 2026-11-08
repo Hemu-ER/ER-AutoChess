@@ -83,6 +83,6 @@ P49:'전투 시작 시 적이 장착한 아이템 하나를 무작위로 선택�
 };
 const stage=t=>({gray:'1단계',blue:'2단계',purple:'3단계'}[t]||t);
 function clean(text){return String(text||'').replace(/\bATK\b/g,'공격력').replace(/\bAMP\b/g,'스킬 증폭').replace(/\bAS\b/g,'공격속도').replace(/\bDEF\b/g,'방어력').replace(/\bHP\b/g,'체력').replace(/\bEXP\b/g,'경험치').replace(/\bCC\b/g,'행동불능').replace(/\bCD\b/g,'재사용 대기시간').replace(/\s+·\s+관련 실험체 상점 가중치 ×1\.5\s*/g,'').trim()}
-function explain(card){if(!card)return '';let n=Number(String(card.id||'').slice(1)),d=card.tier==='purple'?PURPLE[card.id]:card.tier==='blue'?BLUE[n-1]:null;if(!d){const raw=clean(card.description);return card.tier==='gray'?'현재 1단계 인퓨전은 효과를 구현하는 중이야. 확정된 기획 설명은 다음과 같아. '+raw.replace(/\.$/,'')+'.':raw.endsWith('.')?raw:raw+'.'}if(card.tier==='blue')d+=' 추가로 연관 소속 또는 역할 실험체가 상점에 등장하는 가중치가 1.5배로 증가해.';return clean(d)}
+function explain(card){if(!card)return '';let n=Number(String(card.id||'').slice(1)),d=card.tier==='purple'?PURPLE[card.id]:card.tier==='blue'?BLUE[n-1]:null;if(!d){const raw=clean(card.description);return raw.endsWith('.')?raw:raw+'.'}if(card.tier==='blue')d+=' 추가로 연관 소속 또는 역할 실험체가 상점에 등장하는 가중치가 1.5배로 증가해.';return clean(d)}
 root.LIVEInfusionText=Object.freeze({stage,explain,clean});
 })(globalThis);

@@ -14,6 +14,7 @@ const auction=require('./match-auction.cjs');
 const boss=require('./match-boss.cjs');
 const experiment=require('./match-experiment.cjs');
 const augment=require('./match-augment.cjs');
+const grayEconomy=require('./gray-economy.cjs');
 const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
 const FARM_LINEUPS={
  1:[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_dog',star:1,x:1,y:0}],
@@ -337,6 +338,7 @@ function settlePurplePvp(r,pair){
  for(const [slot,won,lost,opponentSlot] of [[pair.a,outcome==='A팀 승리',outcome==='B팀 승리',pair.b],[pair.b,outcome==='B팀 승리',outcome==='A팀 승리',pair.a]]){
   const p=players.find(v=>v.slot===slot),foe=players.find(v=>v.slot===opponentSlot);
   if(!p?.assets)continue;
+  grayEconomy.settlePvP(p.assets,{round:r.game?.round||0,won,lost,kills:pair.battle?.grayReport?.[slot===pair.a?'A':'B']?.kills||0});
   if(p.augments?.includes('P36')){
    if(won){p.assets.credits+=2;p.purpleLosses=0;}
    if(lost){p.assets.credits+=4;p.purpleLosses=Math.min(5,(p.purpleLosses||0)+1);}
@@ -447,7 +449,7 @@ function advanceRoom(r){
     try{
      if(!a.team.length||!b.team.length)battle={outcome:!a.team.length&&!b.team.length?'양 팀 패배':!a.team.length?'B팀 승리':'A팀 승리',time:1,auto:true,personaTierA:0,personaTierB:0};
      else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,infusions:{A:a.augments||[],B:b.augments||[]},round:g.round,augmentsA:a.augments||[],augmentsB:b.augments||[],reservesA:economy.reserveTeam(a.assets),reservesB:economy.reserveTeam(b.assets),purpleSpent:{A:g.purpleSpent?.[a.slot]||0,B:g.purpleSpent?.[b.slot]||0},purpleCredits:{A:a.assets?.credits||0,B:b.assets?.credits||0},purpleChoices:{A:a.purpleChoice||{},B:b.purpleChoice||{}},purpleLosingStreak:{A:a.purpleLosses||0,B:b.purpleLosses||0},persistent:{A:{...a.progress,blueErebosSales:a.assets?.blueErebosSales||0},B:{...b.progress,blueErebosSales:b.assets?.blueErebosSales||0}}}).run();const damageRanks=side=>(result.units||[]).filter(u=>u.team===side&&u.role!=='소환수').map(u=>({id:u.id,name:u.name,damage:Math.round(Object.values(u.damage||{}).reduce((s,n)=>s+(Number(n)||0),0))})).sort((x,y)=>y.damage-x.damage);
-     battle={outcome:result.outcome,time:result.time,huntSuccessA:!!result.blueHunts?.A,huntSuccessB:!!result.blueHunts?.B,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
+     battle={outcome:result.outcome,time:result.time,grayReport:result.grayReport||null,huntSuccessA:!!result.blueHunts?.A,huntSuccessB:!!result.blueHunts?.B,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
     }catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
     if(battle.error||!Number.isFinite(battle.time)||battle.time<=0){g.endsAt=Date.now()+10000;g.prepNotice='전투 계산 재시도 대기 · 서버 전투 오류';g.earlyEndsAt=null;g.version++;console.warn('[M8-01] PvP invalid',{room:r.code,round:g.round,a:a.slot,b:b.slot,battle});broadcast(r);return}
     duration=Math.max(duration,Math.min(60,Math.ceil(battle.time)+2));g.pairs.push({a:a.slot,b:b.slot,seed,battle});
