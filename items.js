@@ -22,5 +22,9 @@
  function makeBlood(info){const stats=Object.entries(info.stats).filter(([,v])=>v>1e-9).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${+v.toFixed(6)}`).join(',')||'atk=0';return `${BLOOD}+${info.level}~${stats}`}
  const displayName=name=>{const b=bloodInfo(name);return b?`${BLOOD} +${b.level}`:name};
  const craft=(a,b)=>{const ba=bloodInfo(a),bb=bloodInfo(b);if(ba||bb){if(ba&&bb)return null;const info=ba||bb,other=db[ba?b:a];if(!other||other.bloodMoon)return null;const stats={...info.stats};for(const [k,v]of Object.entries(other.stats||{}))stats[k]=(stats[k]||0)+v*.5;return makeBlood({level:info.level+1,stats})}return recipeMap[key(a,b)]||null};
+ // M9-07: custom transcendent craft output. Original two completed items are consumed server-side.
+ for(const [label,stats] of [['공격',{atk:38,as:.16}],['주문',{amp:60,as:.08}],['수호',{hp:430,def:28}]]){
+  const name='초월:'+label;db[name]={name,basic:false,stats,effectId:name,purpleForge:true};
+ }
  const api={baseNames,all:db,craft,recipes,bloodInfo,displayName};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LIVEItems=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
