@@ -1,0 +1,159 @@
+/* L.I.V.E. M10-06: purpose-built frame kit. Visual only — no grid, size,
+   hitbox, drag, stacking, position or display changes from M9-10. */
+body[data-app-mode="game"] {
+ --m1006-dust:#bac2bd;
+ --m1006-metal:#18232b;
+ --m1006-engraving:#596c73;
+ --m1006-brass:#c5a878;
+ --m1006-indicator:#8faead;
+}
+/* 1 / Hardware shells. Overlays are transparent and never intercept pointer events. */
+body[data-app-mode="game"] :is(
+ #roundModePanel, .game-bottom-dock, #currentSynergyPanel, #liveItemsPanel,
+ #m809LiveHpStandings, #m809DamagePanel, #liveGameChat, #liveTeamChat
+) {
+ border:1px solid #68777d!important;
+ border-radius:5px!important;
+ background-image:
+  linear-gradient(166deg,#26374055 0%,#0a1014a8 41%,#1a242ba0 100%),
+  url('assets/m10/ui/m1006-brushed-surface.svg')!important;
+ background-size:100% 100%,256px 256px!important;
+ background-repeat:no-repeat,repeat!important;
+ background-color:#0c1219!important;
+ box-shadow:0 9px 24px #000c,inset 0 0 0 1px #bac4c012,
+            inset 0 2px 0 #b2c4c027,inset 0 -3px 0 #03070aac!important;
+}
+body[data-app-mode="game"] :is(
+ #roundModePanel, .game-bottom-dock, #currentSynergyPanel, #liveItemsPanel,
+ #m809LiveHpStandings, #m809DamagePanel, #liveGameChat, #liveTeamChat
+)::before {
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+ background:url('assets/m10/ui/m1006-module-corners.svg') center/100% 100% no-repeat!important;
+}
+/* Preserve all original card coordinates, fixed shop width and HTML click/drag handlers. */
+body[data-app-mode="game"] .game-bottom-dock .shop-card {
+ border:1px solid #7c898b!important;
+ border-radius:2px!important;
+ background:linear-gradient(150deg,#253139,#101820 72%)!important;
+ box-shadow:0 3px 0 #070c10,0 6px 10px #0009,inset 0 1px 0 #d5dcd323!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card::after {
+ content:"";position:absolute;inset:0;pointer-events:none;z-index:12;
+ background:url('assets/m10/ui/m1006-card-bezel.svg') center/100% 100% no-repeat!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card::before {
+ content:"";position:absolute;inset:0 0 auto;height:12px;pointer-events:none;z-index:10;
+ background:linear-gradient(180deg,#0a1018b0,transparent);
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-portrait {
+ border-bottom:1px solid #b0a07d!important;
+ background:linear-gradient(165deg,#334650,#0c151d)!important;
+ box-shadow:inset 0 0 17px #03080f77!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-portrait::after {
+ content:"";position:absolute;inset:0;z-index:5;pointer-events:none;
+ background:linear-gradient(180deg,#060d160a 50%,#071018cc 100%);
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-name {
+ background:linear-gradient(90deg,#233038ee,#121a22)!important;
+ border-left:3px solid #b8a27c;
+ color:#edf0e9!important;text-shadow:0 1px 2px #000e!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-meta {
+ background:linear-gradient(155deg,#17252c,#101820)!important;
+ border-top:1px solid #526167!important;
+ color:#c4ceca!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-synergies .synergy-tip-chip,
+body[data-app-mode="game"] .game-bottom-dock .shop-role-chip {
+ border-color:#637779!important;background:#121e25f0!important;color:#cddbd8!important;
+ border-radius:2px!important;box-shadow:inset 0 1px 0 #b7c7c217!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card:not(:disabled):hover,
+body[data-app-mode="game"] .game-bottom-dock .shop-card:focus-visible {
+ border-color:#e5d1a9!important;
+ box-shadow:0 0 0 1px #d0b98c8a,0 5px 13px #000c,inset 0 1px 0 #f1e1bd4d!important;
+ filter:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark) {
+ border-color:#d0b078!important;
+ box-shadow:0 0 0 1px #94764c85,0 4px 10px #000b!important;
+}
+/* 2 / Physical bench cassettes and inventory cells; characters remain full color. */
+body[data-app-mode="game"] .game-bottom-dock .bench-zone {
+ border:1px solid #627279!important;
+ border-radius:3px!important;
+ background:linear-gradient(180deg,#0a1015ed,#1b2832cc)!important;
+ box-shadow:inset 0 2px 8px #000b!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .bench-unit {
+ border:1px solid #62757d!important;
+ border-bottom:1px solid #a99572!important;border-radius:2px!important;
+ background:linear-gradient(150deg,#293b45,#121b23)!important;
+ box-shadow:inset 0 1px 0 #bac8c034,0 3px 5px #0007!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .bench-unit:hover {border-color:#c6b18d!important;}
+body[data-app-mode="game"] #liveItemsPanel .live-item {
+ border:1px solid #5d7177!important;border-radius:3px!important;
+ background:linear-gradient(143deg,#2a3942,#152129)!important;
+ box-shadow:inset 0 1px 0 #bac7be23,0 2px 5px #0006!important;
+}
+body[data-app-mode="game"] #liveItemsPanel .live-item:is(:hover,.picked,.craft-target) {
+ border-color:#c6af83!important;box-shadow:0 0 0 1px #c6af8366,inset 0 1px 0 #e0d4b33e!important;
+}
+/* 3 / Functional hardware controls. Use an actual custom vector face, not only a gradient. */
+body[data-app-mode="game"] :is(
+ .game-bottom-dock .econ-btn,.game-bottom-dock .dock-toggle,
+ .game-bottom-dock #m910ShopFocusToggle,
+ #roundModePanel .round-btn,
+ #liveItemsPanel .live-item-actions button,
+ #liveItemsPanel .live-equipped button
+) {
+ border-color:#788b8f!important;border-radius:3px!important;
+ background:url('assets/m10/ui/m1006-button-inset.svg') center/100% 100% no-repeat!important;
+ color:#e9ece7!important;text-shadow:0 1px 1px #030508!important;
+ box-shadow:0 2px 0 #05080a,inset 0 1px 0 #d5e0d62e!important;
+}
+body[data-app-mode="game"] :is(.game-bottom-dock .econ-btn,.game-bottom-dock .dock-toggle,#roundModePanel .round-btn):hover:not(:disabled){
+ border-color:#d3c4a4!important;filter:brightness(1.16)!important;
+}
+body[data-app-mode="game"] :is(.game-bottom-dock .econ-btn,.game-bottom-dock .dock-toggle,#roundModePanel .round-btn):active:not(:disabled){
+ filter:brightness(.78)!important;box-shadow:inset 0 2px 6px #000c!important;
+}
+body[data-app-mode="game"] .game-bottom-dock :is(.econ-btn,.dock-toggle):disabled {filter:grayscale(.65) brightness(.65)!important;}
+body[data-app-mode="game"] .game-bottom-dock .shop-lock-btn.locked{border-color:#cfb57c!important;color:#ead4ac!important;}
+/* 4 / Non-invasive information hierarchy, no resizing or displacement. */
+body[data-app-mode="game"] :is(.game-bottom-dock .dock-label,.game-bottom-dock .bench-head,.current-synergy-title,
+ #liveItemsPanel header,#m809LiveHpStandings .m809-panel-title) {
+ color:#e1e5df!important;text-shadow:0 1px 2px #000b!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .dock-credit,
+body[data-app-mode="game"] .game-bottom-dock .shop-card .credit-price{color:#e8d19d!important;}
+body[data-app-mode="game"] .game-bottom-dock .mastery-track {
+ background:#091119!important;border-color:#5a7479!important;
+ box-shadow:inset 0 2px 5px #000c!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .mastery-track>i {
+ background:linear-gradient(180deg,#b5c9bf,#709e9c 55%,#435b68)!important;
+ box-shadow:inset 0 1px 0 #eff8e5a3!important;
+}
+/* 5 / Preparation board reticles: do not alter cell shape, region or input. */
+body[data-app-mode="game"] #board.formation-board .cell:not(:has(.unit)):not(:has(.field-unit))::after {
+ content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+ background:url('assets/m10/ui/m1006-slot-reticle.svg') center/80% 80% no-repeat;
+ opacity:.22;
+}
+body[data-app-mode="game"] #board.formation-board .cell:is(.drag-target,:hover)::after {opacity:.72;}
+/* 6 / Clear interface states without neon bloom. */
+body[data-app-mode="game"] button:focus-visible {outline:2px solid #d1be94!important;outline-offset:2px!important;}
+@media(prefers-reduced-motion:reduce) {body[data-app-mode="game"] .game-bottom-dock .shop-card {transition:none!important;}}
+/* Small-card readability: only ink/contrast, never typography or alignment geometry. */
+body[data-app-mode="game"] .game-bottom-dock .shop-meta-label>small {
+ opacity:1!important;color:#c7d5d5!important;text-shadow:0 1px 1px #000c!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-synergies .synergy-tip-chip {
+ color:#e5e9e2!important;text-shadow:0 1px 1px #000c!important;
+}
+/* Preserve existing M10-04 border thickness at interactive boundaries. */
+body[data-app-mode="game"] .game-bottom-dock .shop-card {border-bottom:2px solid #a99572!important;}
+
