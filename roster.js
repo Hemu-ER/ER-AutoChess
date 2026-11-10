@@ -617,7 +617,8 @@ const roster=[
     "cost": 1,
     "role": "원거리 평타",
     "affiliations": [
-      "군악대"
+      "군악대",
+      "헌신"
     ],
     "baseStats": {
       "hp": 720,

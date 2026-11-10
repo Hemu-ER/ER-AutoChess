@@ -1,3 +1,41 @@
+/* M10-06 direct-load bridge for an already-applied M10-07 game.
+   Loads M10-06 before M10-07 CSS in cascade order; leaves game.js/index.html untouched. */
+(function (root) {
+  'use strict';
+  if (typeof document === 'undefined') return;
+  const href = 'm1006-visual-skin.css';
+  const scriptName = 'm1006-ui-language.js';
+  let queryFlag = null;
+  try { queryFlag = new URLSearchParams(root.location.search).get('m1006skin'); } catch (_) {}
+  let storedFlag = null;
+  try {
+    if (queryFlag === '0' || queryFlag === '1') root.sessionStorage.setItem('live_m1006_skin', queryFlag);
+    storedFlag = root.sessionStorage.getItem('live_m1006_skin');
+  } catch (_) {}
+  const shouldDisable = queryFlag === '0' || (queryFlag !== '1' && storedFlag === '0');
+  let skin = document.getElementById('m1006VisualSkin') ||
+    document.querySelector('link[href^="m1006-visual-skin.css"]');
+  if (!skin) {
+    skin = document.createElement('link');
+    skin.rel = 'stylesheet';
+    skin.href = href;
+    skin.id = 'm1006VisualSkin';
+    const m1007Skin = document.querySelector('link[href^="m1007-graphics.css"]');
+    if (m1007Skin && m1007Skin.parentNode) {
+      m1007Skin.parentNode.insertBefore(skin, m1007Skin);
+    } else {
+      document.head.appendChild(skin);
+    }
+  }
+  skin.disabled = shouldDisable;
+  if (!root.LIVEM1006Text && !document.querySelector('script[src^="m1006-ui-language.js"]')) {
+    const script = document.createElement('script');
+    script.src = scriptName;
+    script.async = false;
+    (document.body || document.head).appendChild(script);
+  }
+})(globalThis);
+
 /* L.I.V.E. M10-07 — optional presentation and authoritative auction reward interface. */
 (function(root){'use strict';
  const $=s=>document.querySelector(s);let pendingPromise=false,lastChoiceKey='',closedChoiceKey='';

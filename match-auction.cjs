@@ -25,7 +25,8 @@ function buildLots(){
  return kinds.slice(0,3).map((kind,index)=>{
   let reward;
   if(kind==='complete')reward={type:'item',item:pick(items.recipes)[0]};
-  if(kind==='unit2'||kind==='unit3')reward={type:'unit',characterId:pick(play.filter(x=>x.cost===(kind==='unit2'?2:3))).id,star:kind==='unit2'?2:1};
+  if(kind==='unit2')reward={type:'unit-choice',cost:2,star:1};
+  if(kind==='unit3')reward={type:'unit',characterId:pick(play.filter(x=>x.cost===3)).id,star:1};
   if(kind==='effect')reward={type:'effect',effect:pick(EFFECTS).id};
   return {index,kind,reward,status:'upcoming',bid:0,bidderSlot:null,winnerSlot:null};
  });
@@ -78,6 +79,7 @@ function settle(r,now=Date.now()){
    // Credits are already reserved. Only the winner receives the reward.
    if(lot.reward.type==='item')economy.giveItem(p.assets,lot.reward.item);
    else if(lot.reward.type==='unit')economy.grantUnit(p.assets,lot.reward.characterId,lot.reward.star);
+   else if(lot.reward.type==='unit-choice'){p.assets.auctionChoices??=[];const id=`r${r.game.round}-lot${lot.index}`;if(!p.assets.auctionChoices.some(x=>x.id===id))p.assets.auctionChoices.push({id,cost:2,star:1});}
    else if(lot.reward.type==='effect')grantEffect(p,lot.reward.effect);
    p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;
    lot.status='sold';lot.winnerSlot=p.slot;
@@ -95,4 +97,14 @@ function onPvP(r,slot,won,lost){const p=find(r,slot);if(!p?.assets)return;for(co
  if(won&&e.kind==='winItem'){economy.giveItem(p.assets,pick(items.baseNames));a.remaining--;}
  if(lost&&e.kind==='lossHeal'){r.game.hp[slot]=Math.min(100,r.game.hp[slot]+e.amount);a.remaining--;}
  }syncBuffs(p);}
-module.exports={CATEGORIES,EFFECTS,open,view,bid,settle,playerLeft,syncBuffs,onRoundIncome,onPvP,buildLots};
+function chooseUnit(r,p,choiceId,characterId){
+ if(!p?.assets||!r?.started)throw Error('참가 중인 경기가 없습니다.');
+ const choices=p.assets.auctionChoices||[],idx=choices.findIndex(c=>c.id===choiceId);
+ if(idx<0)throw Error('유효하지 않거나 이미 수령한 선택권입니다.');
+ const unit=play.find(u=>u.id===characterId&&u.cost===2);
+ if(!unit)throw Error('2코스트 실험체만 선택할 수 있습니다.');
+ // No pool.stock decrement: auction rewards are independent of shop inventory.
+ economy.grantUnit(p.assets,unit.id,1);choices.splice(idx,1);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;
+ return {id:choiceId,characterId:unit.id};
+}
+module.exports={CATEGORIES,EFFECTS,open,view,bid,settle,playerLeft,syncBuffs,onRoundIncome,onPvP,buildLots,chooseUnit};

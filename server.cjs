@@ -265,7 +265,12 @@ if(url.pathname==='/api/selection-pick'){
  const now=Date.now();if(now-(p.lastTeamChat||0)<350)return reply(res,429,{error:'채팅 전송 간격을 지켜 줘.'});p.lastTeamChat=now;
  team.messages.push({name:p.name,slot:p.slot,text:message,at:now});team.messages=team.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true});
  }
- if(url.pathname==='/api/auction'){
+ if(url.pathname==='/api/auction-unit-choice'){
+ if(!r.started||!p.assets)return reply(res,409,{error:'진행 중인 경기에서만 선택할 수 있습니다.'});
+ try{const choice=auction.chooseUnit(r,p,String(body.choiceId||''),String(body.characterId||''));r.game.version++;broadcast(r);return reply(res,200,{ok:true,...choice});}
+ catch(e){return reply(res,409,{error:e.message});}
+}
+if(url.pathname==='/api/auction'){
   const g=r.game;if(!g||g.phase!=='special'||g.specialType!=='auction'||!g.auction)return reply(res,409,{error:'경매가 진행 중이지 않아.'});
   try{const bid=auction.bid(r,p,body.amount);g.endsAt=g.auction.endsAt;g.version++;broadcast(r);return reply(res,200,{ok:true,...bid})}
   catch(e){return reply(res,409,{error:e.message})}
