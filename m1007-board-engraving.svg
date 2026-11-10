@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" preserveAspectRatio="none">
+<defs>
+ <pattern id="grain" width="92" height="92" patternUnits="userSpaceOnUse"><path d="M0 90H92 M90 0V92" fill="none" stroke="#9dab9e" stroke-opacity=".034" stroke-width="1"/><path d="M0 0L9 0 M0 0V9 M92 92h-9 M92 92v-9" fill="none" stroke="#86918a" stroke-opacity=".13" stroke-width="1.3"/></pattern>
+ <linearGradient id="surface" x2="0" y2="1"><stop stop-color="#17202a" stop-opacity=".84"/><stop offset=".54" stop-color="#141b22" stop-opacity=".54"/><stop offset="1" stop-color="#101923" stop-opacity=".78"/></linearGradient>
+</defs>
+<rect width="1200" height="600" fill="url(#surface)"/><rect width="1200" height="600" fill="url(#grain)"/><g stroke="#afc1b5" stroke-opacity=".12" fill="none" stroke-width="1.2"><path d="M42 44H1158V555H42Z"/><path d="M70 72h38m-38 0v38 M1130 72h-38m38 0v38 M70 528h38m-38 0v-38 M1130 528h-38m38 0v-38" stroke-width="3"/><path d="M600 45v510" stroke-dasharray="6 16" stroke-opacity=".10"/></g>
+<g fill="#aabbb1" fill-opacity=".21" font-family="monospace" font-size="13" letter-spacing="3"><text x="52" y="34">L.I.V.E. / RESEARCH ZONE</text><text x="905" y="578">BOARD / 03 × 03</text></g>
+</svg>

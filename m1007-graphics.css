@@ -1,0 +1,41 @@
+/* L.I.V.E. M10-07 — graphic-only enhancement, no board/card coordinate replacement. */
+:root{--m1007-metal:#1c242c;--m1007-edge:#788b84;--m1007-focus:#d5b777}
+body[data-app-mode="game"] .board-shell{position:relative;background-image:linear-gradient(180deg,#0d151c88,#0b141c66),url('m1007-board-engraving.svg')!important;background-size:cover,100% 100%!important;background-position:center!important;}
+body[data-app-mode="game"] #board .cell{position:relative;outline:1px solid rgba(146,159,148,.13);outline-offset:-5px;transition:box-shadow .12s ease,outline-color .12s ease;background-image:url('m1007-slot-mark.svg');background-position:center;background-repeat:no-repeat;background-size:84% 78%}
+body[data-app-mode="game"] #board .cell:hover{outline-color:#b8b4a080!important;box-shadow:inset 0 0 20px #d8c69b12}
+body[data-app-mode="game"] #board .cell.drag-target,body[data-app-mode="game"] #board .cell:has(.drag-target){outline:2px solid #b9c7ad!important;box-shadow:inset 0 0 18px #a9c7b330!important}
+/* Strategy panel must be selectable without the inventory stealing pointer events. */
+#m907PurpleStrategy:not([hidden]){position:fixed!important;z-index:100080!important;left:clamp(12px,calc(50vw - 470px),430px)!important;right:auto!important;top:clamp(90px,12vh,140px)!important;width:min(318px,calc(100vw - 24px))!important;max-height:calc(100dvh - 110px)!important;pointer-events:auto!important;isolation:isolate}
+#m907PurpleStrategy .m907-strategy-body{max-height:min(65dvh,570px)!important;overflow:auto;overscroll-behavior:contain;pointer-events:auto!important}
+#m907PurpleStrategy select,#m907PurpleStrategy button,#m907PurpleStrategy label{pointer-events:auto!important;touch-action:manipulation;position:relative;z-index:2}
+#m907PurpleStrategy .m907-strategy-trigger{background:linear-gradient(180deg,#49384e,#292a38)!important;box-shadow:0 5px 18px #0009!important}
+/* The card scroll viewport is vertically clipped by spec when overflow-x:auto; keep status inside its silhouette. */
+.game-bottom-dock .shop-card:not(:disabled):hover,.game-bottom-dock .shop-card:focus-visible{transform:none!important;filter:none!important;border-color:#bcb4a3!important;box-shadow:inset 0 0 0 1px #d8ccaa80,0 0 0 1px #5e6e66!important}
+.game-bottom-dock .shop-owned-count{position:absolute!important;top:5px!important;right:5px!important;left:auto!important;bottom:auto!important;z-index:35!important;font-size:10px!important;border:1px solid #d7bf89!important;background:#1c2026ed!important;color:#f4e3b4!important;padding:2px 4px!important;line-height:1.25!important}
+.game-bottom-dock .shop-card:has(.m910-focus-mark){position:relative;box-shadow:inset 3px 0 #dcc28c,0 0 0 1px #bda77d!important}
+.game-bottom-dock .shop-card:has(.m910-focus-mark):after{content:'관심';position:absolute;left:6px;top:6px;z-index:32;pointer-events:none;font-size:9px;letter-spacing:.06em;color:#ffefc5;background:#4b3d27ed;border:1px solid #d0b575;padding:2px 5px;border-radius:3px}
+.game-bottom-dock .shop-card:has(.m910-focus-mark) .shop-name{color:#ffe3a5!important}
+.game-bottom-dock .bench-unit.m1007-focus{outline:2px solid #d4b777!important;outline-offset:-2px;box-shadow:inset 0 0 0 2px #161e27,0 0 0 1px #d4b777!important}
+.game-bottom-dock .bench-unit.m1007-focus:after{content:'✦';position:absolute;top:1px;right:2px;z-index:5;font-weight:900;color:#ffdc88;text-shadow:0 1px 3px #000}
+#board .unit.m1007-focus .ground-ring{opacity:.82!important;box-shadow:0 0 11px #dab87688!important;border-color:#d3b06f!important}
+/* Only the supplied image source is used: no portrait sizing or cropping changes. */
+#m1007AuctionChoices{position:fixed;z-index:100090;left:50%;top:min(16vh,165px);transform:translateX(-50%);width:min(510px,calc(100vw - 30px));max-height:70dvh;overflow:auto;border:1px solid #ad9d7b;border-radius:7px;padding:16px;background:linear-gradient(180deg,#20272e,#131a21 85%);box-shadow:0 20px 70px #000d;color:#e5ebeb;font:12px/1.5 system-ui,sans-serif}
+#m1007AuctionChoices[hidden]{display:none!important}#m1007AuctionChoices h3{font-size:17px;margin:2px 0 6px}#m1007AuctionChoices p{color:#b1c3c3;margin:0 0 12px}#m1007AuctionChoices .m1007-choice-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:32dvh;overflow-y:auto}#m1007AuctionChoices .m1007-choice-list button{border:1px solid #586e70;padding:8px;text-align:left;background:#263239;color:#e7eded;border-radius:3px;cursor:pointer}#m1007AuctionChoices .m1007-choice-list button:hover,#m1007AuctionChoices .m1007-choice-list button:focus-visible{border-color:#dec28d;background:#37413e}#m1007AuctionChoices footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}#m1007AuctionChoices footer button{padding:5px 9px;background:#2d3940;color:#fff;border:1px solid #67787a;cursor:pointer}
+#m1007ChoiceResume{position:fixed;left:12px;bottom:17px;z-index:100040;border:1px solid #d2b17d;border-radius:6px;background:#312b23;color:#f6e5c2;padding:8px 11px;cursor:pointer}#m1007ChoiceResume[hidden]{display:none}
+.m1007-auction-choice-icon{display:grid;place-items:center;font-size:42px;color:#ddc69c;min-height:60px}
+#m1007AttackLayer{position:fixed;inset:0;z-index:15000;pointer-events:none;overflow:hidden}
+.m1007-shot{position:absolute;width:52px;height:2px;background:linear-gradient(90deg,transparent,#cbb99c,#fff8dd);transform-origin:0 50%;animation:m1007-shot .23s ease-out both;box-shadow:0 0 4px #e5cba666}
+.m1007-shot.skill{height:3px;background:linear-gradient(90deg,transparent,#c1b2df,#f4ebff);box-shadow:0 0 8px #bda5fa55}
+.m1007-execute{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:2px solid #d4a77b;box-shadow:0 0 0 1px #332d2d,inset 0 0 15px #c98e6455;animation:m1007-execute .62s ease-out both}
+.m1007-execute:after{content:'✕';display:grid;place-items:center;font:700 29px/58px system-ui;text-align:center;color:#e6bea1;text-shadow:0 0 5px #a8583e}
+@keyframes m1007-shot{from{opacity:1;transform:translate(0,-50%) rotate(var(--angle)) scaleX(.18)}to{opacity:0;transform:translate(0,-50%) rotate(var(--angle)) scaleX(var(--length))}}
+@keyframes m1007-execute{from{opacity:.95;transform:scale(.35)}to{opacity:0;transform:scale(1.9)}}
+@media(prefers-reduced-motion:reduce){.m1007-shot,.m1007-execute{animation:none;opacity:.65}}
+
+/* Replace opaque generic impact flashes; visually convey the attack origin instead. */
+body[data-app-mode="game"] .unit.hit .hit-vfx{display:none!important}
+/* Remove the legacy red hit-shake/ring; attack and execution get source-accurate effects. */
+body[data-app-mode="game"] .unit.live-hit-flash{animation:none!important}
+body[data-app-mode="game"] .unit.live-hit-flash::after{display:none!important}
+body[data-app-mode="game"] .unit.live-hit-flash .sd-slot{filter:none!important}
+body[data-app-mode="game"] .unit .live-hit-spark{display:none!important}
