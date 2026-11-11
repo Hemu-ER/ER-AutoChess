@@ -370,13 +370,21 @@ function showMasteryLevelUp(level){
 function openLiveCodex(){
  let dlg=document.querySelector('#liveCodex');if(!dlg){dlg=document.createElement('div');dlg.id='liveCodex';document.body.appendChild(dlg)}
  const entries={
- infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.target||'공통')}</small><h4>${esc(c.name)}</h4><p>${esc(m910Effect(window.LIVEM1007?.polite?.(window.LIVEInfusionText.explain(c))||window.LIVEInfusionText.explain(c)))}</p><small>${c.tier==='gray'?'1단계 · 경제 및 전투 효과 적용':c.tier==='blue'?'2단계 · 관련 실험체 상점 가중치 1.5배 적용':'3단계 · 전투 및 경제 효과 적용'}</small></article>`})),
+ infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.target||'공통')}</small><h4>${esc(c.name)}</h4><p>${esc(m910Effect(window.LIVEM1007?.polite?.(window.LIVEInfusionText.explain(c))||window.LIVEInfusionText.explain(c)))}</p>${c.id==='P07'?'<details class="m1008-codex-detail"><summary>여섯 가지 발동 효과</summary><p>① 적 전체 최대 체력의 12% 피해 · ② 아군 전체 최대 체력의 20% 회복 · ③ 아군 전체 최대 체력의 25% 보호막 · ④ 적 전체 행동불능 0.8초 · ⑤ 4초간 아군 피해량 35% 증가 · ⑥ 사망한 아군 1명 체력 25%로 부활(없으면 아군 전체 최대 체력의 15% 보호막)</p><small>1.5초 후 첫 발동, 이후 7초마다 여섯 효과 중 하나가 무작위로 발동합니다.</small></details>':''}</article>`})),
  items:Object.keys(LIVEItems.all).map(n=>({search:n+' '+itemStatsText(n)+' '+(ITEM_EFFECT_HINTS[n]||'')+' '+(LIVEItems.all[n].materials||[]).join(' '),html:`<article class="codex-item-card"><div class="codex-item-head">${itemIconMarkup(n)}<h4>${esc(n)}</h4></div><p class="codex-item-stats">${esc(m909DisplayStat(itemStatsText(n)))}</p>${ITEM_EFFECT_HINTS[n]?`<p class="codex-item-effect"><b>고유효과</b> ${esc(m910Effect(ITEM_EFFECT_HINTS[n]))}</p>`:''}${LIVEItems.all[n].basic?'':`<p class="codex-tier">조합: ${esc((LIVEItems.all[n].materials||[]).join(' + '))}</p>`}</article>`})),
  synergy:Object.keys(SYNERGY_EFFECT_TEXT).map(n=>{const stages=codexSynergyStages(n);return {search:n+' '+stages.map(x=>x[0]+' '+x[1]).join(' '),html:`<article class="codex-synergy-card"><h4>${esc(n)}</h4>${stages.map(([label,effect])=>`<div class="codex-synergy-stage"><b>${esc(label)}</b><p>${esc(m909DisplayStat(effect))}</p></div>`).join('')}</article>`}}),
  characters:roster.filter(r=>!r.pveOnly).map(r=>{const skill=skillInfo[r.id]||{};const active=skill.active||[];const passive=skill.passive||[];const nickname=skinName(r);return {search:[r.name,displayName(r),nickname,r.role,...(r.affiliations||[]),...active,...passive].join(' '),html:`<article class="codex-character-card" tabindex="0" role="button" aria-label="${esc(displayName(r))} 상세 스킬 및 성급별 계수 열기" data-codex-card="${esc(r.id)}"><div class="codex-character-art">${characterPortrait(r,'codex-character-portrait')}</div><div class="codex-character-details"><h4>${esc(displayName(r))}</h4><p class="codex-character-nickname">${esc(nickname)}</p><p class="codex-character-meta">${esc(r.cost)}C · ${esc(r.role)} · ${esc((r.affiliations||[]).join(' / '))}</p><div class="codex-skill"><b>ACTIVE · ${esc(active[0]||'없음')}</b><p>${esc(m910Effect(active[1]||'설명 없음'))}</p></div><div class="codex-skill"><b>PASSIVE · ${esc(passive[0]||'없음')}</b><p>${esc(m910Effect(passive[1]||'설명 없음'))}</p></div><button type="button" class="m904-codex-detail-trigger" data-codex-unit="${esc(r.id)}" aria-label="${esc(displayName(r))} 상세 정보 열기">상세 스킬 · 성급별 계수 보기 →</button></div></article>`}})
  };
- dlg.innerHTML=`<div class="codex-window" role="dialog" aria-modal="true" aria-label="이리체스 도감"><header><b>이리체스 도감</b><button data-codex-close>닫기 ×</button></header><nav><button data-codex-tab="items">아이템</button><button data-codex-tab="synergy">시너지</button><button data-codex-tab="characters">캐릭터</button><button data-codex-tab="infusion">인퓨전</button></nav><div class="codex-search-wrap"><input type="search" data-codex-search placeholder="이름, 소속, 역할, 효과 검색" aria-label="도감 검색"></div><div class="m909-codex-stages" data-codex-stages hidden><button type="button" data-stage="gray">1단계</button><button type="button" data-stage="blue">2단계</button><button type="button" data-stage="purple">3단계</button></div><section class="codex-content" data-codex-content></section><footer>실제 전투 구현 계수·발동 조건을 우선하며, 미구현 효과는 별도 표시해.</footer></div>`;
- let current='items',currentStage='gray';const search=dlg.querySelector('[data-codex-search]');const display=()=>{const q=search.value.trim().toLocaleLowerCase('ko-KR');const filtered=entries[current].filter(e=>(current!=='infusion'||e.tier===currentStage)&&e.search.toLocaleLowerCase('ko-KR').includes(q));const content=dlg.querySelector('[data-codex-content]');content.classList.toggle('character-layout',current==='characters');content.innerHTML=filtered.map(e=>e.html).join('')||'<p>검색 결과가 없어.</p>';dlg.querySelector('[data-codex-stages]').hidden=current!=='infusion';dlg.querySelectorAll('[data-stage]').forEach(b=>{b.classList.toggle('active',b.dataset.stage===currentStage);b.setAttribute('aria-pressed',String(b.dataset.stage===currentStage))});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.classList.toggle('active',b.dataset.codexTab===current))};dlg.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{currentStage=b.dataset.stage;display()});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.onclick=()=>{current=b.dataset.codexTab;display()});search.addEventListener('input',display);dlg.querySelector('[data-codex-close]').onclick=()=>dlg.remove();const openCharacterDetail=id=>{const unit=byId[id];if(!unit)return;const r=roster.find(x=>x.id===id)||unit;const skill=skillInfo[id]||{};dlg.querySelector('.m905-codex-detail')?.remove();const d=document.createElement('section');d.className='m905-codex-detail';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',`${displayName(r)} 스킬 상세`);d.innerHTML=`<div class="m905-detail-header"><div><small>EXPERIMENT SUBJECT // ${esc(r.role||'')}</small><h2>${esc(displayName(r))}</h2><small>${esc((r.affiliations||[]).join(' / '))} · ${esc(r.cost)}C</small></div><button type="button" class="m905-detail-close" data-detail-close>← 도감으로</button></div><div class="m905-detail-body"><div class="m905-detail-portrait">${characterPortrait(r,'codex-character-portrait')}</div><div class="m905-detail-text"><div class="m905-detail-skill"><strong>액티브 · ${esc(skill.active?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.active?.[1]||'상세 설명 없음'))}</p></div><div class="m905-detail-skill"><strong>패시브 · ${esc(skill.passive?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.passive?.[1]||'상세 설명 없음'))}</p></div><h3>성급별 스킬 계수</h3>${coefficientDetailHtml(id,1)}<p>1성 강조 · 2/3성 계수 함께 표시. 실제 발동 상황 및 장비에 따라 피해량은 달라질 수 있어.</p></div></div>`;dlg.querySelector('.codex-window').append(d);d.querySelector('[data-detail-close]').onclick=()=>{d.remove();dlg.querySelector(`[data-codex-card="${CSS.escape(id)}"]`)?.focus()};d.querySelector('[data-detail-close]').focus()};dlg.addEventListener('click',e=>{if(e.target.closest('.m905-codex-detail'))return;const card=e.target.closest('[data-codex-card]');if(card)openCharacterDetail(card.dataset.codexCard)});dlg.addEventListener('keydown',e=>{if(e.key==='Escape'){const d=dlg.querySelector('.m905-codex-detail');if(d){e.preventDefault();d.querySelector('[data-detail-close]').click()}else dlg.remove()}if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-codex-card]')){e.preventDefault();openCharacterDetail(e.target.dataset.codexCard)}});dlg.onclick=e=>{if(e.target===dlg)dlg.remove()};display();search.focus();
+ dlg.innerHTML=`<div class="codex-window" role="dialog" aria-modal="true" aria-label="이리체스 도감"><header><b>이리체스 도감</b><span class="m1008-codex-round" data-m1008-codex-timer role="status" aria-live="off"></span><button data-codex-close>닫기 ×</button></header><nav><button data-codex-tab="items">아이템</button><button data-codex-tab="synergy">시너지</button><button data-codex-tab="characters">캐릭터</button><button data-codex-tab="infusion">인퓨전</button></nav><div class="codex-search-wrap"><input type="search" data-codex-search placeholder="이름, 소속, 역할, 효과 검색" aria-label="도감 검색"></div><div class="m909-codex-stages" data-codex-stages hidden><button type="button" data-stage="gray">1단계</button><button type="button" data-stage="blue">2단계</button><button type="button" data-stage="purple">3단계</button></div><section class="codex-content" data-codex-content></section><footer>실제 전투 구현 계수·발동 조건을 우선하며, 미구현 효과는 별도 표시해.</footer></div>`;
+ let current='items',currentStage='gray';const search=dlg.querySelector('[data-codex-search]');const display=()=>{const q=search.value.trim().toLocaleLowerCase('ko-KR');const filtered=entries[current].filter(e=>(current!=='infusion'||e.tier===currentStage)&&e.search.toLocaleLowerCase('ko-KR').includes(q));const content=dlg.querySelector('[data-codex-content]');content.classList.toggle('character-layout',current==='characters');content.innerHTML=filtered.map(e=>e.html).join('')||'<p>검색 결과가 없어.</p>';dlg.querySelector('[data-codex-stages]').hidden=current!=='infusion';dlg.querySelectorAll('[data-stage]').forEach(b=>{b.classList.toggle('active',b.dataset.stage===currentStage);b.setAttribute('aria-pressed',String(b.dataset.stage===currentStage))});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.classList.toggle('active',b.dataset.codexTab===current))};dlg.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{currentStage=b.dataset.stage;display()});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.onclick=()=>{current=b.dataset.codexTab;display()});search.addEventListener('input',display);dlg.querySelector('[data-codex-close]').onclick=()=>dlg.remove();const openCharacterDetail=id=>{const unit=byId[id];if(!unit)return;const r=roster.find(x=>x.id===id)||unit;const skill=skillInfo[id]||{};dlg.querySelector('.m905-codex-detail')?.remove();const d=document.createElement('section');d.className='m905-codex-detail';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',`${displayName(r)} 스킬 상세`);d.innerHTML=`<div class="m905-detail-header"><div><small>EXPERIMENT SUBJECT // ${esc(r.role||'')}</small><h2>${esc(displayName(r))}</h2><small>${esc((r.affiliations||[]).join(' / '))} · ${esc(r.cost)}C</small></div><button type="button" class="m905-detail-close" data-detail-close>← 도감으로</button></div><div class="m905-detail-body"><div class="m905-detail-portrait">${characterPortrait(r,'codex-character-portrait')}</div><div class="m905-detail-text"><div class="m905-detail-skill"><strong>액티브 · ${esc(skill.active?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.active?.[1]||'상세 설명 없음'))}</p></div><div class="m905-detail-skill"><strong>패시브 · ${esc(skill.passive?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.passive?.[1]||'상세 설명 없음'))}</p></div><h3>성급별 스킬 계수</h3>${coefficientDetailHtml(id,1)}<p>1성 강조 · 2/3성 계수 함께 표시. 실제 발동 상황 및 장비에 따라 피해량은 달라질 수 있어.</p></div></div>`;dlg.querySelector('.codex-window').append(d);d.querySelector('[data-detail-close]').onclick=()=>{d.remove();dlg.querySelector(`[data-codex-card="${CSS.escape(id)}"]`)?.focus()};d.querySelector('[data-detail-close]').focus()};dlg.addEventListener('click',e=>{if(e.target.closest('.m905-codex-detail'))return;const card=e.target.closest('[data-codex-card]');if(card)openCharacterDetail(card.dataset.codexCard)});dlg.addEventListener('keydown',e=>{if(e.key==='Escape'){const d=dlg.querySelector('.m905-codex-detail');if(d){e.preventDefault();d.querySelector('[data-detail-close]').click()}else dlg.remove()}if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-codex-card]')){e.preventDefault();openCharacterDetail(e.target.dataset.codexCard)}});dlg.onclick=e=>{if(e.target===dlg)dlg.remove()};
+ const updateCodexTimer=()=>{if(!dlg.isConnected){clearInterval(tick);return}const el=dlg.querySelector('[data-m1008-codex-timer]');if(!el)return;
+ const online=window.LIVEMultiplayer?.getRoom?.()?.game;
+ const timed=online&&Number.isFinite(online.endsAt)&&online.phase!=='augment-sync';
+ const left=timed?Math.max(0,Math.ceil((Math.min(online.endsAt,online.earlyEndsAt||Infinity)-Date.now())/1000)):Math.max(0,roundState.remaining||0);
+ const step=roundState.phase==='prep'?'준비':roundState.phase==='combat'?'전투':roundState.phase==='result'?'결과':phaseLabel();
+ el.textContent=`R${roundState.round} · ${step} ${left}초`;el.classList.toggle('urgent',roundState.phase==='prep'&&left<=10);
+ };
+ const tick=setInterval(updateCodexTimer,500);updateCodexTimer();display();search.focus();
 }
 
 function beginItemPointerDrag(ev,i,source){if(!(canEditInventoryOnly()||(roundState.phase==='special'&&liveMarketVisible()))||ev.button>0)return;itemPointerDrag={i,id:ev.pointerId,x:ev.clientX,y:ev.clientY,started:false,ghost:null};source.setPointerCapture?.(ev.pointerId);}
@@ -387,7 +395,9 @@ function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
  if(!panel){panel=document.createElement('section');panel.id='liveItemsPanel';document.body.appendChild(panel)}
  if(itemPointerDrag && panel.querySelector('.live-item-row'))return;itemSelected=null;const inv=gameState.items.map((name,i)=>`<button data-item-index="${i}" class="live-item" title="${esc(itemTooltip(name))}" data-item-tooltip="${esc(name)}">${itemIconMarkup(name)}<span>${esc(LIVEItems.displayName(name))}</span></button>`).join('');
- panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12${gameState.pendingItemCount?` · 대기 ${gameState.pendingItemCount}`:``}</b><button type="button" id="liveCodexOpen">도감 📖</button></div><small>${roundState.phase==='combat'?'결투 중 · 합성 / 아이템 판매 가능 · 장착 불가':'준비 · 조합 / 실험체에 장착 / 판매'}</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div>`;
+ const scene=liveSceneForRound();
+ const itemHelp=scene==='formation'?'준비 · 조합 / 실험체 장착 / 판매':scene==='farm'?'파밍 중 · 아이템 확인만 가능합니다.':scene==='duel'?'결투 중 · 장착 및 배치는 불가능합니다.':scene==='boss'?'보스 교전 중 · 아이템 확인만 가능합니다.':'아이템을 확인할 수 있습니다.';
+ panel.innerHTML=`<header><div class="live-items-heading"><b>아이템 ${gameState.items.length}/12${gameState.pendingItemCount?` · 대기 ${gameState.pendingItemCount}`:``}</b><button type="button" id="liveCodexOpen"><svg class="m1008-book-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6c-2.5-2-5.5-2.5-9-2v15c3.5-.5 6.5 0 9 2 2.5-2 5.5-2.5 9-2V4c-3.5-.5-6.5 0-9 2z"/><path d="M12 6v15"/></svg>도감</button></div><small>${itemHelp}</small></header><div class="live-item-row">${inv||'보유 아이템 없음'}</div>`;
 
  panel.querySelectorAll('[data-item-index]').forEach(b=>b.onclick=e=>{e.preventDefault()});
 panel.querySelectorAll('[data-item-index]').forEach(b=>{b.addEventListener('pointerdown',e=>beginItemPointerDrag(e,+b.dataset.itemIndex,b));b.addEventListener('pointermove',moveItemPointerDrag);b.addEventListener('pointerup',endItemPointerDrag);b.addEventListener('pointercancel',cancelItemPointerDrag)});
@@ -542,7 +552,18 @@ function liveRoundKind(round){
  const known={1:'파밍',2:'결투',3:'파밍',4:'결투',5:'보급',6:'결투',10:'파밍'};return known[round]||'결투';
 }
 function phaseLabel(){if([1,3,10].includes(roundState.round)&&roundState.phase==='combat')return '파밍 전투';return {idle:'대기',prep:'준비',augment:'인퓨전 선택','augment-sync':'에셋 동기화',combat:'전투',result:'결과',finished:'게임 종료'}[roundState.phase]||roundState.phase}
+// M10-08: scene mode is derived from the authoritative round state, never from card/DOM state.
+function liveSceneForRound(){
+ if(appMode!=='game'||!roundState.active)return 'idle';
+ if(roundState.phase==='prep')return 'formation';
+ if(roundState.phase==='combat'||roundState.phase==='result'){
+  const kind=window.LIVEMultiplayer?.getRoom?.()?.game?.kind||([1,3,10].includes(roundState.round)?'farm':'pvp');
+  return kind==='farm'?'farm':kind==='boss'?'boss':'duel';
+ }
+ return 'event';
+}
 function syncBoardPresentation(){
+ document.body.dataset.liveScene=liveSceneForRound();
  if(!board)return;
  const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special','augment','augment-sync'].includes(roundState.phase)||(roundState.phase==='result'&&liveRoundKind(roundState.round)==='보급'));window.M6PixiAdapter?.showDomIfFormation?.(prep);
  board.classList.toggle('formation-board',prep);
@@ -614,7 +635,7 @@ function renderRoundUI(){
  const arenaData=ERCombat.ARENA_REGIONS[activeRegion];
  const arenaSummary=liveInfo?.kind==='pvp'?'':arenaData&&![1,3,10].includes(roundState.round)&&kind!=='보급'&&kind!=='보스'&&['prep','combat','result'].includes(roundState.phase)?`<div class="live-arena-region-bar" title="${esc(arenaData.detail)}"><b>전장 · ${esc(arenaData.name)}</b><span>${esc(arenaData.detail)}</span></div>`:'';
  const bb=gameState.bossBuffs||{};const bossBonus=[bb.adaptive?`<span title="보스 처치 팀 효과 · 공격력형 공격력 +${bb.adaptive*3}, 스킬형 스킬 증폭 +${bb.adaptive*6}">적응형 공격력 +${bb.adaptive*3} / 스킬 증폭 +${bb.adaptive*6}</span>`:'',bb.defFlat?`<span title="보스 처치 팀 효과 · 모든 아군 방어력 +${bb.defFlat}">방어력 +${bb.defFlat}</span>`:'',bb.wickeline?`<span title="보스 처치 팀 효과 · 아군 실험체별 6초마다 충전, 다음 직접 적중에 추가 스킬 피해 ${bb.wickeline}">6초 충전 · 추가 스킬 피해 ${bb.wickeline}</span>`:''].filter(Boolean).join(' · ');
- p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds"><b>다음</b>${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div><div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div></div></div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
+ p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds"><b>다음</b>${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div>${roundState.phase==='prep'?`<div class="round-side enemy m1008-prep-next"><div class="round-side-line"><b>이번 라운드</b><strong>${esc(liveRoom?.started?(liveInfo?.kind==='pvp'?(liveInfo?.bye?'부전승':'결투'):liveRoundKind(roundState.round)):liveRoundKind(roundState.round))}</strong></div><small>전투 준비 단계</small></div>`:`<div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div>`}</div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
  if(!window.LIVEMultiplayer?.getRoom()?.started)liveUpdateHpStandings({hp:[roundState.hp.A,roundState.hp.B]},[{slot:0,name:'나'},{slot:1,name:'상대'}],0);
  const newlyRenderedReady=p.querySelector('#roundOnlineReady');
  if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
@@ -693,7 +714,7 @@ function normalizeVisuals(root=document){
 }
 function renderCurrentSynergyPanel(){
  let panel=document.querySelector('#currentSynergyPanel');
- if(appMode!=='game'||!roundState.active){panel?.remove();return}
+ if(appMode!=='game'||!roundState.active||liveSceneForRound()!=='formation'){panel?.remove();return}
  const shell=document.querySelector('.board-shell');if(!shell)return;
  let row=shell.closest('.game-board-row');
  if(!row){row=document.createElement('div');row.className='game-board-row';shell.parentElement.insertBefore(row,shell);row.appendChild(shell)}
@@ -772,11 +793,41 @@ function m1004ShopPrice(id,base){
  const off=Number(ids.includes('G013'))+Number(ids.includes('G017')&&s.lockedShop)+Number(ids.includes('G036')&&gameState.shop.filter(x=>x===id).length>=2);
  return Math.max(0,base-off);
 }
+// M10-08: battle and farming have a separate, read-only command deck.
+// The shop, bench and mastery controls are not merely disabled: they are absent.
+function renderLiveBattleDeck(scene){
+ let panel=document.querySelector('#liveBattleDeck');
+ if(!['duel','farm','boss'].includes(scene)){panel?.remove();return}
+ if(!panel){panel=document.createElement('section');panel.id='liveBattleDeck';panel.setAttribute('aria-label','전투 전황');document.body.appendChild(panel)}
+ const net=window.LIVEMultiplayer?.getRoom?.(),g=net?.game;
+ const isResult=roundState.phase==='result',isFarm=scene==='farm',isBoss=scene==='boss';
+ const foeName=isFarm?'야생동물':isBoss?(g?.boss?.info?.name||'보스'):(g?.bye?'부전승':net?.players?.find(p=>p.slot===g?.opponentSlot)?.name||'상대팀');
+ const ally=teams.A.map(u=>`<span class="m1008-unit-chip">${esc(displayName(byId[u.characterId]||{name:u.characterId}))} <small>${'★'.repeat(Math.min(3,Math.max(1,u.star||1)))}</small></span>`).join('')||'<span class="m1008-muted">배치된 아군 없음</span>';
+ const foe=teams.B.map(u=>`<span class="m1008-unit-chip">${esc(displayName(byId[u.characterId]||{name:u.characterId}))} <small>${'★'.repeat(Math.min(3,Math.max(1,u.star||1)))}</small></span>`).join('')||(g?.bye?'<span class="m1008-muted">이번 결투는 부전승입니다.</span>':'<span class="m1008-muted">상대 편성을 확인하고 있습니다.</span>');
+ const title=isFarm?'파밍 전황':isBoss?'보스 교전':'결투 전황';
+ const mode=isFarm?'야생동물 처치 후 보상 정산':isBoss?'보스 처치 결과는 서버에서 확정됩니다.':'양 팀이 자동으로 교전합니다.';
+ panel.dataset.mode=scene;
+ panel.innerHTML=`<div class="m1008-battle-heading"><small>ROUND ${roundState.round} / ${isFarm?'FARM':isBoss?'BOSS':'DUEL'}</small><strong>${isResult?title+' · 종료':title}</strong><span>${mode}</span></div><div class="m1008-battle-roster"><div class="m1008-battle-side ally"><header><b>아군</b><span id="m1008AllyCount">${teams.A.length}명</span></header><div class="m1008-battle-chips">${ally}</div></div><div class="m1008-versus">${isFarm?'토벌':isBoss?'교전':'VS'}</div><div class="m1008-battle-side enemy"><header><b>${esc(foeName)}</b><span id="m1008FoeCount">${teams.B.length}명</span></header><div class="m1008-battle-chips">${foe}</div></div></div><div class="m1008-battle-note">${isResult?'라운드 결과 및 보상을 확인해 주세요.':'전투 중에는 실험체를 배치하거나 상점을 이용할 수 없습니다.'}</div>`;
+ syncLiveBattleDeck();
+}
+function syncLiveBattleDeck(){
+ const panel=document.querySelector('#liveBattleDeck');if(!panel||!panel.isConnected)return;
+ const a=document.querySelector('#m1008AllyCount'),b=document.querySelector('#m1008FoeCount');
+ const teamA=(units||[]).filter(u=>u.team==='A'&&u.role!=='소환수');
+ const teamB=(units||[]).filter(u=>u.team==='B'&&u.role!=='소환수');
+ const fmt=(arr,fallback)=>arr.length?`${arr.filter(u=>!u.dead).length}/${arr.length} 생존`:`${fallback}명`;
+ if(a)a.textContent=fmt(teamA,teams.A.length);if(b)b.textContent=fmt(teamB,teams.B.length);
+}
 function renderGameEconomy(){
  liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
- const farmingBattle=appMode==='game'&&[1,3,10].includes(roundState.round)&&(roundState.phase==='combat'||roundState.phase==='result');
- if(appMode!=='game'||farmingBattle){p.innerHTML='';if(dock)dock.remove();renderItemPanel();return}
+ const scene=liveSceneForRound();
+ // The special-round player market still needs the bench drag source.
+ const showEconomy=scene==='formation'||(roundState.phase==='special'&&liveMarketVisible());
+ if(appMode!=='game'||!showEconomy){
+  p.innerHTML='';if(dock)dock.remove();renderLiveBattleDeck(scene);renderItemPanel();return;
+ }
+ renderLiveBattleDeck(scene);
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(m1004ShopPrice(id,r.cost))}</span></button>`}).join('');
  preloadVisibleCharacters();
@@ -1053,14 +1104,18 @@ function liveRenderScouting(){
 }
 function liveUpdateHpStandings(net,players,slot){
  let panel=document.querySelector('#m809LiveHpStandings');
- if(!panel){panel=document.createElement('aside');panel.id='m809LiveHpStandings';panel.innerHTML='<div class="m809-panel-title">참가자 체력 <small>다른 참가자 클릭 시 정찰</small></div><div class="live-hp-standings" id="m809HpRows"></div>';document.body.appendChild(panel);panel.querySelector('#m809HpRows').addEventListener('click',e=>{const btn=e.target.closest('[data-scout-slot]');if(btn&&!btn.classList.contains('is-me'))liveOpenScouting(Number(btn.dataset.scoutSlot));});}
+ if(!panel){panel=document.createElement('aside');panel.id='m809LiveHpStandings';panel.innerHTML='<div class="m809-panel-title">참가자 체력 <small>선택하면 정찰할 수 있습니다.</small></div><div class="m1008-matchup" id="m1008NextMatch" hidden></div><div class="live-hp-standings" id="m809HpRows"></div>';document.body.appendChild(panel);panel.querySelector('#m809HpRows').addEventListener('click',e=>{const btn=e.target.closest('[data-scout-slot]');if(btn&&!btn.classList.contains('is-me'))liveOpenScouting(Number(btn.dataset.scoutSlot));});}
  const content=panel.querySelector('#m809HpRows');
  panel.hidden=!(document.body.dataset.appMode==='game')||document.body.classList.contains('m808-experiment');
  if(!content)return;
  if(!players||!net?.hp)return;
  m901ScoutPlayers=players;liveRenderScouting();
+ const next=document.querySelector('#m1008NextMatch');
+ const showMatch=net.kind==='pvp'&&net.phase==='prep';
+ const nextSlot=showMatch&&Number.isInteger(net.opponentSlot)?net.opponentSlot:null;
+ if(next){next.hidden=!showMatch;if(showMatch){const matched=players.find(p=>p.slot===nextSlot);next.textContent=net.bye?'이번 결투 · 부전승':matched?`이번 결투 상대 · ${matched.name}`:'대전 상대를 확인하고 있습니다.';}}
  const ordered=[...players].sort((a,b)=>(net.hp[b.slot]||0)-(net.hp[a.slot]||0)||(a.slot-b.slot));
- const html=ordered.map((p,i)=>{const hp=Math.max(0,Math.min(100,Number(net.hp[p.slot])||0));return `<${p.slot===slot?'div':'button type="button" data-scout-slot="'+p.slot+'"'} title="${p.slot===slot?'내 체력 현황':esc(p.name||'참가자')+'의 배치 정찰'}" class="m808-hp-player ${p.slot===slot?'is-me':''} ${hp<=0?'eliminated':''}"><div><small>${i+1}위</small><b>${esc(p.name||'참가자 '+(p.slot+1))}${p.slot===slot?' · 나':''}</b><strong>${hp>0?hp+' 체력':'탈락'}</strong></div><i class="m808-hp-track"><i style="width:${hp}%"></i></i></${p.slot===slot?'div':'button'}>`}).join('');
+ const html=ordered.map((p,i)=>{const hp=Math.max(0,Math.min(100,Number(net.hp[p.slot])||0));return `<${p.slot===slot?'div':'button type="button" data-scout-slot="'+p.slot+'"'} title="${p.slot===slot?'내 체력 현황':esc(p.name||'참가자')+'의 배치 정찰'}" class="m808-hp-player ${p.slot===slot?'is-me':''} ${p.slot===nextSlot?'m1008-next-opponent':''} ${hp<=0?'eliminated':''}"><div><small>${i+1}위</small><b>${esc(p.name||'참가자 '+(p.slot+1))}${p.slot===slot?' · 나':''}</b><strong>${hp>0?hp+' 체력':'탈락'}</strong></div><i class="m808-hp-track"><i style="width:${hp}%"></i></i></${p.slot===slot?'div':'button'}>`}).join('');
  if(content.innerHTML!==html)content.innerHTML=html;
  // The equipment inventory occupies the upper-right corner: anchor below it, never on top of it.
  const inventory=document.querySelector('#liveItemsPanel');
@@ -1068,7 +1123,7 @@ function liveUpdateHpStandings(net,players,slot){
  const top=Math.max(94,rect&&rect.width>0&&rect.bottom>0?Math.ceil(rect.bottom+10):94);
  const available=Math.max(170,innerHeight-top-225);
  const hpHeight=Math.min(350,Math.max(120,Math.floor(available*.55)));
- panel.style.top=top+'px';panel.style.maxHeight=hpHeight+'px';content.style.maxHeight=(hpHeight-37)+'px';
+ panel.style.top=top+'px';panel.style.maxHeight=hpHeight+'px';content.style.maxHeight=Math.max(65,hpHeight-(showMatch?64:37))+'px';
  const d=document.querySelector('#m809DamagePanel');if(d){d.style.top=Math.min(innerHeight-155,top+hpHeight+8)+'px';d.style.maxHeight=Math.max(120,Math.min(245,available-hpHeight-10))+'px';}
 }
 function liveMarketDescription(kind,value){
@@ -1353,7 +1408,7 @@ window.LIVEApplyGame=function(net,slot,players){
    $('#status').textContent=`ROUND ${net.round} · 온라인 준비`;renderGameEconomy();
   }else if(net.phase==='intro'){
     if(typeof liveClearAllDrags==='function')liveClearAllDrags();teams.B=[];roundState.phase='intro';reset();liveRoundCurtain(net);
-    $('#status').textContent=`ROUND ${net.round} · 시작 연출`;
+    $('#status').textContent=`ROUND ${net.round} · 시작 연출`;renderGameEconomy();
    }else if(net.phase==='combat'){
     if(typeof liveClearAllDrags==='function')liveClearAllDrags();liveHideRoundCurtain();
     roundState.phase='combat';liveCombatActive=true;m809LastRanking=[];liveBeep('round');
@@ -1364,7 +1419,7 @@ window.LIVEApplyGame=function(net,slot,players){
    }else setupWildRound(net.round);
    const original=window.LIVENetReplaySeed;window.LIVENetReplaySeed=net.seed;
    if(net.hp[slot]<=0){teams.B=[];reset();$('#status').textContent='탈락 · 다른 플레이어 경기 관전 중';}else if(net.bye){teams.B=[];reset();$('#status').textContent='부전승 · HP 피해 없음';}else if(net.battle?.auto){teams.B=[];reset();$('#status').textContent=net.battle.outcome==='양 팀 패배'?'양 팀 편성 없음 · 자동 패배':net.battle.outcome==='A팀 승리'?'상대 편성 없음 · 자동 승리':'편성 없음 · 자동 패배';}else if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
-   window.LIVENetReplaySeed=original;
+   window.LIVENetReplaySeed=original;renderGameEconomy();
   }else if(['augment','augment-sync'].includes(net.phase)){
     if(typeof liveClearAllDrags==='function')liveClearAllDrags();teams.B=[];roundState.phase=net.phase;reset();
     $('#status').textContent=`ROUND ${net.round} · 인퓨전 선택 중`;renderGameEconomy();
@@ -1376,7 +1431,7 @@ window.LIVEApplyGame=function(net,slot,players){
    $('#status').textContent=`ROUND ${net.round} · ${result} · 서버 판정`;renderGameEconomy();
   }else if(net.phase==='finished'){
    roundState.phase='finished';roundState.active=false;clearRoundTimer();running=false;
-   $('#status').textContent=net.winnerSlot===slot?'게임 종료 · 승리':net.winnerSlot===null?'게임 종료 · 무승부':'게임 종료 · 패배';
+   $('#status').textContent=net.winnerSlot===slot?'게임 종료 · 승리':net.winnerSlot===null?'게임 종료 · 무승부':'게임 종료 · 패배';renderGameEconomy();
   }
  }
  roundState.remaining=rem;renderRoundUI();if(typeof m907PurpleStrategyUi==='function')m907PurpleStrategyUi(me,net);m809ShowResult(net,slot);m809UpdateDamagePanel(['combat','result'].includes(net.phase));if(net.phase==='prep'&&net.prepNotice){const status=document.querySelector('#status');if(status)status.textContent=net.prepNotice;}
@@ -1668,7 +1723,7 @@ function sync(){
  window.M6PixiAdapter?.combatSnapshot?.(units);
  $("#clock").textContent=time.toFixed(1)+"s";
  if(result.battleOver){if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='boss'&&roundState.phase==='combat')window.LIVEMultiplayer.reportBossDone?.(roundState.round);if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='farm'&&roundState.phase==='combat'){const room=window.LIVEMultiplayer.getRoom();const allWildDead=units.filter(u=>u.team==='B'&&(byId[u.characterId]?.pveOnly||u.role==='야생동물')).every(u=>u.dead);if(allWildDead)window.LIVEMultiplayer.reportFarmDone(room.game.round)}running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
- liveRenderHitEffects();render();m809DrawAreaHits();meters();m809UpdateDamagePanel(roundState.phase==='combat'||roundState.phase==='result');
+ liveRenderHitEffects();render();m809DrawAreaHits();meters();syncLiveBattleDeck();m809UpdateDamagePanel(roundState.phase==='combat'||roundState.phase==='result');
 }
 function start(){
  if(running)return true;
@@ -1717,6 +1772,9 @@ if(["combat","round"].includes(new URLSearchParams(location.search).get("qa"))){
     const link=document.createElement('link');
     link.rel='stylesheet';link.href='m1007-graphics.css';link.id='m1007GraphicSkin';
     document.head.appendChild(link);
+  }
+  if(!document.querySelector('link[href="m1008-stage-split.css"]')){
+    const link=document.createElement('link');link.rel='stylesheet';link.href='m1008-stage-split.css';link.id='m1008SceneSkin';document.head.appendChild(link);
   }
   if(!document.querySelector('script[src="m1007-client.js"]')){
     const script=document.createElement('script');
