@@ -1,0 +1,236 @@
+/* M10-10: stage-specific compact visuals and stable motion. Loaded last. */
+/* Events have no synergy sidebar. The 180px ghost grid column used to shrink the
+   entire formation field to the far-left corner when an overlay was folded. */
+body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
+  grid-template-columns:minmax(0,1fr)!important;
+  justify-items:center!important;
+  width:min(900px,calc(100vw - 28px))!important;
+}
+body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
+  width:100%!important;min-width:0!important;display:flex!important;justify-content:center!important;
+}
+body[data-app-mode="game"][data-live-scene="event"] #board.formation-board{
+  width:min(480px,66vw)!important;max-height:min(46vh,440px)!important;
+  aspect-ratio:1.14!important;height:auto!important;
+}
+/* Preparation is its own compact editing board, not a duplicate battle stage. */
+body[data-app-mode="game"][data-live-scene="formation"] #board.formation-board{
+  width:min(470px,52vw)!important;max-height:min(49vh,435px)!important;
+}
+@media(max-width:850px){
+  body[data-app-mode="game"][data-live-scene="event"] #board.formation-board,
+  body[data-app-mode="game"][data-live-scene="formation"] #board.formation-board{width:min(87vw,435px)!important;max-height:44dvh!important}
+}
+/* Strip excessive repeated ornaments without hiding information or its controls. */
+body[data-app-mode="game"] :is(#roundModePanel,#liveItemsPanel,#m809LiveHpStandings,#liveBattleDeck,.game-bottom-dock){
+  backdrop-filter:none!important;box-shadow:0 5px 18px #0008!important;border-color:#61747b99!important;
+}
+body[data-app-mode="game"] :is(#roundModePanel,#liveItemsPanel,#m809LiveHpStandings,#liveBattleDeck,.game-bottom-dock)::before,
+body[data-app-mode="game"] :is(#roundModePanel,#liveItemsPanel,#m809LiveHpStandings,#liveBattleDeck,.game-bottom-dock)::after{opacity:.12!important}
+#roundModePanel .live-next-rounds{opacity:.7}
+#roundModePanel .live-schedule-step{padding:2px 4px;background:transparent;border:0;font-size:9px}
+#roundModePanel .m901-owned-augments>small{display:none}
+#liveBattleDeck{min-height:92px!important;padding:9px 14px!important}
+#liveBattleDeck .m1008-battle-heading small,#liveBattleDeck .m1008-battle-note{display:none!important}
+#liveBattleDeck .m1008-battle-heading{border-right:0!important}
+/* Farming shows an objective instead of a fictional 100 HP enemy. */
+#roundModePanel .m1010-farm-side{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}
+#roundModePanel .m1010-farm-side strong{font-size:14px;color:#d3e2d0}
+#roundModePanel .m1010-farm-side small{font-size:10px;line-height:1.35;color:#9bb0a4;text-align:right}
+/* The top HUD folds upward; the action grip stays visible at the very bottom. */
+body[data-app-mode="game"] #roundModePanel{
+  display:flex!important;flex-direction:column!important;
+  transition:transform .4s cubic-bezier(.22,.8,.24,1)!important;
+  will-change:transform;
+}
+#roundModePanel .m809-top-actions{order:2;justify-content:center;padding-top:2px}
+#roundModePanel .m809-top-content{order:1;display:block!important;transition:opacity .18s ease!important}
+body[data-app-mode="game"] #roundModePanel.m809-top-collapsed{
+  width:min(640px,calc(100vw - 12px))!important;
+  left:50%!important;top:0!important;padding:5px 8px!important;
+  transform:translate(-50%,calc(-100% + 36px))!important;
+}
+#roundModePanel.m809-top-collapsed .m809-top-content{opacity:0;pointer-events:none}
+#roundModePanel.m809-top-collapsed .round-actions{position:static!important;transform:none!important}
+/* Shop slides down in one continuous motion; do not reconstruct markup on click. */
+body[data-app-mode="game"] .game-bottom-dock{
+  transition:transform .42s cubic-bezier(.22,.8,.24,1)!important;will-change:transform;
+}
+body[data-app-mode="game"] .game-bottom-dock.collapsed{
+  transform:translate(-50%,calc(100% + 2px))!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .dock-toggle{pointer-events:auto;min-height:32px}
+/* A true animated mastery fill: no animated stripes, no instant jumps. */
+body[data-app-mode="game"] .game-bottom-dock .mastery-track>i{
+  transition:width .45s cubic-bezier(.2,.85,.26,1)!important;
+  background-image:linear-gradient(90deg,#60988d,#abc9b4)!important;
+  animation:none!important;will-change:width;
+}
+body[data-app-mode="game"] .game-bottom-dock .mastery-track>i::before,
+body[data-app-mode="game"] .game-bottom-dock .mastery-track>i::after{display:none!important;animation:none!important}
+/* Selection windows fold to a genuine zero-height layer, with one floating tab.
+   Fullscreen overlay must not retain scrollbars or capture the board pointer. */
+#liveAugmentPanel.m910-collapsed,
+#liveSupplyPanel.supply-collapsed{
+  position:fixed!important;inset:0 0 auto 0!important;
+  width:100vw!important;height:0!important;min-height:0!important;max-height:0!important;
+  padding:0!important;margin:0!important;
+  overflow:visible!important;overflow-x:visible!important;overflow-y:visible!important;
+  border:0!important;box-shadow:none!important;backdrop-filter:none!important;
+  background:transparent!important;pointer-events:none!important;
+}
+#liveAugmentPanel.m910-collapsed::before,#liveAugmentPanel.m910-collapsed::after,
+#liveSupplyPanel.supply-collapsed::before,#liveSupplyPanel.supply-collapsed::after{display:none!important}
+#liveAugmentPanel.m910-collapsed .m901-augment-modal,
+#liveSupplyPanel.supply-collapsed .supply-modal{display:none!important}
+#liveAugmentPanel>.m910-augment-collapse,
+#liveSupplyPanel .supply-peek-toggle{
+  position:fixed!important;top:10px!important;right:12px!important;left:auto!important;
+  width:auto!important;max-width:min(260px,80vw);height:auto!important;
+  pointer-events:auto!important;z-index:20050!important;
+  padding:8px 12px!important;border-radius:5px!important;
+  font-size:11px!important;white-space:nowrap!important;
+}
+body[data-app-mode="game"] #liveAugmentPanel.m910-collapsed{scrollbar-width:none!important}
+body[data-app-mode="game"] #liveAugmentPanel.m910-collapsed::-webkit-scrollbar{display:none!important}
+/* Selection and tooltip: clear hierarchy. The long explanation belongs to Shift. */
+#liveAugmentPanel .m902-infusion-card>p{font-size:14px!important;line-height:1.65!important;max-height:none!important;min-height:0!important;overflow:visible!important;flex:1}
+#liveAugmentPanel .m1010-infusion-help{font-size:10px;color:#98b9be;line-height:1.5}
+#liveAugmentPanel .m902-status,#liveAugmentPanel .m902-download,#liveAugmentPanel .m902-activity{display:none!important}
+#liveAugmentPanel .m902-emblem{height:34px;width:34px;font-size:18px}
+#liveAugmentPanel .m902-infusion-card{gap:9px!important;padding:18px!important;min-height:270px!important}
+#liveAugmentPanel .m901-augment-modal{overflow-x:hidden!important}
+#m904InfusionTooltip{max-height:min(65dvh,450px);overflow-y:auto;z-index:100120!important;border:1px solid #78969e!important;background:#0e1d27fa!important;box-shadow:0 8px 22px #0009!important}
+#m904InfusionTooltip p{overflow-wrap:break-word;word-break:keep-all}
+/* Continuous drag movement is done on the compositor, not layout. */
+.drag-ghost,.live-item-drag-ghost{left:0!important;top:0!important;will-change:transform;contain:layout style paint;transition:none!important}
+#board .unit{will-change:transform;backface-visibility:hidden}
+#board .unit .hpbar>i{transition:width .13s linear!important}
+@media(prefers-reduced-motion:reduce){
+  body[data-app-mode="game"] #roundModePanel,
+  body[data-app-mode="game"] .game-bottom-dock,
+  body[data-app-mode="game"] .game-bottom-dock .mastery-track>i{transition:none!important}
+}
+
+/* M10-10 scene geometry: the M6 desktop half-width rule must not make a
+   collapsed selection phase look like a tiny displaced six-column battlefield. */
+@media (min-width:851px) {
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row {
+   width:min(940px,calc(100vw - 44px))!important;height:100%!important;
+   grid-template-columns:minmax(165px,200px) minmax(0,470px)!important;
+   justify-content:center!important;align-items:center!important;
+   grid-template-rows:minmax(0,1fr)!important;gap:20px!important;
+ }
+ body[data-app-mode="game"][data-live-scene="event"] .game-board-row {
+   display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+   justify-items:center!important;width:min(750px,calc(100vw - 44px))!important;
+ }
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row>.board-shell {
+   box-sizing:border-box!important;width:min(470px,47dvh)!important;
+   min-width:270px!important;max-width:min(470px,54vw)!important;
+   height:auto!important;min-height:0!important;max-height:min(48dvh,470px)!important;
+   aspect-ratio:1 / 1!important;flex:none!important;
+   margin:0 auto!important;align-self:center!important;
+ }
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board {
+   width:100%!important;height:100%!important;max-height:none!important;
+   margin:0!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+   grid-template-rows:repeat(3,minmax(0,1fr))!important;
+ }
+}
+@media (max-width:850px) {
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row {
+   grid-template-columns:minmax(0,1fr)!important;justify-items:center!important;align-content:center!important;
+ }
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row>.board-shell {
+   box-sizing:border-box!important;width:min(84vw,46dvh,430px)!important;max-width:100%!important;
+   height:auto!important;max-height:min(46dvh,430px)!important;aspect-ratio:1!important;
+ }
+ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board {
+   box-sizing:border-box!important;width:100%!important;height:100%!important;max-height:none!important;
+ }
+}
+/* Read-only battle synergy summary: game actions remain in their own scene,
+   but players should not lose the information needed to judge team synergies. */
+body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #currentSynergyPanel.m1010-battle-synergy {
+ display:block!important;position:fixed!important;z-index:8200!important;
+ top:clamp(155px,20dvh,240px)!important;left:12px!important;
+ width:clamp(155px,15vw,218px)!important;max-height:min(48dvh,390px)!important;
+ padding:10px!important;border:1px solid #516f71!important;
+ background:#101d25ed!important;overflow:auto!important;pointer-events:auto!important;
+ box-shadow:0 5px 20px #0007!important;
+}
+body[data-app-mode="game"] #currentSynergyPanel.m1010-battle-synergy .current-synergy-title {
+ display:block!important;font-size:11px!important;letter-spacing:.03em!important;color:#b8d8d1!important;
+}
+@media(max-width:850px){
+ body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #currentSynergyPanel.m1010-battle-synergy {
+   width:calc(100% - 20px)!important;top:auto!important;bottom:clamp(125px,23dvh,225px)!important;
+   left:10px!important;max-height:72px!important;overflow-x:auto!important;overflow-y:hidden!important;
+ }
+ #currentSynergyPanel.m1010-battle-synergy .synergy-strip{flex-direction:row!important;flex-wrap:nowrap!important}
+}
+/* Combat information uses compact, live numbers rather than decorative filler. */
+#liveBattleDeck .m1010-battle-live {
+ grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;
+ gap:16px;border-top:1px solid #596e7060;padding:7px 4px 2px;
+ font-size:11px;color:#9eb3af;font-variant-numeric:tabular-nums;
+}
+#liveBattleDeck .m1010-battle-live b{color:#d2eee5;font-size:12px;margin-left:5px}
+#liveBattleDeck .m1008-battle-heading small{display:block!important;letter-spacing:.04em!important}
+#liveBattleDeck .m1008-battle-heading span{font-size:11px;line-height:1.3}
+#liveBattleDeck .m1008-battle-roster{align-self:center}
+#board .unit.live-hit-flash .sd-slot {animation:m1010-hit-bump .18s ease-out both}
+#board .unit.live-attack-flash .sd-slot {animation:m1010-attack-accent .22s ease-out both}
+#board .unit.live-hit-flash .hit-vfx::after {
+ content:"";position:absolute;inset:-16px;border-radius:50%;pointer-events:none;
+ border:2px solid #ffd3a0;box-shadow:0 0 12px #ed8869aa;animation:m1010-hit-ring .28s ease-out forwards;
+}
+@keyframes m1010-hit-bump {0%{filter:brightness(1.9);transform:translateX(3px)}60%{filter:brightness(1.3);transform:translateX(-2px)}100%{filter:brightness(1);transform:none}}
+@keyframes m1010-attack-accent {0%{filter:brightness(1.1);transform:translateY(0)}45%{filter:brightness(1.5);transform:translateY(-4px)}100%{filter:brightness(1);transform:none}}
+@keyframes m1010-hit-ring {from{opacity:.9;transform:scale(.45)}to{opacity:0;transform:scale(1.5)}}
+/* No external busy cursor for network-ready actions; stable DOM prevents flicker. */
+#roundModePanel #roundOnlineReady{cursor:pointer!important;transition:background-color .15s,border-color .15s,opacity .15s!important}
+#roundModePanel #roundOnlineReady[aria-busy="true"]{cursor:default!important;opacity:.77!important}
+/* The upward and downward slide handles must remain clickable after folding. */
+#roundModePanel .m809-top-content{order:0!important}
+#roundModePanel .round-actions{order:1!important}
+#roundModePanel .m809-top-actions{order:2!important;justify-content:center!important}
+#roundModePanel.m809-top-collapsed .m809-top-content{display:block!important;visibility:hidden!important}
+#roundModePanel.m809-top-collapsed .round-actions{visibility:hidden!important;pointer-events:none!important}
+body[data-app-mode="game"] #roundModePanel.m809-top-collapsed {
+ transform:translate(-50%,calc(-100% + 35px))!important;
+}
+body[data-app-mode="game"] .game-bottom-dock.collapsed {
+ transform:translate(-50%,calc(100% + 1px))!important;
+}
+/* Collapse state must never create an invisible full-screen scroll container. */
+html:has(body[data-app-mode="game"]){overflow-x:clip}
+body[data-app-mode="game"]{overflow-x:clip}
+#liveAugmentPanel.m910-collapsed,#liveSupplyPanel.supply-collapsed {
+ position:fixed!important;inset:0 0 auto auto!important;
+ top:0!important;left:auto!important;right:0!important;
+ width:0!important;height:0!important;min-width:0!important;min-height:0!important;
+ max-width:0!important;max-height:0!important;padding:0!important;margin:0!important;
+ overflow:visible!important;background:transparent!important;box-shadow:none!important;
+ border:0!important;backdrop-filter:none!important;pointer-events:none!important;
+}
+#liveAugmentPanel.m910-collapsed .m901-augment-modal,
+#liveSupplyPanel.supply-collapsed .supply-modal{display:none!important}
+#liveAugmentPanel.m910-collapsed>.m910-augment-collapse,
+#liveSupplyPanel.supply-collapsed>.supply-peek-toggle {
+ display:block!important;position:fixed!important;top:11px!important;right:16px!important;
+ left:auto!important;bottom:auto!important;pointer-events:auto!important;
+ width:auto!important;max-width:min(84vw,250px)!important;height:auto!important;
+ border-radius:5px!important;font-size:11px!important;white-space:nowrap!important;
+}
+#liveAugmentPanel.m910-collapsed::-webkit-scrollbar,
+#liveSupplyPanel.supply-collapsed::-webkit-scrollbar{display:none!important}
+/* Calm card summaries: detailed coefficients are available through Shift tooltip. */
+#liveAugmentPanel .m902-infusion-card>p{font-size:14px!important;line-height:1.6!important;word-break:keep-all!important;overflow-wrap:break-word!important}
+#m904InfusionTooltip.m910-detailed{font-size:13px;line-height:1.65;max-width:min(460px,90vw)}
+#m904InfusionTooltip:not(.m910-detailed){font-size:12px;line-height:1.6;max-width:min(350px,85vw)}
+@media(prefers-reduced-motion:reduce){
+ #board .unit.live-hit-flash .sd-slot,#board .unit.live-attack-flash .sd-slot,
+ #board .unit.live-hit-flash .hit-vfx::after{animation:none!important}
+}

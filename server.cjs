@@ -256,7 +256,7 @@ if(url.pathname==='/api/boss-done'){
  if(Date.now()-g.combatStartedAt<Math.min(60,entry.time)*1000-250)return reply(res,409,{error:'보스 전투가 아직 끝나지 않았어.'});
  p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
 }
-if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const expected=r.game.farmResults?.[p.slot]?.time;if(Number.isFinite(expected)&&Date.now()-r.game.combatStartedAt<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const farm=r.game.farmResults?.[p.slot];const expected=farm?.time;const elapsed=Date.now()-r.game.combatStartedAt;if(elapsed<1000||farm?.won!==false&&Number.isFinite(expected)&&elapsed<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/start'){if(p.id!==r.hostPlayerId)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;member.augments=[];member.assets.augmentIds=[];member.purpleChoice={};member.purpleLosses=0;}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'augment',endsAt:Date.now()+augment.DURATION_MS,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};r.game.augment=augment.open(living(r),1);for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/augment-assets-ready'){
  const g=r.game;if(!g||g.phase!=='augment-sync'||!g.augment||Number(body.round)!==g.round||g.hp[p.slot]<=0||!g.augment.picks[p.slot])return reply(res,409,{error:'증강 다운로드 확인 단계가 아니야.'});
@@ -464,8 +464,8 @@ function advanceRoom(r){
     try{
      const seed=crypto.randomInt(1,2147483647);
      const result=new CombatEngine({teamA:ply.team,teamB:FARM_LINEUPS[g.round]||FARM_LINEUPS[3],masteryA:ply.mastery||1,masteryB:1,seed,moveInterval:.5,infusions:{A:ply.augments||[],B:[]},round:g.round,augmentsA:ply.augments||[],augmentsB:[],reservesA:economy.reserveTeam(ply.assets),purpleSpent:{A:g.purpleSpent?.[ply.slot]||0,B:0},purpleCredits:{A:ply.assets?.credits||0,B:0},purpleChoices:{A:ply.purpleChoice||{},B:{}},purpleLosingStreak:{A:ply.purpleLosses||0,B:0},persistent:{A:{...ply.progress,blueErebosSales:ply.assets?.blueErebosSales||0},B:{}}}).run();
-     g.farmResults[ply.slot]={seed,time:result.time,killed:(result.units||[]).filter(u=>u.team==='B'&&u.dead&&m7Roster[u.characterId]?.pveOnly).length};
-    }catch(e){console.warn('PvE server simulation failed',e);g.farmResults[ply.slot]={seed:0,time:60,killed:0};}
+     g.farmResults[ply.slot]={seed,time:result.time,won:result.outcome==='A팀 승리',killed:(result.units||[]).filter(u=>u.team==='B'&&u.dead&&m7Roster[u.characterId]?.pveOnly).length};
+    }catch(e){console.warn('PvE server simulation failed',e);g.farmResults[ply.slot]={seed:0,time:60,won:false,killed:0};}
    }
   }
   if(!pve){
@@ -526,7 +526,7 @@ function advanceRoom(r){
   if(g.pve&&g.kind==='farm'){
    for(const ply of living(r)){
     if(!ply.assets)continue;
-    const n=Math.min(3,g.farmResults?.[ply.slot]?.killed||0);
+    const farm=g.farmResults?.[ply.slot];const n=farm?.won?Math.min(3,farm.killed||0):0;
     for(let i=0;i<n;i++){
      economy.grant(ply.assets,{type:'basic',value:crypto.randomInt(7)},`r${g.round}:farm:${ply.slot}:${i}:base`);
      if(crypto.randomInt(100)<5)economy.grant(ply.assets,{type:'basic',value:crypto.randomInt(7)},`r${g.round}:farm:${ply.slot}:${i}:bonus`);

@@ -143,5 +143,19 @@
   $('#liveTeamSend').onclick=async()=>{const text=$('#liveTeamChatInput').value.trim();if(!text)return;try{await api('team-chat',{text});$('#liveTeamChatInput').value=''}catch(e){notice(e.message)}};$('#liveTeamChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveTeamSend').click()});
   $('#liveSend').onclick=async()=>{const text=$('#liveChatInput').value.trim();if(!text)return;try{await api('chat',{text});$('#liveChatInput').value=''}catch(e){console.warn(e.message)}};$('#liveChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveSend').click()});
   if(session)api('me').then(j=>{setIdentity(j);display('rooms');recoverMatch()}).catch(()=>{session='';sessionStorage.removeItem('live_session');display('auth')});else display('auth');
-  window.LIVEMultiplayer={getRoom:()=>room,getPlayerId:()=>playerId,getToken:()=>token,economy:(cmd,payload={})=>api('economy',{cmd,...payload}),market:(cmd,payload={})=>api('market',{cmd,...payload}),auction:amount=>api('auction',{amount}),auctionChooseUnit:(choiceId,characterId)=>api('auction-unit-choice',{choiceId,characterId}),augmentPick:(round,choice)=>api('augment-pick',{round,choice}),augmentReroll:(round,choice)=>api('augment-reroll',{round,choice}),augmentAssetsReady:round=>api('augment-assets-ready',{round}),purpleConfig:(kind,value)=>api('purple-config',{kind,value}),introComplete:round=>api('intro-complete',{round}).catch(e=>console.warn('연출 완료 보고 실패',e.message)), setRoundReady:async ready=>api('round-ready',{ready}), reportBossDone:async round=>{try{await api('boss-done',{round})}catch(e){console.warn('보스 완료 보고 실패:',e.message)}},reportFarmDone:async round=>{if(lastFarmReportRound===round)return;lastFarmReportRound=round;try{await api('farm-done',{round})}catch(e){lastFarmReportRound=0;console.warn('파밍 완료 보고 실패:',e)}}};
+  window.LIVEMultiplayer={getRoom:()=>room,getPlayerId:()=>playerId,getToken:()=>token,economy:(cmd,payload={})=>api('economy',{cmd,...payload}),market:(cmd,payload={})=>api('market',{cmd,...payload}),auction:amount=>api('auction',{amount}),auctionChooseUnit:(choiceId,characterId)=>api('auction-unit-choice',{choiceId,characterId}),augmentPick:(round,choice)=>api('augment-pick',{round,choice}),augmentReroll:(round,choice)=>api('augment-reroll',{round,choice}),augmentAssetsReady:round=>api('augment-assets-ready',{round}),purpleConfig:(kind,value)=>api('purple-config',{kind,value}),introComplete:round=>api('intro-complete',{round}).catch(e=>console.warn('연출 완료 보고 실패',e.message)), setRoundReady:async ready=>api('round-ready',{ready}), reportBossDone:async round=>{try{await api('boss-done',{round})}catch(e){console.warn('보스 완료 보고 실패:',e.message)}},reportFarmDone:async round=>{
+   if(lastFarmReportRound===round)return;
+   lastFarmReportRound=round;
+   const retry=async()=>{
+    if(!room?.started||room.game?.round!==round||room.game?.kind!=='farm'||room.game?.phase!=='combat'){lastFarmReportRound=0;return}
+    try{await api('farm-done',{round})}
+    catch(e){
+      // Authoritative simulation may take longer than the local visual replay.
+      if(room?.game?.round===round&&room.game.phase==='combat'){
+       setTimeout(retry,1400);
+      }else{lastFarmReportRound=0}
+    }
+   };
+   await retry();
+  }};
 })();
