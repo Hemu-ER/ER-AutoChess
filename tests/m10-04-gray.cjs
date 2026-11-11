@@ -1,21 +1,21 @@
 'use strict';
 const assert=require('node:assert/strict');
 const path=require('node:path');
-const {CARDS}=require('../match-augment.cjs');
-const economy=require('../match-economy.cjs');
-const grayE=require('../gray-economy.cjs');
-const grayCombat=require('../gray-combat.js');
-const {CombatEngine}=require('../combat-engine.js');
+const {CARDS}=require('../js/server/match-augment.cjs');
+const economy=require('../js/server/match-economy.cjs');
+const grayE=require('../js/server/gray-economy.cjs');
+const grayCombat=require('../js/shared/gray-combat.js');
+const {CombatEngine}=require('../js/shared/combat-engine.js');
 let checks=0;
 function ok(value,description){assert.ok(value,description);checks++}
 function eq(a,b,description){assert.equal(a,b,description);checks++}
 function fresh(ids=[]){const a=economy.makeInitial();a.augmentIds=[...ids];a.infusionIds=[...ids];a.credits=100;return a}
 // Shop, credit, XP, merge, free-reroll and idempotent post-PvP reward checks.
 {
- let a=fresh(['G013']);let unit=a.shop.find(Boolean);a.shop=[unit,unit,null,null,null];let start=a.credits;economy.action(a,'buy',{index:0});eq(a.credits,start- Math.max(0,require('../roster.js').byId[unit].cost-1),'G013 first purchase discount');
- a=fresh(['G036']);unit=a.shop.find(Boolean);a.shop=[unit,unit,null,null,null];start=a.credits;economy.action(a,'buy',{index:0});eq(a.credits,start-Math.max(0,require('../roster.js').byId[unit].cost-1),'G036 duplicate offer discount');
+ let a=fresh(['G013']);let unit=a.shop.find(Boolean);a.shop=[unit,unit,null,null,null];let start=a.credits;economy.action(a,'buy',{index:0});eq(a.credits,start- Math.max(0,require('../js/shared/roster.js').byId[unit].cost-1),'G013 first purchase discount');
+ a=fresh(['G036']);unit=a.shop.find(Boolean);a.shop=[unit,unit,null,null,null];start=a.credits;economy.action(a,'buy',{index:0});eq(a.credits,start-Math.max(0,require('../js/shared/roster.js').byId[unit].cost-1),'G036 duplicate offer discount');
  a=fresh(['G053']);start=a.credits;for(let i=0;i<3;i++)economy.action(a,'reroll');eq(a.credits,start-5,'G053 third paid reroll refunded');
- a=fresh(['G055']);const u=a.owned[0];start=a.credits;economy.action(a,'sell-unit',{uid:u.uid});eq(a.credits,start+require('../roster.js').byId[u.characterId].cost+1,'G055 first sale');
+ a=fresh(['G055']);const u=a.owned[0];start=a.credits;economy.action(a,'sell-unit',{uid:u.uid});eq(a.credits,start+require('../js/shared/roster.js').byId[u.characterId].cost+1,'G055 first sale');
  a=fresh(['G019']);a.exp=4;a.level=1;a.credits=10;economy.action(a,'invest');eq(a.level,2,'level promoted');eq(a.credits,10,'G019 first level bonus');
  a=fresh(['G037']);start=a.credits;economy.roundIncome(a,2);ok(a.credits>=start+7,'G037 no-spend gain');
  a=fresh(['G002']);a.credits=5;economy.roundIncome(a,2);eq(a.credits,11,'G002 preparation end award');

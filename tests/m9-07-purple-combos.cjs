@@ -1,5 +1,5 @@
 'use strict';
-const assert=require('node:assert/strict'),{CombatEngine}=require('../combat-engine.js'),{CARDS}=require('../purple-cards.js');
+const assert=require('node:assert/strict'),{CombatEngine}=require('../js/shared/combat-engine.js'),{CARDS}=require('../js/shared/purple-cards.js');
 const ids=CARDS.map(c=>c.id),baseA=[{characterId:'rozzi',star:2,x:0,y:1,items:['오토-암즈']},{characterId:'aya',star:2,x:1,y:0,items:['요명월']},{characterId:'marcus',star:2,x:2,y:2,items:['가디언 슈트']}],baseB=[{characterId:'rio',star:2,x:2,y:0,items:['미스릴 퀴버']},{characterId:'kenneth',star:2,x:1,y:1,items:['레가투스']},{characterId:'cathy',star:2,x:1,y:2,items:['가디언 슈트']}];
 let ok=0;
 for(let i=0;i<120;i++){

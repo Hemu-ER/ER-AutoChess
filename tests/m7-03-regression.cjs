@@ -13,7 +13,7 @@ assert(source('m6-pixi-adapter.js').includes('revision!==drawVersion'),'Async Pi
 assert(source('game.js').includes("roundState.phase='prep';teams.B=[];\n   // Reset battle"),'Prep must be established before fresh board reset');
 const os=require('node:os');
 process.env.PORT='0';process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m7-03-'));
-const {server,drawSupplyChoices,drawSupplyReward,SUPPLY_ODDS}=require('../server.cjs');
+const {server,drawSupplyChoices,drawSupplyReward,SUPPLY_ODDS}=require('../js/server/server.cjs');
 const costs=Object.fromEntries(SUPPLY_ODDS);assert.deepEqual(costs,{complete:5,credits:30,exp:20,unit1:25,unit2:20});
 const rewardKind=o=>o.type==='unit'?'unit'+o.cost:o.type;
 for(let i=0;i<6000;i++){

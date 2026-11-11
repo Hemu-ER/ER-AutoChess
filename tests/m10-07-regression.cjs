@@ -3,8 +3,8 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.resolve(__dirname,'..');
 let n=0;const ok=(test,msg)=>{assert.ok(test,msg);n++};
 const read=f=>fs.readFileSync(path.join(root,f),'utf8');
-const {roster}=require('../roster.js');const hart=roster.find(r=>r.id==='hart');ok(hart.affiliations.includes('군악대')&&hart.affiliations.includes('헌신'),'Hart now has devotion and band');
-const auction=require('../match-auction.cjs');const econ=require('../match-economy.cjs');
+const {roster}=require('../js/shared/roster.js');const hart=roster.find(r=>r.id==='hart');ok(hart.affiliations.includes('군악대')&&hart.affiliations.includes('헌신'),'Hart now has devotion and band');
+const auction=require('../js/server/match-auction.cjs');const econ=require('../js/server/match-economy.cjs');
 const choiceLot={index:0,kind:'unit2',reward:{type:'unit-choice',cost:2,star:1},status:'bidding',bid:3,bidderSlot:0,winnerSlot:null};
 const others=[{index:1,kind:'complete',reward:{type:'item',item:'철판'},status:'upcoming',bid:0,bidderSlot:null,winnerSlot:null},{index:2,kind:'unit3',reward:{type:'unit',characterId:'aiden',star:1},status:'upcoming',bid:0,bidderSlot:null,winnerSlot:null}];
 const p={slot:0,assets:econ.makeInitial(),team:[],mastery:1};const room={started:true,players:new Map([['x',p]]),game:{round:7,phase:'special',specialType:'auction',hp:[100],auction:auction.open(0,[choiceLot,...others])}};
@@ -18,7 +18,7 @@ ok(JSON.stringify(p.assets.stock||{})===stockBefore,'shop pool stock unaffected'
 ok(p.assets.owned.some(x=>x.characterId===unit2.id&&x.star===1)||p.assets.pendingUnits.some(x=>x.characterId===unit2.id&&x.star===1),'one-star granted to owned or pending');
 assert.throws(()=>auction.chooseUnit(room,p,id,unit2.id));n++;
 // Deterministic simulation: a P29 kill emits execute, ordinary combat does not.
-const {CombatEngine}=require('../combat-engine.js');
+const {CombatEngine}=require('../js/shared/combat-engine.js');
 function runExec(purple){const e=new CombatEngine({teamA:[{characterId:'garnet',star:3,x:2,y:1,items:[]}],teamB:[{characterId:'aiden',star:1,x:2,y:1,items:[]}],masteryA:4,masteryB:1,seed:5,round:17,augmentsA:purple?['P29']:[],augmentsB:[]});e.run();return e.drainEvents()}
 const execEvents=runExec(true),normalEvents=runExec(false);
 ok(execEvents.some(e=>e.type==='execute'&&e.skill==='집행자의 명령'),'real P29 execution emits specific event');

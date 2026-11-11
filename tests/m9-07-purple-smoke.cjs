@@ -1,8 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {CombatEngine}=require('../combat-engine.js');
-const cards=require('../purple-cards.js').CARDS;
-const {roster}=require('../roster.js');
+const {CombatEngine}=require('../js/shared/combat-engine.js');
+const cards=require('../js/shared/purple-cards.js').CARDS;
+const {roster}=require('../js/shared/roster.js');
 assert.equal(cards.length,46);
 const ids=new Set(cards.map(c=>c.id));
 assert(!ids.has('P16')&&!ids.has('P47')&&!ids.has('P45')&&!ids.has('P50'));

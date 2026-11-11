@@ -5,9 +5,9 @@ const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'
 const serverPort=0;
 process.env.PORT=String(serverPort);
 process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m910-qa-'));
-const {server,rooms}=require('../server.cjs');
-const {CombatEngine}=require('../combat-engine.js');
-const aug=require('../match-augment.cjs');
+const {server,rooms}=require('../js/server/server.cjs');
+const {CombatEngine}=require('../js/shared/combat-engine.js');
+const aug=require('../js/server/match-augment.cjs');
 let n=0;const ok=(v,msg)=>{assert.ok(v,msg);n++},eq=(v,w,msg)=>{assert.deepEqual(v,w,msg);n++};
 async function main(){
  for(let i=0;i<200&&!server.listening;i++)await new Promise(r=>setTimeout(r,20));ok(server.listening,'M9-10 test server online');

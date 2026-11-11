@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const root=path.join(__dirname,'..');const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(x,reason)=>{assert.ok(x,reason);checks++};
-const aug=require('../match-augment.cjs');
+const aug=require('../js/server/match-augment.cjs');
 ok(aug.CARDS.blue.length===31,'M9-03 real blue registry 31');ok(aug.CARDS.blue.every(x=>x.id.startsWith('B')&&x.implemented),'M9-03 blue cards implemented');
 ok(aug.CARDS.purple.length===46,'M9-07 approved purple cards 46');ok(!aug.CARDS.blue.some(x=>x.id.startsWith('M901_BLUE')),'M9-01 blue prototype must never replace blue registry');
 const game=read('game.js'),index=read('index.html'),qa=read('qa-combat.html'),qaJS=read('qa-combat.js'),server=read('server.cjs');

@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'..');const read=name=>fs.readFileSync(path.join(root,name),'utf8');
-const aug=require('../match-augment.cjs'),ec=require('../match-economy.cjs');
+const aug=require('../js/server/match-augment.cjs'),ec=require('../js/server/match-economy.cjs');
 let checks=0;const ok=(x,msg)=>{assert.ok(x,msg);checks++};
 const client=read('multiplayer.js'),ui=read('game.js'),html=read('index.html'),css=read('m909-polish.css'),descriptions=read('m909-infusion-text.js'),catalog=read('infusion-catalog.js');
 ok(/augmentReroll:\(round,choice\)=>api\('augment-reroll',\{round,choice\}\)/.test(client),'client reroll passes choice');

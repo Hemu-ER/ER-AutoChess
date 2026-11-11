@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const root=path.join(__dirname,'..'),game=fs.readFileSync(path.join(root,'game.js'),'utf8'),qa=fs.readFileSync(path.join(root,'qa-combat.js'),'utf8'),catalogText=fs.readFileSync(path.join(root,'infusion-catalog.js'),'utf8');
-const roster=require('../roster.js').roster,items=require('../items.js'),aug=require('../match-augment.cjs'),combat=require('../combat-engine.js');
+const roster=require('../js/shared/roster.js').roster,items=require('../js/shared/items.js'),aug=require('../js/server/match-augment.cjs'),combat=require('../js/shared/combat-engine.js');
 let checks=0;
 const catalog=JSON.parse(catalogText.slice(catalogText.indexOf('=')+1).replace(/;\s*$/,'')),actual=Object.values(aug.CARDS).flat();
 assert.deepEqual(catalog,actual,'browser codex catalog matches server canonical cards');checks++;

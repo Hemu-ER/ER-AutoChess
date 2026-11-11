@@ -3,7 +3,9 @@
   "version": "0.4.3",
   "private": true,
   "scripts": {
-    "start": "node server.cjs",
+    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs",
+    "test:refactor": "node tests/refactor-smoke.cjs",
+    "start": "node js/server/server.cjs",
     "test:m7": "node tests/m7-regression.cjs",
     "test:m7-02": "node tests/m7-regression.cjs && node tests/m7-02-regression.cjs",
     "test:m7-03": "npm run test:m7-02 && node tests/m7-03-regression.cjs",

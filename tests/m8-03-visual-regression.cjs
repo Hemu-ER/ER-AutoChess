@@ -5,7 +5,7 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=n=>fs.readFileSync(path.join(root,n),'utf8');
 const game=read('game.js'),pixi=read('m6-pixi-adapter.js'),floor=read('battlefield.js'),server=read('server.cjs');
-const {roster}=require('../roster.js');
+const {roster}=require('../js/shared/roster.js');
 const playable=roster.filter(r=>r.asset?.sd);
 // Assets are part of this *same patch*, never rely on old PNGs for the new optimized URLs.
 for(const r of playable){assert.match(r.asset.sd,/\.webp$/);assert.ok(fs.statSync(path.join(root,r.asset.sd)).size>1000,'missing optimized sprite: '+r.asset.sd)}

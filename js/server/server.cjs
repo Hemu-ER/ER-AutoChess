@@ -1,0 +1,580 @@
+'use strict';
+// M4 network foundation: single-process, memory-only authoritative rooms.
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const {CombatEngine,pickArenaRegion}=require('../shared/combat-engine.js');
+const {roster:supplyRoster}=require('../shared/roster.js');
+const {createSchedule,roundKind,pvpHpDamage,pairSurvivors,draftOrder,LABELS}=require('./round-rules.cjs');
+const {makeCandidates}=require('./selection.cjs');
+const economy=require('./match-economy.cjs');
+const market=require('./match-market.cjs');
+const auction=require('./match-auction.cjs');
+const boss=require('./match-boss.cjs');
+const experiment=require('./match-experiment.cjs');
+const augment=require('./match-augment.cjs');
+const grayEconomy=require('./gray-economy.cjs');
+const m7Roster=Object.fromEntries(supplyRoster.map(r=>[r.id,r]));
+const FARM_LINEUPS={
+ 1:[{characterId:'wild_boar',star:1,x:2,y:1},{characterId:'wild_dog',star:1,x:1,y:0}],
+ 3:[{characterId:'wild_wolf',star:1,x:2,y:0},{characterId:'wild_wolf',star:1,x:2,y:2},{characterId:'wild_boar',star:1,x:1,y:1}],
+ 10:[{characterId:'wild_bear',star:1,x:2,y:1},{characterId:'wild_wolf',star:1,x:1,y:0},{characterId:'wild_boar',star:1,x:1,y:2}]
+};
+// M7-03: three different reward CATEGORIES chosen by weighted sampling without replacement.
+// 1-cost and 2-cost subjects are distinct categories. These are first-draw weights.
+const SUPPLY_ODDS=Object.freeze([['complete',5],['credits',30],['exp',20],['unit1',25],['unit2',20]]);
+const SUPPLY_UNITS={1:supplyRoster.filter(r=>!r.pveOnly&&r.cost===1).map(r=>r.id),2:supplyRoster.filter(r=>!r.pveOnly&&r.cost===2).map(r=>r.id)};
+if(!SUPPLY_UNITS[1].length||!SUPPLY_UNITS[2].length)throw Error('보급용 1·2코스트 실험체 풀이 비어 있어.');
+function drawSupplyReward(kind){
+ if(!kind){const total=SUPPLY_ODDS.reduce((n,[,weight])=>n+weight,0);let roll=crypto.randomInt(total);for(const [name,weight] of SUPPLY_ODDS){if(roll<weight){kind=name;break}roll-=weight}}
+ if(kind==='credits'||kind==='exp')return {type:kind,value:crypto.randomInt(7,11)};
+ if(kind==='complete')return {type:'complete',value:crypto.randomInt(28)};
+ if(kind!=='unit1'&&kind!=='unit2')throw Error('알 수 없는 보급 유형: '+kind);
+ const cost=kind==='unit1'?1:2,units=SUPPLY_UNITS[cost];
+ return {type:'unit',cost,value:units[crypto.randomInt(units.length)],star:2,
+  ...(cost===1?{bonusBasic:crypto.randomInt(7)}:{})};
+}
+function drawSupplyChoices(){
+ const pool=SUPPLY_ODDS.map(([kind,weight])=>({kind,weight})),cards=[];
+ for(let i=0;i<3;i++){
+  const total=pool.reduce((n,e)=>n+e.weight,0);let roll=crypto.randomInt(total),chosen=0;
+  for(let j=0;j<pool.length;j++){if(roll<pool[j].weight){chosen=j;break}roll-=pool[j].weight}
+  const [{kind}]=pool.splice(chosen,1);cards.push(drawSupplyReward(kind));
+ }
+ return cards;
+}
+
+const root = path.resolve(__dirname, '../..');
+const PORT = Number(process.env.PORT || 3000);
+const rooms = new Map();
+const clients = new Map();
+const DATA_DIR = process.env.LIVE_DATA_DIR || root;
+fs.mkdirSync(DATA_DIR, {recursive:true});
+const accountFile = path.join(DATA_DIR, '.live-users.json');
+let accounts = {};
+try { accounts = JSON.parse(fs.readFileSync(accountFile, 'utf8')); } catch {}
+const sessions = new Map();
+// Server-side throttling for password-protected room entry (the hash is never exposed).
+const privateRoomFailures=new Map();
+function guardPrivateRoom(username,roomKey,passwordSalt,expectedHash,password){
+ const key=username+':'+roomKey,now=Date.now();let state=privateRoomFailures.get(key);
+ if(state&&now-state.since>60000){privateRoomFailures.delete(key);state=null;}
+ if(state&&state.count>=5)return {ok:false,blocked:true};
+ const actual=Buffer.from(passwordHash(password,passwordSalt),'hex'),expected=Buffer.from(expectedHash,'hex');
+ const ok=actual.length===expected.length&&crypto.timingSafeEqual(actual,expected);
+ if(ok){privateRoomFailures.delete(key);return {ok:true};}
+ privateRoomFailures.set(key,{count:(state?.count||0)+1,since:state?.since||now});
+ if(privateRoomFailures.size>3000)for(const [k,v] of privateRoomFailures)if(now-v.since>60000)privateRoomFailures.delete(k);
+ return {ok:false,blocked:false};
+}
+// Optional durable account store (Upstash Redis REST). Free Render instances have ephemeral disks.
+const remoteUrl=(process.env.UPSTASH_REDIS_REST_URL||'').replace(/\/$/,'');
+const remoteToken=process.env.UPSTASH_REDIS_REST_TOKEN||'';
+const durable=Boolean(remoteUrl&&remoteToken);
+async function remote(command){const response=await fetch(remoteUrl,{method:'POST',headers:{authorization:`Bearer ${remoteToken}`,'content-type':'application/json'},body:JSON.stringify(command)});if(!response.ok)throw Error('계정 저장소 요청 실패: '+response.status);const json=await response.json();if(json.error)throw Error('계정 저장소 오류: '+json.error);return json.result}
+async function loadAccounts(){if(!durable){console.warn('WARNING: NO DURABLE ACCOUNT STORAGE CONFIGURED. Render deployments may erase users.');return;}const raw=await remote(['GET','live:accounts:v1']);accounts=raw?JSON.parse(raw):{};console.log('Loaded persistent accounts:',Object.keys(accounts).length)}
+async function saveAccounts(){if(durable){await remote(['SET','live:accounts:v1',JSON.stringify(accounts)])}else fs.writeFileSync(accountFile, JSON.stringify(accounts,null,2),{mode:0o600})}
+
+const passwordHash = (password, salt) => crypto.scryptSync(password, salt, 64).toString('hex');
+const authAccount = (req, body) => sessions.get(String(req.headers['x-live-session'] || body?.session || ''));
+
+const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.cjs':'text/plain; charset=utf-8','.css':'text/css; charset=utf-8','.webp':'image/webp','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.ttf':'font/ttf','.woff2':'font/woff2','.json':'application/json'};
+const reply=(res,status,obj)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store'});res.end(JSON.stringify(obj));};
+const id=()=>crypto.randomBytes(18).toString('hex');
+const cleanName=v=>String(v||'').trim().normalize('NFC');
+const validNickname=v=>{const n=cleanName(v);return n.length>=2&&n.length<=16&&!/[\x00-\x1f\x7f<>]/.test(n)?n:null};
+const nickOf=username=>accounts[username]?.nickname||username;
+const living=r=>[...r.players.values()].filter(p=>r.game?.hp[p.slot]>0);
+function playerView(r,p){
+ const g=r.game?{...r.game,remaining:Math.max(0,Math.ceil(((r.game.earlyEndsAt&&r.game.earlyEndsAt<r.game.endsAt?r.game.earlyEndsAt:r.game.endsAt)-Date.now())/1000))}:null;
+ if(g){
+  // Never expose another player's private supply options or hidden special choice.
+  if(g.selection){g.selection={...g.selection,resolved:{[p.slot]:g.selection.resolved[p.slot]||null}}}
+  if(g.augment)g.augment=augment.view(r.game.augment,p.slot);
+  if(g.supplyOptions)g.supplyOptions=Object.fromEntries([[p.slot,r.game.supplyOptions[p.slot]]]);
+  if(g.supplyResolved)g.supplyResolved=Object.fromEntries([[p.slot,r.game.supplyResolved[p.slot]]]);
+  if(g.experiment){g.experiment=r.game.experiment.groups.some(t=>t.slots.includes(p.slot))?experiment.view(r.game.experiment,p.slot):null;}
+  if(g.market)g.market=market.publicView(g.market);
+  if(g.auction)g.auction=auction.view(g.auction);
+  if(g.boss){g.boss=boss.view(r.game.boss,p.slot,g.phase);if(g.kind==='boss'&&['combat','result'].includes(g.phase)&&r.game.boss.results[p.slot]){g.seed=r.game.boss.results[p.slot].seed;g.battle={outcome:r.game.boss.results[p.slot].won?'A팀 승리':'B팀 승리',time:r.game.boss.results[p.slot].time,bossWin:r.game.boss.results[p.slot].won};}}
+  const upcoming=g.kind==='pvp'&&['prep','augment','augment-sync','intro'].includes(g.phase);
+  const pair=(upcoming?g.nextPairs:g.pairs)?.find(x=>x.a===p.slot||x.b===p.slot);
+  g.opponentSlot=pair?(pair.a===p.slot?pair.b:pair.a):null;
+  g.bye=!!(g.kind==='pvp'&&['prep','augment','intro','combat','result'].includes(g.phase)&&!pair&&g.hp[p.slot]>0);
+  if(pair&&!upcoming){
+   g.seed=pair.seed;
+   const original=pair.battle;
+   g.battle=original?{...original,outcome:pair.b===p.slot?(original.outcome==='A팀 승리'?'B팀 승리':original.outcome==='B팀 승리'?'A팀 승리':original.outcome):original.outcome,personaTierA:pair.b===p.slot?original.personaTierB:original.personaTierA,personaTierB:pair.b===p.slot?original.personaTierA:original.personaTierB,damageRanks:pair.b===p.slot?(original.damageB||[]):(original.damageA||[])}:null;if(g.battle){delete g.battle.damageA;delete g.battle.damageB;}
+  }else if(g.kind==='pvp'){g.battle=null;g.seed=0}
+  // Do not reveal hidden pair results; they are only visible when each participant's fight starts.
+  // Each participant receives only their own deterministic PvE seed and loot data remains server-private.
+  if(g.pve&&g.farmResults?.[p.slot])g.seed=g.farmResults[p.slot].seed;
+  delete g.farmResults;
+  if(g.experimentId==='bomb'&&g.bombTeams){const team=g.bombTeams.find(t=>t.slots.includes(p.slot));g.bombTeamId=team?.id||null;g.teamMessages=team?.messages?.slice(-60)||[];}delete g.bombTeams;
+  if(g.farmResults){g.farmKills=g.farmResults[p.slot]?.killed||0;g.seed=g.farmResults[p.slot]?.seed||0;delete g.farmResults;}
+  delete g.pairs;
+ }
+ return {code:r.code,roomId:r.code,isPublic:r.isPublic!==false,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(x=>({id:x.id,name:x.name,slot:x.slot,ready:x.ready,roundReady:!!x.roundReady,farmDone:!!x.farmDone,connected:x.connected,infusionIds:[...(x.augments||[])],...(x.id!==p.id&&g&&g.phase!=='augment'&&g.phase!=='augment-sync'?{scout:{bench:economy.reserveTeam(x.assets),inventory:[...(x.assets?.items||[])],credits:x.assets?.credits||0,purpleChoice:x.purpleChoice||{},purpleLosses:x.purpleLosses||0,augments:(x.augments||[]).map(augId=>Object.values(augment.CARDS).flat().find(c=>c.id===augId)).filter(Boolean),synergies:{affiliations:[...new Set((x.team||[]).flatMap(e=>m7Roster[e.characterId]?.affiliations||[]))].map(name=>({name,count:new Set((x.team||[]).filter(e=>m7Roster[e.characterId]?.affiliations?.includes(name)).map(e=>e.characterId)).size})),roles:(x.team||[]).map(e=>({name:m7Roster[e.characterId]?.name||e.characterId,role:m7Roster[e.characterId]?.role||''}))}}}:{}),...(x.id===p.id?{assets:x.assets||null,purpleChoice:x.purpleChoice||{},purpleLosses:x.purpleLosses||0,auctionEffects:(x.auctionEffects||[]).map(a=>({...a,info:auction.EFFECTS.find(e=>e.id===a.id)||null})),augments:(x.augments||[]).map(augId=>{const c=Object.values(augment.CARDS).flat().find(c=>c.id===augId);return c||null}).filter(Boolean)}:{}),eliminated:!!(g&&g.hp[x.slot]<=0),team:x.team,progress:x.progress})),messages:r.messages.slice(-60),started:!!r.started,game:g};
+}
+const publicRoom=r=>({roomId:r.code,displayName:r.displayName||'공개 대기실',isPublic:r.isPublic!==false,maxPlayers:r.maxPlayers,hostPlayerId:r.hostPlayerId,revision:r.revision,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,slot:p.slot,ready:p.ready,connected:p.connected})),messages:r.messages.slice(-60),started:!!r.started,game:r.game?{round:r.game.round,phase:r.game.phase,kind:r.game.kind,hp:r.game.hp,schedule:r.game.schedule}:null});
+function broadcast(r){r.revision++;for(const p of r.players.values()){const res=clients.get(p.id);if(res&&!res.destroyed)try{res.write(`event: state\ndata: ${JSON.stringify(playerView(r,p))}\n\n`)}catch{}}}
+function cleanupRoom(r){if(r.players.size===0)rooms.delete(r.code)}
+// In 2–8-player games an intentional leave eliminates only the leaver.
+function finishAbandonedMatch(r,reason='opponent_left',explicitWinnerSlot=null){
+ const g=r.game;if(!r.started||!g||g.phase==='finished')return;
+ if(explicitWinnerSlot===null)return;
+ const survivors=living(r);
+ if(survivors.length!==1||survivors[0].slot!==explicitWinnerSlot)return;
+ if(g.market)market.close(r);if(g.auction&&!g.auction.closed)auction.playerLeft(r,g.auction.lots[g.auction.index]?.bidderSlot);g.winnerSlot=explicitWinnerSlot;g.endReason=reason;g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.version++;broadcast(r);
+}
+function removePlayer(p){
+ const r=rooms.get(p.room);if(!r)return;
+ if(r.game?.experiment&&r.game.experiment.groups.some(t=>t.slots.includes(p.slot)))experiment.disconnect(r.game.experiment,p.slot);
+ if(r.game?.market)market.cancelSeller(r,p.slot);if(r.game?.auction)auction.playerLeft(r,p.slot);
+ if(r.started&&r.game&&r.game.phase!=='finished')r.game.hp[p.slot]=0;
+ r.players.delete(p.id);
+ if(r.game?.kind==='pvp'&&['prep','augment','augment-sync','intro'].includes(r.game.phase))prepareUpcomingPairs(r);
+ // The host is an identity, not slot zero. Transfer authority before the room is broadcast.
+ if(r.hostPlayerId===p.id){const successor=[...r.players.values()].sort((a,b)=>a.slot-b.slot)[0];r.hostPlayerId=successor?.id||null;if(successor)r.messages.push({system:true,text:`${successor.name} 방장 승계`,at:Date.now()});}
+ // A dropout must not consume a draft turn or an unearned item bundle.
+ const sel=r.game?.phase==='special'&&r.game.specialType==='selection'?r.game.selection:null;
+ if(sel){const index=sel.order.indexOf(p.slot);if(index>=0){sel.order.splice(index,1);if(index<sel.wave)sel.wave--;else if(index===sel.wave)r.game.endsAt=sel.wave<sel.order.length?Date.now()+15000:Date.now();r.game.version++;}}
+ // If a paired PvP opponent leaves mid-combat, the survivor gets a bye rather
+ // than taking damage from a battle against someone no longer in the match.
+ if(r.game?.phase==='combat'&&r.game.kind==='pvp'){
+  const pairs=r.game.pairs||[],paired=pairs.find(pair=>pair.a===p.slot||pair.b===p.slot);
+  if(paired){const partner=paired.a===p.slot?paired.b:paired.a;r.game.pairs=pairs.filter(pair=>pair!==paired);
+   if(r.game.hp[partner]>0){r.game.byeCounts??={};r.game.byeCounts[partner]=(r.game.byeCounts[partner]||0)+1;r.game.previousByeSlot=partner;}
+   r.game.version++;
+  }
+ }
+ const s=clients.get(p.id);clients.delete(p.id);if(s&&!s.destroyed)s.end();
+ r.messages.push({system:true,text:`${p.name} 퇴장`,at:Date.now()});
+ if(r.started&&r.game&&r.game.phase!=='finished'){const remain=living(r);if(remain.length<=1){if(r.game.market)market.close(r);if(r.game.auction&&!r.game.auction.closed)auction.playerLeft(r,r.game.auction.lots[r.game.auction.index]?.bidderSlot);r.game.phase='finished';r.game.winnerSlot=remain[0]?.slot??null;r.game.endReason='opponent_left';r.game.endsAt=Date.now();r.game.version++}else refreshEarlyFinish(r)}
+ broadcast(r);cleanupRoom(r);
+}
+const getPlayer=(req,body)=>{const token=String(req.headers['x-live-token']||body?.token||'');for(const r of rooms.values())for(const p of r.players.values())if(p.token===token)return {p,r};return null};
+const readBody=req=>new Promise((resolve,reject)=>{let size=0,buf='';req.on('data',c=>{size+=c.length;if(size>16384){reject(new Error('요청 크기 초과'));req.destroy();return}buf+=c});req.on('end',()=>{try{resolve(JSON.parse(buf||'{}'))}catch{reject(new Error('잘못된 JSON'))}});req.on('error',reject)});
+async function handleAction(req,res,body){const url=new URL(req.url,'http://localhost');if(url.pathname==='/api/register' || url.pathname==='/api/login'){
+const username = String(body.username||'').trim().toLowerCase(), password=String(body.password||'');
+if(!/^[a-z0-9_]{3,20}$/.test(username) || password.length<8 || password.length>128)return reply(res,400,{error:'아이디는 영문·숫자·_ 3~20자, 비밀번호는 8~128자로 입력해.'});
+if(url.pathname==='/api/register'){
+ const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});
+ if(accounts[username])return reply(res,409,{error:'이미 사용 중인 아이디야.'});
+ const salt=crypto.randomBytes(16).toString('hex');accounts[username]={salt,hash:passwordHash(password,salt),nickname};await saveAccounts();
+}else{const acc=accounts[username];if(!acc)return reply(res,401,{error:'아이디 또는 비밀번호를 확인해.'});const expected=Buffer.from(acc.hash,'hex'),actual=Buffer.from(passwordHash(password,acc.salt),'hex');if(expected.length!==actual.length||!crypto.timingSafeEqual(expected,actual))return reply(res,401,{error:'아이디 또는 비밀번호를 확인해.'})}
+const session=id();sessions.set(session,username);return reply(res,200,{session,username,nickname:nickOf(username)});
+}
+if(url.pathname==='/api/me'){const username=authAccount(req,body);return username?reply(res,200,{username,nickname:nickOf(username)}):reply(res,401,{error:'로그인이 필요해.'})}
+ if(url.pathname==='/api/rejoin'){
+  const username=authAccount(req,body);
+  if(!username)return reply(res,401,{error:'로그인이 필요해.'});
+  const matches=[...rooms.values()].filter(r=>!r.started||r.game?.phase!=='finished').sort((a,b)=>Number(b.started)-Number(a.started));
+  const found=matches.flatMap(r=>[...r.players.values()].filter(p=>p.username===username&&(!r.started||r.game.hp[p.slot]>0)).map(p=>({r,p})))[0];
+  if(!found)return reply(res,404,{error:'복귀할 참가 중인 방이 없어.'});
+  return reply(res,200,{token:found.p.token,playerId:found.p.id,room:playerView(found.r,found.p)});
+ }
+if(url.pathname==='/api/nickname'){const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요해.'});const nickname=validNickname(body.nickname);if(!nickname)return reply(res,400,{error:'닉네임은 2~16자로 입력해.'});accounts[username].nickname=nickname;await saveAccounts();for(const r of rooms.values()){let modified=false;for(const p of r.players.values())if(p.username===username){p.name=nickname;modified=true}if(modified)broadcast(r)}return reply(res,200,{nickname})}
+if(url.pathname==='/api/rooms'){
+  const username=authAccount(req,body);if(!username)return reply(res,401,{error:'로그인이 필요합니다.'});
+  const list=[...rooms.values()].filter(r=>!r.started&&r.players.size<r.maxPlayers)
+    .map(r=>({roomId:r.code,name:r.displayName||'대기실',isPublic:r.isPublic!==false,requiresPassword:r.isPublic===false,maxPlayers:r.maxPlayers,playerCount:r.players.size,hostName:r.players.get(r.hostPlayerId)?.name||'방장',createdAt:r.createdAt||0}))
+    .sort((a,b)=>b.createdAt-a.createdAt).slice(0,50);
+  return reply(res,200,{rooms:list});
+ }
+
+ if(url.pathname==='/api/logout'){sessions.delete(String(req.headers['x-live-session']||body.session||''));return reply(res,200,{ok:true})}
+if(url.pathname==='/api/create'){
+ const username=authAccount(req,body);if(!username)return reply(res,401,{error:'먼저 로그인해 주세요.'});
+ const isPublic=body.isPublic!==false,password=String(body.password||'');
+ if(!isPublic&&(password.length<6||password.length>72))return reply(res,400,{error:'비밀번호 방은 6~72자의 비밀번호가 필요합니다.'});
+ let code;do{code=crypto.randomBytes(12).toString('hex')}while(rooms.has(code));
+ const displayName=String(body.roomName||'').replace(/[<>\u0000-\u001f]/g,'').trim().slice(0,32)||(isPublic?'공개 대기실':'비밀번호 대기실');
+ const salt=isPublic?null:crypto.randomBytes(16).toString('hex');
+ const r={code,displayName,isPublic,roomPasswordSalt:salt,roomPasswordHash:isPublic?null:passwordHash(password,salt),createdAt:Date.now(),maxPlayers:Math.min(8,Math.max(2,Number(body.maxPlayers)||2)),players:new Map(),hostPlayerId:null,messages:[],revision:0};
+ rooms.set(code,r);return join(r,res,username);
+}
+if(url.pathname==='/api/join'){
+ const username=authAccount(req,body);if(!username)return reply(res,401,{error:'먼저 로그인해 주세요.'});
+ // roomId is an opaque selection token supplied by the room discovery list, not a player-entered code.
+ const roomId=String(body.roomId||'').trim();
+ const r=rooms.get(roomId);if(!r)return reply(res,404,{error:'해당 대기실을 찾을 수 없습니다. 목록을 새로고침해 주세요.'});
+ if(r.players.size&&[...r.players.values()].some(p=>p.username===username))return reply(res,409,{error:'이미 참가한 방입니다. 기존 계정으로 복귀해 주세요.'});
+ if(r.started)return reply(res,409,{error:'이미 시작된 대기실입니다.'});
+ if(r.players.size>=r.maxPlayers)return reply(res,409,{error:'대기실 정원이 가득 찼습니다.'});
+ if(r.isPublic===false){
+  const password=String(body.password||'');
+  if(password.length>72)return reply(res,400,{error:'비밀번호 길이를 확인해 주세요.'});
+  const result=guardPrivateRoom(username,r.code,r.roomPasswordSalt,r.roomPasswordHash,password);
+  if(!result.ok)return reply(res,429,{error:result.blocked?'비밀번호 입력 횟수를 초과했습니다. 1분 뒤 다시 시도해 주세요.':'방 비밀번호가 일치하지 않습니다.'});
+ }
+ return join(r,res,username);
+}
+const auth=getPlayer(req,body);if(!auth)return reply(res,401,{error:'인증되지 않은 참가자야.'});const {r,p}=auth;
+if(url.pathname==='/api/leave'){removePlayer(p);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/ready'){if(r.started)return reply(res,409,{error:'이미 게임이 시작됐어.'});p.ready=!!body.ready;broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/purple-config'){
+ const g=r.game;if(!g||g.phase!=='prep'||g.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'준비 단계에서만 보라 인퓨전을 설정할 수 있어.'});
+ const kind=String(body.kind||''),v=body.value,ids=p.augments||[],allowed={affiliation:'P08',transcendId:'P02',item:'P03',tiles:'P25',baitId:'P43',tactic:'P41',target:'P14'};
+ if(!allowed[kind]||!ids.includes(allowed[kind]))return reply(res,403,{error:'소유하지 않은 보라 인퓨전 설정이야.'});
+ const board=(p.assets.owned||[]).filter(o=>o.location==='board');
+ if(['transcendId','baitId'].includes(kind)&&!board.some(o=>`A:${o.characterId}:${o.uid}`===v||String(o.uid)===String(v)))return reply(res,400,{error:'배치된 실험체를 선택해.'});
+ if(kind==='affiliation'&&!supplyRoster.some(q=>q.affiliations?.includes(v)))return reply(res,400,{error:'알 수 없는 소속이야.'});
+ if(kind==='target'&&!supplyRoster.some(q=>q.id===v&&!q.pveOnly))return reply(res,400,{error:'목표 실험체가 존재하지 않아.'});
+ if(kind==='tactic'&&!['rush','shield','long'].includes(v))return reply(res,400,{error:'선택할 수 없는 지령이야.'});
+ if(kind==='tiles'&&(!Array.isArray(v)||v.length!==2||v.some(a=>!Array.isArray(a)||a.length!==2||!a.every(n=>Number.isInteger(n)&&n>=0&&n<3))))return reply(res,400,{error:'강화칸은 정확히 2개 선택해야 해.'});
+ if(kind==='item'&&!board.some(o=>(o.items||[]).includes(v)))return reply(res,400,{error:'해당 완성 장비가 없어.'});
+ p.purpleChoice??={};p.purpleChoice[kind]=v;if(kind==='target')p.assets.purpleTarget=v;
+ p.roundReady=false;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
+if(url.pathname==='/api/round-ready'){if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0)return reply(res,409,{error:'준비 단계가 아니야.'});p.roundReady=!!body.ready;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+ if(url.pathname==='/api/intro-complete'){
+  const g=r.game;
+  if(!g||g.phase!=='intro'||g.round!==Number(body.round)||g.hp[p.slot]<=0)return reply(res,409,{error:'라운드 연출 단계가 아니야.'});
+  g.introReady??={};g.introReady[p.slot]=true;
+  if(living(r).every(x=>g.introReady[x.slot]))g.earlyEndsAt=Math.max(Date.now()+100,g.introStartedAt+1850);
+  broadcast(r);return reply(res,200,{ok:true});
+ }
+if(url.pathname==='/api/supply-pick'){
+ if(!r.game||r.game.round!==5||!['supply','result'].includes(r.game.phase))return reply(res,409,{error:'보급 선택 시간이 아니야.'});
+ const slot=p.slot, choice=Number(body.choice), options=r.game.supplyOptions?.[slot];
+  if(r.game.hp[slot]<=0)return reply(res,409,{error:'탈락자는 선택할 수 없어.'});
+ if(r.game.supplyResolved?.[slot])return reply(res,409,{error:'보상을 이미 선택했어.'});
+ if(!options||!Number.isInteger(choice)||choice<0||choice>=3)return reply(res,400,{error:'잘못된 보상 선택'});
+ r.game.supplyResolved[slot]=options[choice];if(p.assets){economy.grant(p.assets,options[choice],`r${r.game.round}:supply:${slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
+if(url.pathname==='/api/experiment'){
+ const g=r.game;
+ if(!g||g.phase!=='special'||g.specialType!=='experiment'||!g.experiment||g.hp[p.slot]<=0||Number(body.round)!==g.round)return reply(res,409,{error:'실험 진행 단계가 아니야.'});
+ try{experiment.action(g.experiment,p.slot,body);g.version++;broadcast(r);return reply(res,200,{ok:true})}catch(e){return reply(res,409,{error:e.message})}
+}
+if(url.pathname==='/api/boss-done'){
+ const g=r.game,entry=g?.boss?.results[p.slot];
+ if(!g||g.kind!=='boss'||g.phase!=='combat'||!entry||g.hp[p.slot]<=0)return reply(res,409,{error:'보스 전투 단계가 아니야.'});
+ if(Number(body.round)!==g.round)return reply(res,409,{error:'지난 라운드 완료 요청이야.'});
+ if(Date.now()-g.combatStartedAt<Math.min(60,entry.time)*1000-250)return reply(res,409,{error:'보스 전투가 아직 끝나지 않았어.'});
+ p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
+}
+if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const farm=r.game.farmResults?.[p.slot];const expected=farm?.time;const elapsed=Date.now()-r.game.combatStartedAt;if(elapsed<1000||farm?.won!==false&&Number.isFinite(expected)&&elapsed<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/start'){if(p.id!==r.hostPlayerId)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;member.augments=[];member.assets.augmentIds=[];member.purpleChoice={};member.purpleLosses=0;}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'augment',endsAt:Date.now()+augment.DURATION_MS,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};r.game.augment=augment.open(living(r),1);for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/augment-assets-ready'){
+ const g=r.game;if(!g||g.phase!=='augment-sync'||!g.augment||Number(body.round)!==g.round||g.hp[p.slot]<=0||!g.augment.picks[p.slot])return reply(res,409,{error:'증강 다운로드 확인 단계가 아니야.'});
+ g.augment.downloads[p.slot]=true;g.augment.revision++;
+ if(augment.allDownloaded(g.augment,living(r)))g.earlyEndsAt=Date.now()+350;
+ g.version++;broadcast(r);return reply(res,200,{ok:true,readyCount:Object.values(g.augment.downloads).filter(Boolean).length});
+}
+if(url.pathname==='/api/augment-reroll'||url.pathname==='/api/augment-pick'){
+ const g=r.game;
+ if(!g||g.phase!=='augment'||!g.augment||g.hp[p.slot]<=0||g.round!==Number(body.round)||Date.now()>=g.endsAt||g.earlyEndsAt&&Date.now()>=g.earlyEndsAt)return reply(res,409,{error:'인퓨전 선택 시간이 아니야.'});
+ try{
+  const result=url.pathname==='/api/augment-reroll'?augment.reroll(g.augment,p,body.choice):augment.pick(g.augment,p,body.choice);
+  if(url.pathname==='/api/augment-pick'&&p.assets)p.assets.infusionIds=[...(p.augments||[])];
+  if(p.assets)p.assets.augmentIds=[...(p.augments||[])];
+  if(augment.allChosen(g.augment,living(r)))g.earlyEndsAt=Date.now()+250;
+  g.version++;broadcast(r);return reply(res,200,{ok:true,result});
+ }catch(e){return reply(res,409,{error:e.message})}
+}
+if(url.pathname==='/api/chat'){const text=String(body.text||'').trim().slice(0,240);if(!text)return reply(res,400,{error:'빈 메시지'});const now=Date.now();if(now-(p.lastChat||0)<350)return reply(res,429,{error:'채팅을 너무 빠르게 보냈어.'});p.lastChat=now;r.messages.push({id:id(),playerId:p.id,name:p.name,text,at:now});r.messages=r.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/selection-pick'){
+ const g=r.game,sel=g?.selection;if(g?.phase!=='special'||g.specialType!=='selection'||!sel)return reply(res,409,{error:'선점 진행 중이 아니야.'});
+ const wave=sel.order.slice(sel.wave,sel.wave+1);
+ if(!wave.includes(p.slot)||g.hp[p.slot]<=0||sel.resolved[p.slot])return reply(res,409,{error:'현재 선점 차례가 아니야.'});
+ const choice=Number(body.choice),candidate=sel.candidates[choice];if(!Number.isInteger(choice)||!candidate||candidate.claimedBy!==null)return reply(res,409,{error:'이미 선택됐거나 존재하지 않는 후보야.'});
+ candidate.claimedBy=p.slot;sel.resolved[p.slot]={characterId:candidate.characterId,star:1,item:candidate.item};if(p.assets){economy.grant(p.assets,{type:'selection',...sel.resolved[p.slot]},`r${g.round}:selection:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}
+ if(wave.every(slot=>!!sel.resolved[slot]))g.endsAt=Date.now();broadcast(r);return reply(res,200,{ok:true});
+ }
+ if(url.pathname==='/api/team-chat'){
+ const g=r.game;if(g?.phase!=='special'||g.specialType!=='experiment'||g.experimentId!=='bomb')return reply(res,409,{error:'폭발물 해체 채팅 중이 아니야.'});
+ const team=g.bombTeams?.find(x=>x.slots.includes(p.slot));if(!team)return reply(res,403,{error:'배정된 팀이 없어.'});
+ const message=String(body.text||'').trim().slice(0,240);if(!message)return reply(res,400,{error:'빈 메시지'});
+ const now=Date.now();if(now-(p.lastTeamChat||0)<350)return reply(res,429,{error:'채팅 전송 간격을 지켜 줘.'});p.lastTeamChat=now;
+ team.messages.push({name:p.name,slot:p.slot,text:message,at:now});team.messages=team.messages.slice(-60);broadcast(r);return reply(res,200,{ok:true});
+ }
+ if(url.pathname==='/api/auction-unit-choice'){
+ if(!r.started||!p.assets)return reply(res,409,{error:'진행 중인 경기에서만 선택할 수 있습니다.'});
+ try{const choice=auction.chooseUnit(r,p,String(body.choiceId||''),String(body.characterId||''));r.game.version++;broadcast(r);return reply(res,200,{ok:true,...choice});}
+ catch(e){return reply(res,409,{error:e.message});}
+}
+if(url.pathname==='/api/auction'){
+  const g=r.game;if(!g||g.phase!=='special'||g.specialType!=='auction'||!g.auction)return reply(res,409,{error:'경매가 진행 중이지 않아.'});
+  try{const bid=auction.bid(r,p,body.amount);g.endsAt=g.auction.endsAt;g.version++;broadcast(r);return reply(res,200,{ok:true,...bid})}
+  catch(e){return reply(res,409,{error:e.message})}
+ }
+ if(url.pathname==='/api/market'){
+  const allowed=['list','buy','cancel','ready'];if(!allowed.includes(body.cmd))return reply(res,400,{error:'알 수 없는 거래 요청'});
+  try{
+   const outcome=market.act(r,p,body.cmd,body);
+   if(body.cmd==='ready'){
+    if(outcome.allReady&&!r.game.earlyEndsAt)r.game.earlyEndsAt=Math.min(r.game.endsAt,Date.now()+3000);
+    if(!outcome.allReady)r.game.earlyEndsAt=null;
+   }else r.game.earlyEndsAt=null;
+   r.game.version++;broadcast(r);return reply(res,200,{ok:true,...outcome});
+  }catch(e){return reply(res,409,{error:e.message})}
+ }
+ if(url.pathname==='/api/advance'){return reply(res,403,{error:'라운드 변경은 서버가 관리해.'})}
+if(url.pathname==='/api/economy'){
+  if(!r.game||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'경제 동작을 할 수 없어.'});
+  const inventoryCombat=r.game.phase==='combat'&&r.game.kind==='pvp'&&!r.game.pve;
+  if(r.game.phase!=='prep'&&!(inventoryCombat&&['craft','sell-item'].includes(body.cmd)))return reply(res,409,{error:'결투 중에는 인벤토리 아이템 합성·판매만 가능해.'});
+  const allowed=['buy','reroll','lock','invest','sell-unit','sell-item','craft','forge','equip','deploy','recall','swap'];
+  if(!allowed.includes(body.cmd))return reply(res,400,{error:'경제 명령이 올바르지 않아.'});
+  try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.progress.blueErebosSales=p.assets.blueErebosSales||0;p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
+  broadcast(r);return reply(res,200,{ok:true});
+ }
+ if(url.pathname==='/api/team'&&p.assets){
+  if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0)return reply(res,409,{error:'배치 변경은 준비 단계에서만 가능해.'});
+  const rows=body.team;
+  if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});
+  const used=new Set(),uidSet=new Set(),updates=[];
+  for(const unit of rows){
+   const uid=Number(unit.ownedId),mine=p.assets.owned.find(o=>o.uid===uid);
+   if(!mine||uidSet.has(uid)||mine.characterId!==unit.characterId||mine.star!==unit.star
+    ||JSON.stringify(mine.items)!==JSON.stringify(unit.items)||!Number.isInteger(unit.x)||unit.x<0||unit.x>2
+    ||!Number.isInteger(unit.y)||unit.y<0||unit.y>2||used.has(unit.x+','+unit.y))return reply(res,409,{error:'소유하지 않거나 잘못된 배치야.'});
+   uidSet.add(uid);used.add(unit.x+','+unit.y);updates.push({mine,x:unit.x,y:unit.y});
+  }
+  if(p.assets.owned.filter(o=>!uidSet.has(o.uid)).length>8)return reply(res,409,{error:'벤치가 가득 찼어.'});
+  for(const o of p.assets.owned){o.location='bench';o.x=null;o.y=null}
+  for(const {mine,x,y} of updates){mine.location='board';mine.x=x;mine.y=y}
+  p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);
+  broadcast(r);return reply(res,200,{ok:true});
+ }
+ if(url.pathname==='/api/team'){const rows=body.team;if(!Array.isArray(rows)||rows.length>3)return reply(res,400,{error:'배치 최대 3명'});const used=new Set();for(const u of rows){if(typeof u.characterId!=='string'||!/^[a-z-]{1,32}$/.test(u.characterId)||!Number.isInteger(u.x)||u.x<0||u.x>2||!Number.isInteger(u.y)||u.y<0||u.y>2||!Number.isInteger(u.star)||u.star<1||u.star>3)return reply(res,400,{error:'잘못된 배치'});const key=`${u.x},${u.y}`;if(used.has(key))return reply(res,400,{error:'중복 배치'});used.add(key);if(u.items!==undefined&&(!Array.isArray(u.items)||u.items.length>3))return reply(res,400,{error:'장비 초과'})}if(r.game&&r.game.phase!=='prep')return reply(res,409,{error:'준비 시간에만 배치 변경 가능'});if(r.game&&r.game.hp[p.slot]<=0)return reply(res,409,{error:'탈락자는 배치할 수 없어.'});p.team=rows.map(({characterId,x,y,star,items})=>({characterId,x,y,star,items:Array.isArray(items)?items.slice(0,3):[]}));p.mastery=Number.isInteger(body.mastery)?Math.min(20,Math.max(1,body.mastery)):1;p.ready=false;if(r.game?.phase==='prep'){p.roundReady=false;refreshEarlyFinish(r)}broadcast(r);return reply(res,200,{ok:true})}
+return reply(res,404,{error:'요청 없음'});
+}
+function join(r,res,username){const slot=Array.from({length:r.maxPlayers},(_,i)=>i).find(i=>![...r.players.values()].some(p=>p.slot===i));const p={id:id(),token:id(),room:r.code,username,name:nickOf(username),slot,ready:false,connected:false,disconnectedAt:Date.now(),team:[],progress:{exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false}};r.players.set(p.id,p);if(!r.hostPlayerId)r.hostPlayerId=p.id;r.messages.push({system:true,text:`${p.name} 입장`,at:Date.now()});broadcast(r);reply(res,200,{token:p.token,playerId:p.id,room:playerView(r,p)})}
+
+// Early transition only when EVERY connected participant has completed this phase.
+// The 60s deadline stays authoritative; a five-second early countdown never extends it.
+function refreshEarlyFinish(r){
+ const g=r.game;if(!g||!['prep','combat','supply'].includes(g.phase))return;
+ const players=living(r);
+ const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?p.roundReady:g.phase==='supply'?!!g.supplyResolved?.[p.slot]:(g.pve&&p.farmDone)));
+ if(eligible){if(!g.earlyEndsAt)g.earlyEndsAt=Date.now()+(g.phase==='supply'?250:5000);}
+ else g.earlyEndsAt=null;
+}
+// Reveal the *actual* upcoming duel during preparation, not a misleading random opponent.
+// A pairing is only counted as a bye once combat begins.
+function prepareUpcomingPairs(r){
+ const g=r.game;if(!g||g.kind!=='pvp'){if(g){g.nextPairs=[];g.nextByeSlot=null;}return;}
+ const players=living(r).sort((a,b)=>a.slot-b.slot);
+ const {pairs,bye}=pairSurvivors(players,g.hp,Math.random,{byeCounts:g.byeCounts||{},previousByeSlot:g.previousByeSlot,lastOpponents:g.lastOpponents||{}});
+ g.nextPairs=pairs.map(([a,b])=>({a:a.slot,b:b.slot}));g.nextByeSlot=bye?.slot??null;
+}
+// Room-authoritative, variable-population match loop. A PvP phase pairs every living player;
+// one unmatched player receives a bye (no health loss).
+function settlePurplePvp(r,pair){
+ const outcome=pair.battle?.outcome||'무승부',players=[...r.players.values()];
+ for(const [slot,won,lost,opponentSlot] of [[pair.a,outcome==='A팀 승리',outcome==='B팀 승리',pair.b],[pair.b,outcome==='B팀 승리',outcome==='A팀 승리',pair.a]]){
+  const p=players.find(v=>v.slot===slot),foe=players.find(v=>v.slot===opponentSlot);
+  if(!p?.assets)continue;
+  grayEconomy.settlePvP(p.assets,{round:r.game?.round||0,won,lost,kills:pair.battle?.grayReport?.[slot===pair.a?'A':'B']?.kills||0});
+  if(p.augments?.includes('P36')){
+   if(won){p.assets.credits+=2;p.purpleLosses=0;}
+   if(lost){p.assets.credits+=4;p.purpleLosses=Math.min(5,(p.purpleLosses||0)+1);}
+  }
+  if(won&&p.augments?.includes('P30')&&foe?.assets){
+   const idx=foe.assets.items.findIndex(n=>require('../shared/items.js').all[n]?.basic);
+   if(idx>=0){const [loot]=foe.assets.items.splice(idx,1);economy.giveItem(p.assets,loot);}
+   else {const n=Math.min(3,Math.max(0,foe.assets.credits));foe.assets.credits-=n;p.assets.credits+=n;}
+  }
+ }
+ for(const p of players)if(p.assets)p.team=economy.ownTeam(p.assets);
+}
+function finishGameIfNeeded(r){const g=r.game,alive=living(r);if(alive.length>1)return false;if(g.market)market.close(r);if(g.auction&&!g.auction.closed)auction.playerLeft(r,g.auction.lots[g.auction.index]?.bidderSlot);g.phase='finished';g.endsAt=Date.now();g.earlyEndsAt=null;g.endReason='elimination';g.winnerSlot=alive[0]?.slot??null;g.version++;broadcast(r);return true}
+function advanceRoom(r){
+ const g=r.game;if(!g||g.phase==='finished'||Date.now()<Math.min(g.endsAt,g.earlyEndsAt||Infinity))return;
+ if(g.phase==='augment'){
+  augment.autoPick(g.augment,living(r));
+  for(const x of living(r))if(x.assets)x.assets.augmentIds=[...(x.augments||[])];
+  g.phase='augment-sync';g.earlyEndsAt=augment.allDownloaded(g.augment,living(r))?Date.now()+300:null;
+  g.endsAt=Number.MAX_SAFE_INTEGER;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='augment-sync'){
+  if(!augment.allDownloaded(g.augment,living(r))){g.earlyEndsAt=null;return;}
+  g.augment=null;g.phase='prep';g.endsAt=Date.now()+60000;g.earlyEndsAt=null;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='prep'){
+  const players=living(r).sort((a,b)=>a.slot-b.slot);
+  if(finishGameIfNeeded(r))return;
+  g.kind=roundKind(g.round,g.schedule);
+  if(g.kind==='pvp'&&!Array.isArray(g.nextPairs))prepareUpcomingPairs(r);
+  if(g.kind==='supply'){
+   g.supplyOptions=Object.fromEntries(players.map(p=>[p.slot,drawSupplyChoices()]));g.supplyResolved={};g.phase='supply';g.earlyEndsAt=null;g.endsAt=Date.now()+30000;g.version++;broadcast(r);return;
+  }
+  if(!['farm','pvp'].includes(g.kind)){
+   // Stage 1: explicit integration boundary. Later patches implement server-validated
+   // trades, bids, boss combat, minigames and draft before currency is credited.
+   g.phase='special';g.specialType=g.kind;
+   if(g.kind==='boss'){
+    g.boss=boss.open(g.round,players);g.region='lab';g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=Date.now()+7000;g.version++;broadcast(r);return;
+   }
+   if(g.kind==='shop'){
+    g.market=market.open();
+    g.specialNotice=null;
+    g.earlyEndsAt=null;g.endsAt=Date.now()+120000;
+    g.version++;broadcast(r);return;
+   }
+   if(g.kind==='auction'){
+    g.auction=auction.open();g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=g.auction.endsAt;g.version++;broadcast(r);return;
+   }
+   if(g.kind==='selection'){
+    g.selection={candidates:makeCandidates(g.round,players.length),order:draftOrder(players,g.hp),wave:0,resolved:{}};
+    g.earlyEndsAt=null;g.endsAt=Date.now()+15000;g.version++;broadcast(r);return;
+   }
+   if(g.kind==='experiment'){
+    g.experimentId=['stack','zones','divide','bomb','quiz'][crypto.randomInt(5)];
+    g.experiment=experiment.open(players,g.experimentId);
+    g.specialNotice=null;g.earlyEndsAt=null;g.endsAt=Date.now()+250;g.version++;broadcast(r);return;
+   }
+   g.specialNotice='특수 라운드 서버 판정 연동 대기 · 이번 패치에서는 보상을 지급하지 않아.';
+   g.earlyEndsAt=null;g.endsAt=Date.now()+(g.kind==='experiment'&&g.experimentId==='bomb'?60000:15000);g.version++;broadcast(r);return;
+  }
+  const missing=players.filter(player=>!Array.isArray(player.team)||!player.team.length);
+  if(missing.length){
+   // M8-03: selling the last deployed unit must not deadlock the next PvP.
+   // Old QA rooms without match assets keep their previous strict guard.
+   if(!players.every(p=>p.assets)||!g.missingTeamGraceStartedAt||Date.now()-g.missingTeamGraceStartedAt<10000){
+    g.missingTeamGraceStartedAt??=Date.now();g.earlyEndsAt=null;g.endsAt=Date.now()+1000;
+    g.prepNotice='편성 없음 · 10초 후 자동 패배: '+missing.map(p=>p.name).join(', ');g.version++;broadcast(r);return;
+   }
+   g.prepNotice='편성 없음 · 자동 패배 판정';
+  }else g.missingTeamGraceStartedAt=null;
+  if(players.every(p=>p.assets)){
+   g.phase='intro';g.introReady={};g.introStartedAt=Date.now();g.earlyEndsAt=null;
+   g.endsAt=Date.now()+5000;g.version++;broadcast(r);return;
+  }
+ }
+ if(g.phase==='intro'||(g.phase==='prep'&&living(r).some(p=>!p.assets))){
+  const players=living(r).sort((a,b)=>a.slot-b.slot);
+  g.introReady=null;g.introStartedAt=null;
+  g.prepNotice=null;
+  const pve=g.kind==='farm';g.region=pve?null:pickArenaRegion(r.code,g.round);
+  g.purpleSpent??={};for(const ply of players){if(ply.assets&&ply.augments?.includes('P31')&&g.purpleSpent[ply.slot]===undefined){const spend=Math.min(20,Math.max(0,ply.assets.credits||0));ply.assets.credits-=spend;g.purpleSpent[ply.slot]=spend;}}
+  for(const ply of players){
+   const ids=new Set((ply.team||[]).map(e=>e.characterId));const affiliations=n=>[...ids].filter(id=>m7Roster[id]?.affiliations?.includes(n)).length;
+   if(affiliations('에레보스')>=3&&!ply.progress.bloodMoonGranted){ply.progress.bloodMoonGranted=true;if(ply.assets)economy.giveItem(ply.assets,'혈색반월');}
+   if(!pve&&g.region&&ids.has('silvia')&&!ply.progress.exploration.visited.includes(g.region)){ply.progress.exploration.visited.push(g.region);ply.progress.exploration.stacks=Math.min(10,ply.progress.exploration.stacks+1)}
+  }
+  g.pairs=[];g.farmResults=null;let duration=pve?60:3;
+  if(pve){
+   g.farmResults={};
+   for(const ply of players){
+    try{
+     const seed=crypto.randomInt(1,2147483647);
+     const result=new CombatEngine({teamA:ply.team,teamB:FARM_LINEUPS[g.round]||FARM_LINEUPS[3],masteryA:ply.mastery||1,masteryB:1,seed,moveInterval:.5,infusions:{A:ply.augments||[],B:[]},round:g.round,augmentsA:ply.augments||[],augmentsB:[],reservesA:economy.reserveTeam(ply.assets),purpleSpent:{A:g.purpleSpent?.[ply.slot]||0,B:0},purpleCredits:{A:ply.assets?.credits||0,B:0},purpleChoices:{A:ply.purpleChoice||{},B:{}},purpleLosingStreak:{A:ply.purpleLosses||0,B:0},persistent:{A:{...ply.progress,blueErebosSales:ply.assets?.blueErebosSales||0},B:{}}}).run();
+     g.farmResults[ply.slot]={seed,time:result.time,won:result.outcome==='A팀 승리',killed:(result.units||[]).filter(u=>u.team==='B'&&u.dead&&m7Roster[u.characterId]?.pveOnly).length};
+    }catch(e){console.warn('PvE server simulation failed',e);g.farmResults[ply.slot]={seed:0,time:60,won:false,killed:0};}
+   }
+  }
+  if(!pve){
+   g.byeCounts??={};g.lastOpponents??={};
+   // Use the pairs announced during PREP unless somebody left the match.
+   const liveSlots=players.map(p=>p.slot),readySlots=[...(g.nextPairs||[]).flatMap(pair=>[pair.a,pair.b]),...(g.nextByeSlot===null||g.nextByeSlot===undefined?[]:[g.nextByeSlot])];
+   if(liveSlots.length!==readySlots.length||liveSlots.some(s=>!readySlots.includes(s)))prepareUpcomingPairs(r);
+   const pairs=(g.nextPairs||[]).map(pair=>[players.find(p=>p.slot===pair.a),players.find(p=>p.slot===pair.b)]);
+   const bye=players.find(p=>p.slot===g.nextByeSlot)||null;g.byeSlot=bye?.slot??null;
+   for(const [a,b] of pairs){
+    const seed=crypto.randomInt(1,2147483647);let battle;
+    try{
+     if(!a.team.length||!b.team.length)battle={outcome:!a.team.length&&!b.team.length?'양 팀 패배':!a.team.length?'B팀 승리':'A팀 승리',time:1,auto:true,personaTierA:0,personaTierB:0};
+     else{const result=new CombatEngine({teamA:a.team,teamB:b.team,masteryA:a.mastery||1,masteryB:b.mastery||1,seed,moveInterval:.5,arenaRegion:g.region,infusions:{A:a.augments||[],B:b.augments||[]},round:g.round,augmentsA:a.augments||[],augmentsB:b.augments||[],reservesA:economy.reserveTeam(a.assets),reservesB:economy.reserveTeam(b.assets),purpleSpent:{A:g.purpleSpent?.[a.slot]||0,B:g.purpleSpent?.[b.slot]||0},purpleCredits:{A:a.assets?.credits||0,B:b.assets?.credits||0},purpleChoices:{A:a.purpleChoice||{},B:b.purpleChoice||{}},purpleLosingStreak:{A:a.purpleLosses||0,B:b.purpleLosses||0},persistent:{A:{...a.progress,blueErebosSales:a.assets?.blueErebosSales||0},B:{...b.progress,blueErebosSales:b.assets?.blueErebosSales||0}}}).run();const damageRanks=side=>(result.units||[]).filter(u=>u.team===side&&u.role!=='소환수').map(u=>({id:u.id,name:u.name,damage:Math.round(Object.values(u.damage||{}).reduce((s,n)=>s+(Number(n)||0),0))})).sort((x,y)=>y.damage-x.damage);
+     battle={outcome:result.outcome,time:result.time,grayReport:result.grayReport||null,huntSuccessA:!!result.blueHunts?.A,huntSuccessB:!!result.blueHunts?.B,personaTierA:result.synergies?.A?.affiliations?.['페르소나']?.tier||0,personaTierB:result.synergies?.B?.affiliations?.['페르소나']?.tier||0,damageA:damageRanks('A'),damageB:damageRanks('B')}}
+    }catch(e){battle={outcome:'무승부',time:0,error:String(e.message)}}
+    if(battle.error||!Number.isFinite(battle.time)||battle.time<=0){g.endsAt=Date.now()+10000;g.prepNotice='전투 계산 재시도 대기 · 서버 전투 오류';g.earlyEndsAt=null;g.version++;console.warn('[M8-01] PvP invalid',{room:r.code,round:g.round,a:a.slot,b:b.slot,battle});broadcast(r);return}
+    duration=Math.max(duration,Math.min(60,Math.ceil(battle.time)+2));g.pairs.push({a:a.slot,b:b.slot,seed,battle});
+     g.lastOpponents[a.slot]=b.slot;g.lastOpponents[b.slot]=a.slot;
+   }
+  }
+  if(!pve&&g.byeSlot!==null){g.byeCounts[g.byeSlot]=(g.byeCounts[g.byeSlot]||0)+1;g.previousByeSlot=g.byeSlot;}
+   g.phase='combat';g.combatStartedAt=Date.now();g.pve=pve;g.battle=players.length===2?g.pairs[0]?.battle||null:null;g.seed=players.length===2?g.pairs[0]?.seed||0:0;g.earlyEndsAt=null;for(const member of players)member.farmDone=false;g.endsAt=Date.now()+duration*1000;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='supply'){
+  for(const p of living(r))if(!g.supplyResolved[p.slot]){g.supplyResolved[p.slot]=g.supplyOptions[p.slot][crypto.randomInt(3)];if(p.assets){economy.grant(p.assets,g.supplyResolved[p.slot],`r${g.round}:supply:${p.slot}`);p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;}}g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='special'){
+  if(g.specialType==='experiment'&&g.experiment){
+   for(const p of r.players.values())if(g.hp[p.slot]<=0)experiment.disconnect(g.experiment,p.slot);
+   if(!experiment.tick(g.experiment)){g.endsAt=Date.now()+250;g.version++;broadcast(r);return;}
+   experiment.settle(r);
+  }
+  if(g.specialType==='boss'&&g.boss){
+   g.phase='combat';g.pve=true;g.boss.startedAt=Date.now();g.combatStartedAt=g.boss.startedAt;
+   for(const ply of living(r))ply.farmDone=false;
+   g.endsAt=Date.now()+60000;g.earlyEndsAt=null;g.version++;broadcast(r);return;
+  }
+  if(g.specialType==='auction'&&g.auction){
+   auction.settle(r);g.endsAt=g.auction.endsAt;g.earlyEndsAt=null;
+   if(!g.auction.closed){g.version++;broadcast(r);return;}
+  }
+  if(g.specialType==='shop'&&g.market)market.close(r);
+  if(g.specialType==='selection'&&g.selection){
+   const sel=g.selection;
+   while(sel.wave<sel.order.length&&(![...r.players.values()].some(p=>p.slot===sel.order[sel.wave])||g.hp[sel.order[sel.wave]]<=0))sel.wave++;
+   const wave=sel.order.slice(sel.wave,sel.wave+1);
+   for(const slot of wave)if(!sel.resolved[slot]){
+    const remaining=sel.candidates.filter(c=>c.claimedBy===null);if(!remaining.length)throw Error('선점 후보 부족');
+    const candidate=remaining[crypto.randomInt(remaining.length)];candidate.claimedBy=slot;sel.resolved[slot]={characterId:candidate.characterId,star:1,item:candidate.item};const who=[...r.players.values()].find(p=>p.slot===slot);if(who?.assets){economy.grant(who.assets,{type:'selection',...sel.resolved[slot]},`r${g.round}:selection:${slot}`);who.team=economy.ownTeam(who.assets);who.mastery=who.assets.level;}
+   }
+   sel.wave++;if(sel.wave<sel.order.length){g.endsAt=Date.now()+15000;g.version++;broadcast(r);return;}
+  }
+  g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='combat'){
+  if(g.kind==='boss'&&g.boss){boss.settle(r);}
+  if(g.pve&&g.kind==='farm'){
+   for(const ply of living(r)){
+    if(!ply.assets)continue;
+    const farm=g.farmResults?.[ply.slot];const n=farm?.won?Math.min(3,farm.killed||0):0;
+    for(let i=0;i<n;i++){
+     economy.grant(ply.assets,{type:'basic',value:crypto.randomInt(7)},`r${g.round}:farm:${ply.slot}:${i}:base`);
+     if(crypto.randomInt(100)<5)economy.grant(ply.assets,{type:'basic',value:crypto.randomInt(7)},`r${g.round}:farm:${ply.slot}:${i}:bonus`);
+    }
+   }
+  }
+  for(const ply of living(r)){const ids=new Set((ply.team||[]).map(e=>e.characterId));const count=[...ids].filter(id=>m7Roster[id]?.affiliations?.includes('에레보스')).length;ply.progress.infiltration+=count;while(ply.progress.infiltration>=5){ply.progress.infiltration-=5;ply.progress.infiltrationRewards++;if(ply.assets)economy.grant(ply.assets,{type:'basic',value:crypto.randomInt(7)},`infiltration:${ply.slot}:${ply.progress.infiltrationRewards}`)}}
+  if(!g.pve){
+   const damage=pvpHpDamage(g.round);
+   const hpPenalty=(slot,amount)=>{const subject=[...r.players.values()].find(x=>x.slot===slot);return subject?.augments?.includes('P36')?Math.ceil(amount*.65):amount};
+   for(const pair of g.pairs||[]){const outcome=pair.battle.outcome;
+    if(outcome==='A팀 승리')g.hp[pair.b]=Math.max(0,g.hp[pair.b]-hpPenalty(pair.b,damage+(pair.battle.personaTierA>=3?2:pair.battle.personaTierA>=2?1:0)));
+    if(outcome==='B팀 승리')g.hp[pair.a]=Math.max(0,g.hp[pair.a]-hpPenalty(pair.a,damage+(pair.battle.personaTierB>=3?2:pair.battle.personaTierB>=2?1:0)));
+    if(outcome==='양 팀 패배'){g.hp[pair.a]=Math.max(0,g.hp[pair.a]-hpPenalty(pair.a,damage));g.hp[pair.b]=Math.max(0,g.hp[pair.b]-hpPenalty(pair.b,damage))}
+    if(pair.battle.huntSuccessA&&[...(r.players.values())].some(p=>p.slot===pair.a&&p.augments?.includes('B022'))){const w=[...r.players.values()].find(p=>p.slot===pair.a);w.progress.blueHunts=Math.min(8,(w.progress.blueHunts||0)+1)}
+    if(pair.battle.huntSuccessB&&[...(r.players.values())].some(p=>p.slot===pair.b&&p.augments?.includes('B022'))){const w=[...r.players.values()].find(p=>p.slot===pair.b);w.progress.blueHunts=Math.min(8,(w.progress.blueHunts||0)+1)}
+    auction.onPvP(r,pair.a,outcome==='A팀 승리',outcome==='B팀 승리'||outcome==='양 팀 패배');
+    auction.onPvP(r,pair.b,outcome==='B팀 승리',outcome==='A팀 승리'||outcome==='양 팀 패배');
+    settlePurplePvp(r,pair);
+   }
+  }
+  g.phase='result';g.earlyEndsAt=null;g.endsAt=Date.now()+4000;g.version++;broadcast(r);return;
+ }
+ if(g.phase==='result'){
+  if(finishGameIfNeeded(r))return;
+  g.round++;for(const player of living(r))if(player.assets){player.assets.augmentIds=[...(player.augments||[])];economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);prepareUpcomingPairs(r);const augmentRound=augment.ROUNDS.includes(g.round);g.phase=augmentRound?'augment':'prep';g.endsAt=Date.now()+(augmentRound?augment.DURATION_MS:60000);g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.experimentId=null;g.experiment=null;g.bombTeams=null;g.bombBye=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.purpleSpent=null;g.augment=augmentRound?augment.open(living(r),g.round):null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
+  g.version++;broadcast(r);
+ }
+}
+const gameClock=setInterval(()=>{for(const r of rooms.values())try{
+ // A disconnected lobby member must not occupy a slot or permanently block its host.
+ // Give reconnections a longer grace period than active-match disconnects.
+ if(!r.started){for(const p of [...r.players.values()])if(!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>30000)removePlayer(p);continue;}
+ if(r.started&&r.game?.phase!=='finished'){
+  for(const p of r.players.values())if(r.game.hp[p.slot]>0&&!p.connected&&p.disconnectedAt&&Date.now()-p.disconnectedAt>15000){if(r.game.market)market.cancelSeller(r,p.slot);if(r.game.auction)auction.playerLeft(r,p.slot);r.game.hp[p.slot]=0;
+    if(r.game.phase==='special'&&r.game.specialType==='selection'&&r.game.selection){const sel=r.game.selection,index=sel.order.indexOf(p.slot);if(index>=0){sel.order.splice(index,1);if(index<sel.wave)sel.wave--;else if(index===sel.wave)r.game.endsAt=sel.wave<sel.order.length?Date.now()+15000:Date.now();}}
+    if(r.game.phase==='special'&&r.game.specialType==='experiment'&&r.game.experiment)experiment.disconnect(r.game.experiment,p.slot);
+    if(r.game.phase==='combat'&&r.game.kind==='pvp'){const pair=(r.game.pairs||[]).find(pair=>pair.a===p.slot||pair.b===p.slot);if(pair){const survivor=pair.a===p.slot?pair.b:pair.a;r.game.pairs=r.game.pairs.filter(x=>x!==pair);if(r.game.hp[survivor]>0){r.game.byeCounts[survivor]=(r.game.byeCounts[survivor]||0)+1;r.game.previousByeSlot=survivor;}}}
+    if(r.game.kind==='pvp'&&['prep','augment','augment-sync','intro'].includes(r.game.phase))prepareUpcomingPairs(r);
+    if(r.game.phase==='augment'&&r.game.augment&&augment.allChosen(r.game.augment,living(r)))r.game.earlyEndsAt=Date.now()+250;
+    if(r.game.phase==='augment-sync'&&r.game.augment&&augment.allDownloaded(r.game.augment,living(r)))r.game.earlyEndsAt=Date.now()+350;
+    r.messages.push({system:true,text:`${p.name} 연결 종료 · 탈락`,at:Date.now()});r.game.version++;broadcast(r)}
+  if(!finishGameIfNeeded(r))advanceRoom(r);
+ }
+}catch(e){console.error('room timer:',e)}},250);
+const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://localhost');if(u.pathname==='/api/events'&&req.method==='GET'){const auth=getPlayer(req,{token:u.searchParams.get('token')});if(!auth)return reply(res,401,{error:'인증 실패'});const {p,r}=auth;const previous=clients.get(p.id);if(previous&&!previous.destroyed)previous.end();res.writeHead(200,{'content-type':'text/event-stream; charset=utf-8','cache-control':'no-cache, no-transform','connection':'keep-alive','x-accel-buffering':'no'});clients.set(p.id,res);p.connected=true;p.disconnectedAt=null;broadcast(r);const heartbeat=setInterval(()=>{if(!res.destroyed)res.write(': heartbeat\n\n')},18000);req.on('close',()=>{clearInterval(heartbeat);if(clients.get(p.id)===res){clients.delete(p.id);p.connected=false;p.disconnectedAt=Date.now();refreshEarlyFinish(r);broadcast(r)}});return}
+if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable});
+if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
+if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':file.endsWith('.webp')?'public, max-age=86400':'no-cache','content-length':stat.size});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
+loadAccounts().then(()=>server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
+module.exports={server,rooms,drawSupplyReward,drawSupplyChoices,SUPPLY_ODDS,advanceRoom,playerView};

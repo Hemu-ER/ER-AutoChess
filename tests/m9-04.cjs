@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 process.env.PORT='0';process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m904-'));
-const {server,rooms}=require('../server.cjs');const items=require('../items.js'),economy=require('../match-economy.cjs'),aug=require('../match-augment.cjs'),roster=require('../roster.js');
+const {server,rooms}=require('../js/server/server.cjs');const items=require('../js/shared/items.js'),economy=require('../js/server/match-economy.cjs'),aug=require('../js/server/match-augment.cjs'),roster=require('../js/shared/roster.js');
 async function check(){let num=0;for(let k=0;k<100&&!server.listening;k++)await new Promise(r=>setTimeout(r,10));assert(server.listening);
 const base=`http://127.0.0.1:${server.address().port}`;
 async function post(act,data={},token='',session=''){const r=await fetch(base+'/api/'+act,{method:'POST',headers:{'content-type':'application/json','x-live-token':token,'x-live-session':session},body:JSON.stringify(data)});return {status:r.status,body:await r.json()}};

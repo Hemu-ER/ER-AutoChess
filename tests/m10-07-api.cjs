@@ -2,8 +2,8 @@
 // Full authenticated HTTP route regression for user-selected auction rewards.
 const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 process.env.PORT='0';process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m1007-'));
-const {server,rooms,playerView}=require('../server.cjs');
-const econ=require('../match-economy.cjs');
+const {server,rooms,playerView}=require('../js/server/server.cjs');
+const econ=require('../js/server/match-economy.cjs');
 async function main(){
  for(let i=0;i<100&&!server.listening;i++)await new Promise(r=>setTimeout(r,20));
  assert.ok(server.listening);
@@ -18,7 +18,7 @@ async function main(){
   first.assets.auctionChoices=[{id:'r11-lot0',cost:2,star:1}];
   check(playerView(r,first).players.find(p=>p.id===first.id).assets.auctionChoices.length===1,'choice visible only to owner');
   check(!playerView(r,second).players.find(p=>p.id===first.id).assets,'opponent cannot see asset choices');
-  const oldStock=JSON.stringify(first.assets.shop||[]),unit2=require('../roster.js').roster.find(c=>c.cost===2&&!c.pveOnly);check(!!unit2,'valid 2 cost');
+  const oldStock=JSON.stringify(first.assets.shop||[]),unit2=require('../js/shared/roster.js').roster.find(c=>c.cost===2&&!c.pveOnly);check(!!unit2,'valid 2 cost');
   const bad=await post('auction-unit-choice',{choiceId:'r11-lot0',characterId:'aiden'},host.token);check(bad[0]===409,'invalid cost blocked');
   const unauthorized=await post('auction-unit-choice',{choiceId:'r11-lot0',characterId:unit2.id},join[1].token);check(unauthorized[0]===409,'other player cannot claim');
   const accepted=await post('auction-unit-choice',{choiceId:'r11-lot0',characterId:unit2.id},host.token);check(accepted[0]===200&&accepted[1].characterId===unit2.id,'owner claim accepted');

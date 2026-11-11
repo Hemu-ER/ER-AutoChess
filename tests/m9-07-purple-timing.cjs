@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {CombatEngine}=require('../combat-engine.js');
+const {CombatEngine}=require('../js/shared/combat-engine.js');
 const A=[{characterId:'marcus',star:1,x:0,y:1,items:[]},{characterId:'kenneth',star:1,x:1,y:0,items:[]},{characterId:'cathy',star:1,x:1,y:2,items:[]}];
 const B=A.map(u=>({...u}));
 const reserve=[{characterId:'aya',star:1,items:[]},{characterId:'rio',star:1,items:[]},{characterId:'alex',star:1,items:[]}];

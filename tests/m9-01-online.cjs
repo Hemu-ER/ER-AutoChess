@@ -2,9 +2,9 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
 process.env.PORT='0';process.env.LIVE_DATA_DIR=fs.mkdtempSync(path.join(os.tmpdir(),'live-m901-'));
-const {server,rooms,advanceRoom,playerView}=require('../server.cjs');
-const economy=require('../match-economy.cjs');
-const aug=require('../match-augment.cjs');
+const {server,rooms,advanceRoom,playerView}=require('../js/server/server.cjs');
+const economy=require('../js/server/match-economy.cjs');
+const aug=require('../js/server/match-augment.cjs');
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function run(){
  for(let i=0;i<120&&!server.listening;i++)await wait(20);assert(server.listening,'서버 미실행');

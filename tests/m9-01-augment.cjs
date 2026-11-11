@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
-const aug=require('../match-augment.cjs');
+const aug=require('../js/server/match-augment.cjs');
 let checks=0;
 const test=(ok,msg)=>{assert.ok(ok,msg);checks++};
 test(aug.CARDS.gray.length===54,'기존 승인 회색 카드 54종');
