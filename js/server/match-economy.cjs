@@ -197,8 +197,13 @@ function action(a,cmd,body={}){
   const existing=a.owned.find(o=>o!==u&&o.location==='board'&&o.x===x&&o.y===y);
   if(u.location!=='board'&&a.owned.filter(o=>o.location==='board').length>=(a.augmentIds?.includes('P01')?4:3)&&!existing)throw Error('출전 인원 제한');
   if(u.location!=='board'&&a.owned.filter(o=>o.location==='board').length===3&&!existing&&a.augmentIds?.includes('P01')&&u.items.length)throw Error('네 번째 실험체는 장비를 착용할 수 없어.');
+  const beforeU={location:u.location,x:u.x,y:u.y},beforeOther=existing?{location:existing.location,x:existing.x,y:existing.y}:null;
   if(existing){existing.location='bench';existing.x=null;existing.y=null}
-  u.location='board';u.x=x;u.y=y;acceptPending(a);
+  u.location='board';u.x=x;u.y=y;
+  // P01: the final (fourth) deployed unit must never retain equipment, regardless of how it moved.
+  const fourth=a.augmentIds?.includes('P01')?a.owned.filter(o=>o.location==='board')[3]:null;
+  if(fourth?.items.length){Object.assign(u,beforeU);if(existing)Object.assign(existing,beforeOther);throw Error('네 번째 실험체는 장비를 착용할 수 없어.')}
+  acceptPending(a);
  }else if(cmd==='recall'){
   const u=locate();if(u.location!=='board')throw Error('배치되지 않은 유닛');
   if(benchCount(a)>=8)throw Error('벤치 부족');
@@ -208,6 +213,9 @@ function action(a,cmd,body={}){
   if(!b1)throw Error('다른 실험체를 찾을 수 없어');
   const pos1={location:a1.location,x:a1.x,y:a1.y},pos2={location:b1.location,x:b1.x,y:b1.y};
   Object.assign(a1,pos2);Object.assign(b1,pos1);
+  const fourth=a.augmentIds?.includes('P01')?a.owned.filter(o=>o.location==='board')[3]:null;
+  if(fourth?.items.length){Object.assign(a1,pos1);Object.assign(b1,pos2);throw Error('네 번째 실험체는 장비를 착용할 수 없어.')}
+  acceptPending(a);
  }else if(cmd==='sell-item'){
   const i=Number(body.index);if(!Number.isInteger(i)||i<0||i>=a.items.length)throw Error('아이템 위치 오류');
   const item=a.items[i];a.credits+=itemSellPrice(item);if((a.infusionIds||[]).includes('B013')){a.credits+=1;a.blueErebosSales=Math.min(10,(a.blueErebosSales||0)+1)}a.items.splice(i,1);flushOverflow(a);

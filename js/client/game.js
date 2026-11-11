@@ -556,7 +556,7 @@ function ensureRoundUI(){
 // R1~R6 are fully scheduled. R7+ currently use a temporary duel fallback,
 // not the future weighted special-round scheduler.
 function liveRoundKind(round){
- const labels={farm:'파밍',pvp:'결투',supply:'보급',shop:'상점',auction:'경매',boss:'보스',experiment:'번외 실험',selection:'선점'};
+ const labels={farm:'파밍',pvp:'결투',supply:'보급',shop:'상점',auction:'경매',boss:'보스',selection:'선점'};
  const order=window.LIVEMultiplayer?.getRoom?.()?.game?.schedule;
  if(order&&[7,9,11,13,15].includes(round))return labels[order[(round-7)/2]]||'특수';
  const known={1:'파밍',2:'결투',3:'파밍',4:'결투',5:'보급',6:'결투',10:'파밍'};return known[round]||'결투';
@@ -676,8 +676,15 @@ function renderRoundUI(){
    const net=window.LIVEMultiplayer?.getRoom(),me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());
    const target=!me?.roundReady; newlyRenderedReady.dataset.pending='1';newlyRenderedReady.disabled=true;newlyRenderedReady.setAttribute('aria-busy','true');
    newlyRenderedReady.textContent=target?'준비 완료 전송 중…':'준비 취소 전송 중…';
-   try{await window.LIVEMultiplayer.setRoundReady(target)}catch(e){$('#status').textContent=e.message}
-   finally{newlyRenderedReady.dataset.pending='0';newlyRenderedReady.disabled=false;newlyRenderedReady.removeAttribute('aria-busy');}
+   let confirmed=false;
+   try{await window.LIVEMultiplayer.setRoundReady(target);confirmed=true;}catch(e){$('#status').textContent=e.message}
+   finally{
+    newlyRenderedReady.dataset.pending='0';newlyRenderedReady.disabled=false;newlyRenderedReady.removeAttribute('aria-busy');
+    const currentRoom=window.LIVEMultiplayer?.getRoom?.();
+    const currentMe=currentRoom?.players?.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());
+    const currentReady=confirmed?target:!!currentMe?.roundReady;
+    newlyRenderedReady.textContent=currentReady?'준비 취소':'준비 완료';
+   }
   });
  }
 
@@ -747,11 +754,13 @@ function renderCurrentSynergyPanel(){
  let panel=document.querySelector('#currentSynergyPanel');
  const scene=liveSceneForRound(),combat=['duel','farm','boss'].includes(scene);
  if(appMode!=='game'||!roundState.active||!(scene==='formation'||combat)){panel?.remove();return}
- const shell=document.querySelector('.board-shell');if(!shell)return;
- let row=shell.closest('.game-board-row');
- if(!row){row=document.createElement('div');row.className='game-board-row';shell.parentElement.insertBefore(row,shell);row.appendChild(shell)}
- if(!panel){panel=document.createElement('aside');panel.id='currentSynergyPanel';panel.className='current-synergy-panel';row.insertBefore(panel,shell)}
+ if(!panel){panel=document.createElement('aside');panel.id='currentSynergyPanel';panel.className='current-synergy-panel';}
+ // This is an independent read-only HUD, not a column tied to the board's changing size.
+ if(panel.parentElement!==document.body)document.body.appendChild(panel);
  panel.classList.toggle('m1010-battle-synergy',combat);
+ const roundHud=document.getElementById('roundModePanel');
+ const safeTop=Math.max(125,Math.ceil((roundHud?.getBoundingClientRect().bottom||105)+12));
+ document.documentElement.style.setProperty('--live-synergy-safe-top',`${safeTop}px`);
  const markup=`<span class="current-synergy-title">${combat?'전투 시너지':'현재 시너지'}</span>${synergySummary('A')}<div class="m7-round-states" title="라운드 간 누적 상태">잠입 ${gameState.infiltration||0}/5 · 탐색 ${gameState.exploration?.stacks||0}/10</div>`;
  if(panel._content!==markup){panel._content=markup;panel.innerHTML=markup;bindSynergyTooltips(panel)}
 }
@@ -1130,7 +1139,7 @@ function liveOpenScouting(slot){
 }
 function liveRenderScouting(){
  let panel=document.querySelector('#m901Scouting');
- if(m901ScoutSlot===null||document.body.classList.contains('m808-experiment')){if(panel)panel.hidden=true;return;}
+ if(m901ScoutSlot===null){if(panel)panel.hidden=true;return;}
  if(!panel){panel=document.createElement('aside');panel.id='m901Scouting';panel.setAttribute('role','dialog');panel.setAttribute('aria-label','상대 배치 정찰');document.body.appendChild(panel);panel.addEventListener('click',e=>{if(e.target.closest('[data-close-scout]')){m901ScoutSlot=null;liveRenderScouting()}const t=e.target.closest('[data-scout-tab]');if(t){m907ScoutTab=t.dataset.scoutTab;panel.dataset.stamp='';liveRenderScouting()}});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&m901ScoutSlot!==null){m901ScoutSlot=null;liveRenderScouting()}});}
  const target=m901ScoutPlayers.find(x=>x.slot===m901ScoutSlot);
  if(!target){m901ScoutSlot=null;panel.hidden=true;return}
@@ -1156,7 +1165,7 @@ function liveUpdateHpStandings(net,players,slot){
  let panel=document.querySelector('#m809LiveHpStandings');
  if(!panel){panel=document.createElement('aside');panel.id='m809LiveHpStandings';panel.innerHTML='<div class="m809-panel-title">참가자 체력 <small>선택하면 정찰할 수 있습니다.</small></div><div class="m1008-matchup" id="m1008NextMatch" hidden></div><div class="live-hp-standings" id="m809HpRows"></div>';document.body.appendChild(panel);panel.querySelector('#m809HpRows').addEventListener('click',e=>{const btn=e.target.closest('[data-scout-slot]');if(btn&&!btn.classList.contains('is-me'))liveOpenScouting(Number(btn.dataset.scoutSlot));});}
  const content=panel.querySelector('#m809HpRows');
- panel.hidden=!(document.body.dataset.appMode==='game')||document.body.classList.contains('m808-experiment');
+ panel.hidden=document.body.dataset.appMode!=='game';
  if(!content)return;
  if(!players||!net?.hp)return;
  m901ScoutPlayers=players;liveRenderScouting();
@@ -1319,13 +1328,16 @@ function m809ShowResult(net,slot){
  let panel=document.querySelector('#m809MatchResult');if(!panel){panel=document.createElement('div');panel.id='m809MatchResult';panel.setAttribute('role','status');panel.setAttribute('aria-live','polite');document.body.appendChild(panel)}
  const key=net.phase==='result'?`${net.round}:${net.kind}:${net.phase}`:'';if(!key){panel.hidden=true;return}if(Array.isArray(net.battle?.damageRanks)&&net.battle.damageRanks.length)m809LastRanking=net.battle.damageRanks;
  if(m809ResultSeen===key)return;m809ResultSeen=key;
- const isExperiment=net.kind==='experiment';
  if(net.kind==='boss'){panel.hidden=true;return}
  const outcome=net.bye?'부전승':net.battle?.outcome;
  let title='라운드 종료',detail='';
- if(isExperiment){const a=net.experiment?.award;title=a?'번외 실험 완료':'번외 실험 결과';detail=a?`획득 ${a.credits||0}C · 숙련도 ${a.exp||0} EXP · 기본 재료 ${(a.items||[]).length}개`:'결과 및 보상 정산 확인 중';}
- else if(net.kind==='pvp'){title=net.bye?'부전승':outcome==='A팀 승리'?'승리':outcome==='B팀 승리'?'패배':outcome==='무승부'?'무승부':outcome==='양 팀 패배'?'양 팀 패배':'전투 종료';detail='서버 판정 · ROUND '+net.round;}
- else if(net.kind==='farm'){title='파밍 완료';detail='획득한 보상은 인벤토리에서 확인할 수 있어';}
+ if(net.kind==='pvp'){title=net.bye?'부전승':outcome==='A팀 승리'?'승리':outcome==='B팀 승리'?'패배':outcome==='무승부'?'무승부':outcome==='양 팀 패배'?'양 팀 패배':'전투 종료';detail='서버 판정 · ROUND '+net.round;}
+ else if(net.kind==='farm'){
+  const kills=Number(net.farmKills)||0;
+  if(net.farmWon===false){title='파밍 실패';detail='아이템 보상은 지급되지 않습니다. 다음 라운드로 진행합니다.';}
+  else if(net.farmWon===true){title='파밍 완료';detail=`야생동물 ${kills}마리 처치 · 지급된 아이템은 인벤토리에서 확인할 수 있습니다.`;}
+  else{title='파밍 종료';detail='전투 결과를 동기화하고 있습니다.';}
+ }
  panel.className='m809-match-result '+(title==='승리'?'won':title==='패배'?'lost':'');panel.hidden=false;
  panel.innerHTML=`<small>ROUND ${net.round} · ${esc(net.kind.toUpperCase())}</small><strong>${esc(title)}</strong><span>${esc(detail)}</span>${net.kind==='pvp'?'<div class="m809-result-damage-title">아군 피해량</div><div id="m809ResultDamage"></div>':''}`;
  if(net.kind==='pvp'){const dst=panel.querySelector('#m809ResultDamage');const mx=Math.max(1,...m809LastRanking.map(u=>u.damage));dst.innerHTML=m809LastRanking.map((u,i)=>`<div class="m809-rank-row"><small>${i+1}</small><b>${esc(u.name)}</b><i><i style="width:${u.damage/mx*100}%"></i></i><strong>${u.damage.toLocaleString()}</strong></div>`).join('')||'전투 피해량 정보 없음';}
@@ -1443,7 +1455,6 @@ function liveAugmentUi(net,slot){
 
 window.LIVEApplyGame=function(net,slot,players){
  if(!roundState.active||!net)return;
- document.body?.classList?.toggle('m808-experiment',net.phase==='special'&&net.specialType==='experiment');
  const foeSlot=Number.isInteger(net.opponentSlot)?net.opponentSlot:slot;const other=players?.find(p=>p.slot===foeSlot);window.LIVEOpponentExploration=other?.progress?.exploration||{stacks:0,visited:[]};window.LIVEOpponentAuctionBuffs=other?.progress?.auctionBuffs||{};window.LIVEOpponentBossBuffs=other?.progress?.bossBuffs||{};const me=players?.find(p=>p.slot===slot);if(me?.assets)applyLiveEconomy(me.assets,net.phase);gameState.auctionEffects=me?.auctionEffects||[];if(me?.progress){const pr=me.progress;gameState.auctionBuffs=pr.auctionBuffs||{};gameState.bossBuffs=pr.bossBuffs||{};gameState.exploration={visited:[...(pr.exploration?.visited||[])],stacks:pr.exploration?.stacks||0};while(gameState.infiltrationRewards<(pr.infiltrationRewards||0)){gameState.infiltrationRewards++;if(!me.assets)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}gameState.infiltration=pr.infiltration||0;if(pr.bloodMoonGranted&&!gameState.bloodMoonGranted){gameState.bloodMoonGranted=true;if(!me.assets)pushItem('혈색반월')}}const rem=net.phase==='augment-sync'?0:Math.max(0,Math.ceil((Math.min(net.endsAt,net.earlyEndsAt||Infinity)-Date.now())/1000));
  // Server owns phase, timer and total health. Team side is player-relative.
  if(net.round!==5)liveSupplyApplied=false;if(!me?.assets){liveApplySupplyReward(net,slot);if(typeof liveApplySelectionReward==='function')liveApplySelectionReward(net,slot);}liveSupplyUi(net,slot);if(typeof liveSelectionUi==='function')liveSelectionUi(net,slot);if(typeof liveMarketUi==='function')liveMarketUi(net,slot,players);if(typeof liveAuctionUi==='function')liveAuctionUi(net,slot,players);if(typeof liveBossUi==='function')liveBossUi(net,slot);if(typeof liveAugmentUi==='function')liveAugmentUi(net,slot);roundState.round=net.round;roundState.hp.A=net.hp[slot]??100;roundState.hp.B=net.hp[foeSlot]??100;

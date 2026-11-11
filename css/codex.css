@@ -11,7 +11,7 @@ body[data-app-mode="game"] {
 /* 1 / Hardware shells. Overlays are transparent and never intercept pointer events. */
 body[data-app-mode="game"] :is(
  #roundModePanel, .game-bottom-dock, #currentSynergyPanel, #liveItemsPanel,
- #m809LiveHpStandings, #m809DamagePanel, #liveGameChat, #liveTeamChat
+ #m809LiveHpStandings, #m809DamagePanel, #liveGameChat
 ) {
  border:1px solid #68777d!important;
  border-radius:5px!important;
@@ -26,7 +26,7 @@ body[data-app-mode="game"] :is(
 }
 body[data-app-mode="game"] :is(
  #roundModePanel, .game-bottom-dock, #currentSynergyPanel, #liveItemsPanel,
- #m809LiveHpStandings, #m809DamagePanel, #liveGameChat, #liveTeamChat
+ #m809LiveHpStandings, #m809DamagePanel, #liveGameChat
 )::before {
  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
  background:url('../assets/m10/ui/m1006-module-corners.svg') center/100% 100% no-repeat!important;

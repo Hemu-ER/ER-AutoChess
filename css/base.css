@@ -392,18 +392,16 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 .m7-unit-states{position:absolute;top:calc(var(--hud-top, -28px) - 21px);left:50%;transform:translateX(-50%);z-index:8;display:flex;gap:2px;white-space:nowrap;pointer-events:auto}.m7-state{display:inline-flex;align-items:center;gap:1px;border:1px solid rgba(183,206,207,.3);background:rgba(8,11,18,.88);color:#e1e9ea;padding:1px 3px;border-radius:4px;font:600 9px/1.2 system-ui,sans-serif;text-shadow:0 1px 1px #000}.m7-state b{font-weight:600}.m7-round-states{margin-top:5px;font-size:10px;opacity:.8;letter-spacing:.01em}
 
 /* M8-01: both global and bomb-team chats are movable floating popups. */
-#liveGameChat,#liveTeamChat{position:fixed;top:80px;left:12px;right:auto;bottom:auto;width:300px;height:260px;max-width:calc(100vw - 18px);max-height:calc(100vh - 70px);min-height:0;z-index:8500;display:flex;flex-direction:column;gap:6px;background:#101820f2;border:1px solid #527174;border-radius:9px;padding:8px;color:#e4edf2;box-shadow:0 6px 25px #0009;font-size:12px}
-#liveTeamChat{top:150px;left:auto;right:16px;z-index:8501;border-color:#80a98c}
-#liveTeamChat[hidden]{display:none!important}
-#liveGameChat .live-chat-head,#liveTeamChat .live-chat-head{cursor:move;touch-action:none;display:flex;align-items:center;gap:9px;user-select:none;padding:5px 2px;flex-shrink:0}
-#liveGameChat .live-chat-head b,#liveTeamChat .live-chat-head b{flex:1}
-#liveGameChat .live-chat-toggle,#liveTeamChat .live-chat-toggle{border:1px solid #53606a;background:#18242b;color:#eef4f6;border-radius:5px;min-width:26px;cursor:pointer}
-#liveGameChat .live-chat-body,#liveTeamChat .live-chat-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px}
-#liveGameChat.live-chat-collapsed,#liveTeamChat.live-chat-collapsed{height:auto}
-#liveGameChat.live-chat-collapsed .live-chat-body,#liveTeamChat.live-chat-collapsed .live-chat-body{display:none}
-#liveGameChat .live-chat-log,#liveTeamChat .live-chat-log{flex:1;min-height:0;overflow:auto;overflow-wrap:anywhere}
-#liveGameChat .live-chat-send,#liveTeamChat .live-chat-send{display:flex;gap:5px;flex-shrink:0}
-#liveGameChat .live-chat-send input,#liveTeamChat .live-chat-send input{min-width:0;flex:1}
+#liveGameChat{position:fixed;top:80px;left:12px;right:auto;bottom:auto;width:300px;height:260px;max-width:calc(100vw - 18px);max-height:calc(100vh - 70px);min-height:0;z-index:8500;display:flex;flex-direction:column;gap:6px;background:#101820f2;border:1px solid #527174;border-radius:9px;padding:8px;color:#e4edf2;box-shadow:0 6px 25px #0009;font-size:12px}
+#liveGameChat .live-chat-head{cursor:move;touch-action:none;display:flex;align-items:center;gap:9px;user-select:none;padding:5px 2px;flex-shrink:0}
+#liveGameChat .live-chat-head b{flex:1}
+#liveGameChat .live-chat-toggle{border:1px solid #53606a;background:#18242b;color:#eef4f6;border-radius:5px;min-width:26px;cursor:pointer}
+#liveGameChat .live-chat-body{display:flex;flex:1;min-height:0;flex-direction:column;gap:6px}
+#liveGameChat.live-chat-collapsed{height:auto}
+#liveGameChat.live-chat-collapsed .live-chat-body{display:none}
+#liveGameChat .live-chat-log{flex:1;min-height:0;overflow:auto;overflow-wrap:anywhere}
+#liveGameChat .live-chat-send{display:flex;gap:5px;flex-shrink:0}
+#liveGameChat .live-chat-send input{min-width:0;flex:1}
 #liveGate .live-room-count{display:inline-flex;gap:10px;align-items:center;margin:8px 12px 8px 0}
 #liveGate .live-room-count select{background:#18242b;color:#e2f4ef;border:1px solid #648b87;border-radius:5px;padding:7px}
 
@@ -422,7 +420,7 @@ body.live-gated #liveGate{visibility:visible!important;pointer-events:auto!impor
 #liveSelectionPanel .live-selection-option:disabled{opacity:.5;cursor:default}
 #liveSelectionPanel .live-selection-option.taken{background:#151b20;color:#829da3}
 
-#liveGameChat,#liveTeamChat{resize:both;overflow:hidden;min-width:190px}
+#liveGameChat{resize:both;overflow:hidden;min-width:190px}
 
 
 /* M8-02: online round intro blocks interactions until fade-out completes. */
@@ -538,10 +536,6 @@ body[data-app-mode="game"].formation-phase .field-b{display:none!important}
 #liveAuctionPanel{background:transparent!important;backdrop-filter:none!important;pointer-events:none!important;z-index:12600!important;padding:76px 12px 20px!important}
 #liveAuctionPanel .live-auction-card{pointer-events:auto!important;max-height:76dvh!important;width:min(1040px,95vw)!important;overflow:auto}
 #liveAuctionPanel .m808-special-toggle{top:74px}
-/* A dedicated full-screen experiment, above HUD, equipment, shop and tooltips. */
-#liveExperiment{position:fixed!important;inset:0!important;z-index:25000!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;margin:0!important;border:0!important;border-radius:0!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:clamp(16px,3vw,40px)!important;background:#090f16!important}
-#liveExperiment[hidden]{display:none!important}
-body.m808-experiment .game-bottom-dock,body.m808-experiment #liveItemsPanel,body.m808-experiment #roundModePanel,body.m808-experiment #liveAuctionPanel,body.m808-experiment #liveMarketPanel,body.m808-experiment #liveBossPanel,body.m808-experiment #liveSupplyPanel{visibility:hidden!important}
 /* Boss report: artwork and payout must be legible above dock and item inventory */
 #liveBossPanel{z-index:15000!important}#liveBossPanel.m808-boss-result{left:50%!important;right:auto!important;top:12dvh!important;transform:translateX(-50%)!important;width:min(480px,94vw)!important;max-height:75dvh!important;overflow:auto!important}
 #liveBossPanel.m808-boss-result .boss-report{border-color:#d0b17b;box-shadow:0 17px 70px #000d}#liveBossPanel .m808-boss-award{color:#e9d59a;font-weight:700;font-size:14px!important}
@@ -590,7 +584,6 @@ body.m808-experiment .game-bottom-dock,body.m808-experiment #liveItemsPanel,body
 /* Skill tiles are emitted only from skills that really dealt area damage. */
 #board .cell .m809-area-mark{position:absolute;inset:3px;pointer-events:none;z-index:70;border:2px solid #f8cd74;border-radius:7px;background:radial-gradient(circle,rgba(255,216,132,.4),rgba(227,90,63,.19) 65%,transparent);box-shadow:inset 0 0 22px #f0ad687b,0 0 16px #e5b75f88;animation:m809-area-flash .65s ease-out both}
 @keyframes m809-area-flash{from{opacity:.4;transform:scale(.80)}35%{opacity:1}to{opacity:0;transform:scale(1.08)}}
-body.m808-experiment #m809LiveHpStandings,body.m808-experiment #m809DamagePanel,body.m808-experiment #m809MatchResult{visibility:hidden!important}
 @media(max-width:950px){#m809LiveHpStandings,#m809DamagePanel{right:5px;width:145px}#m809LiveHpStandings{top:80px;max-height:27dvh}#m809LiveHpStandings .live-hp-standings{max-height:calc(27dvh - 40px)}#m809DamagePanel{top:calc(80px + 27dvh + 7px);max-height:21dvh} .m809-rank-row{grid-template-columns:10px minmax(28px,1fr) 28px 30px;gap:3px;font-size:9px}}
 @media(max-width:600px){#roundModePanel .m809-top-actions button{font-size:10px;padding:5px 7px}#m809LiveHpStandings,#m809DamagePanel{width:112px;opacity:.95}#m809LiveHpStandings .m808-hp-player{padding:4px}.m809-panel-title{font-size:10px;padding:6px}#m809MatchResult{top:42%;padding:16px}}
 

@@ -35,7 +35,7 @@
  
  let activeFloor=false;
  const nodes=new Map(), loading=new Map();
- const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map();
+ const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map(), floatTexts=new Map();
  let motionFrame=0;
  const clock=()=>performance.now();
  function showDomIfFormation(formation){if(app?.canvas)app.canvas.style.visibility=formation?'hidden':'visible';if(formation){board.classList.remove('m6-pixi-active');if(layer)layer.visible=false;}}
@@ -60,7 +60,7 @@
   const now=clock();let active=false;
   // Merge rapid periodic/shared-damage popups in 0.5s presentation buckets.
   for(const [key,hit] of pendingHits){if(now>=(hit.bucket+1)*500){hits.push({...hit,at:now});pendingHits.delete(key);}else active=true;}
-  while(hits.length>65)hits.shift();
+  while(hits.length>65){const oldest=hits.shift();const t=floatTexts.get(oldest);if(t){t.parent?.removeChild(t);t.destroy();floatTexts.delete(oldest)}}
   for(const [id,entry] of nodes){const m=motions.get(id);let dx=0,dy=0;
    if(m){const age=now-m.at,duration=m.kind==='attack'?170:220;
     if(age<duration){const t=age/duration,k=Math.sin(Math.PI*t);dx=m.kind==='attack'?(entry.team==='B'?-1:1)*9*k:0;dy=m.kind==='hit'?4*k:0;
@@ -69,20 +69,23 @@
    entry.container.position.set(entry.baseX+dx,entry.baseY+dy);
   }
   const gfx=app.stage.getChildByLabel?.('m6-floats');
-  if(gfx){gfx.removeChildren().forEach(c=>c.destroy?.());const damageLanes=new Map();for(const h of hits){const age=now-h.at;if(age>1050)continue;
+  if(gfx){const damageLanes=new Map();for(const h of hits){const age=now-h.at;if(age>1050)continue;
    const ent=nodes.get(h.id);if(!ent)continue;active=true;
-   const color=h.critical?0xffdc91:0xffb6bd;
-   const t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:color,stroke:{color:0x101016,width:4}}});
-   t.anchor.set(.5,.5);const lane=(damageLanes.get(h.id)||0);damageLanes.set(h.id,lane+1);
-   t.position.set(ent.baseX+Math.max(15,ent.visualHeight*.27)+(lane%4)*7,ent.baseY-Math.max(25,ent.visualHeight*.77)-(lane%5)*11-age*.047);t.alpha=Math.min(1,(1050-age)/360);gfx.addChild(t);
+   let t=floatTexts.get(h);
+   if(!t){
+    t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:h.critical?0xffdc91:0xffb6bd,stroke:{color:0x101016,width:4}}});
+    t.anchor.set(.5,.5);floatTexts.set(h,t);gfx.addChild(t);
+   }
+   const lane=(damageLanes.get(h.id)||0);damageLanes.set(h.id,lane+1);
+   t.position.set(ent.baseX+Math.max(15,ent.visualHeight*.27)+(lane%4)*7,ent.baseY-Math.max(25,ent.visualHeight*.77)-(lane%5)*11-age*.047);t.alpha=Math.min(1,(1050-age)/360);
   }}
-  for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050)hits.splice(i,1);
+  for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050){const old=hits.splice(i,1)[0];const t=floatTexts.get(old);if(t){t.parent?.removeChild(t);t.destroy();floatTexts.delete(old)}};
   if(active)startMotion();
  }
 
  const P=()=>window.PIXI;
  const queue=()=>{drawVersion++;if(drawing){dirty=true;return;}if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
- function fallback(){ready=false;drawing=false;dirty=false;drawVersion++;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
+ function fallback(){ready=false;drawing=false;dirty=false;drawVersion++;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;floatTexts.clear();pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
  async function init(){
   if(app||busy||!P()?.Application)return;
   busy=true;

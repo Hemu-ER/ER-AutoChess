@@ -7,7 +7,7 @@ const MIDGAME_POOL=Object.freeze([...SPECIALS,'pvp']);
 const LABELS=Object.freeze({farm:'파밍',pvp:'결투',supply:'보급',shop:'상점',auction:'경매',boss:'보스',selection:'선점'});
 function shuffle(values,rng=Math.random){const out=[...values];for(let i=out.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[out[i],out[j]]=[out[j],out[i]]}return out}
 function createSchedule(rng=Math.random){return shuffle(MIDGAME_POOL,rng)}
-function roundKind(round,order){if(!Number.isInteger(round)||round<1)throw Error('잘못된 라운드');if(round===1||round===3||round===10)return 'farm';if(round===5)return 'supply';if(round<=6||round>=16||round%2===0)return 'pvp';const kind=order?.[(round-7)/2];return !kind||kind==='experiment'?'pvp':kind}
+function roundKind(round,order){if(!Number.isInteger(round)||round<1)throw Error('잘못된 라운드');if(round===1||round===3||round===10)return 'farm';if(round===5)return 'supply';if(round<=6||round>=16||round%2===0)return 'pvp';const kind=order?.[(round-7)/2];return SPECIALS.includes(kind)?kind:'pvp'}
 function pvpHpDamage(round){const table={2:8,4:11,6:11,7:12,8:14,9:15,11:16,12:17,13:19,14:20,15:22,16:23};return table[round]??Math.min(35,23+Math.max(0,Math.floor((round-16)/2))*3)}
 function pairSurvivors(players,hp,rng=Math.random,history=null){
  const active=shuffle(players.filter(p=>(hp[p.slot]??0)>0),rng);
