@@ -136,64 +136,67 @@ body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="ev
  grid-template-rows:repeat(3,minmax(0,1fr))!important;
 }
 
-/* Integrated infusion: a nonmodal docked inspector. Shop and board stay active. */
+/* M10-13: restore the original centered three-card infusion installation screen.
+   The server still runs shop, formation and infusion within one 60s preparation phase.
+   Collapsing the modal reveals those actions; opening must not resize their canvas. */
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated:not(.m910-collapsed){
- position:fixed!important;inset:138px 242px auto auto!important;
- width:min(430px,calc(100vw - 290px))!important;height:auto!important;
- max-height:calc(100dvh - 270px)!important;
- display:block!important;padding:0!important;background:transparent!important;
- border:0!important;box-shadow:none!important;backdrop-filter:none!important;
- overflow:visible!important;pointer-events:none!important;z-index:15000!important;
-}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated>.m910-augment-collapse{
- position:fixed!important;top:132px!important;right:245px!important;z-index:15030!important;
- background:#292b3f!important;border:1px solid #a68ccb!important;
- box-shadow:0 5px 18px #000b!important;
-}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated:not(.m910-collapsed)>.m910-augment-collapse{
- top:107px!important;
+ position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;
+ max-height:none!important;display:grid!important;place-items:center!important;
+ box-sizing:border-box!important;padding:clamp(12px,2.5vw,34px)!important;
+ overflow:auto!important;background:rgba(4,8,15,.88)!important;
+ backdrop-filter:blur(9px)!important;border:0!important;box-shadow:none!important;
+ pointer-events:auto!important;z-index:16000!important;
 }
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal{
- box-sizing:border-box!important;width:100%!important;max-height:calc(100dvh - 285px)!important;
- padding:12px!important;border-radius:8px!important;overflow-y:auto!important;
- overflow-x:hidden!important;pointer-events:auto!important;
+ box-sizing:border-box!important;width:min(1080px,100%)!important;
+ max-height:calc(100dvh - 70px)!important;
+ padding:clamp(18px,2.3vw,30px)!important;
+ overflow-x:hidden!important;overflow-y:auto!important;border-radius:15px!important;
+ pointer-events:auto!important;
 }
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal>header{
- padding:0 0 8px!important;gap:10px!important;
-}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal>header h2{
- font-size:18px!important;margin:3px 0!important;
-}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal>header p{
- font-size:10px!important;line-height:1.35!important;
-}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-clock strong{font-size:20px!important}
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-cards{
- display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:8px!important;
- margin:9px 0!important;
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:16px!important;margin:22px 0 18px!important;
+ align-items:stretch!important;
 }
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card{
  box-sizing:border-box!important;display:flex!important;flex-direction:column!important;
- padding:10px 11px!important;min-height:0!important;gap:6px!important;border-radius:6px!important;
+ padding:19px!important;min-height:310px!important;gap:10px!important;
+ border-radius:12px!important;
 }
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-emblem,
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-download{display:none!important}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card h3{font-size:15px!important}
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-emblem{display:grid!important}
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card h3{
+ font-size:clamp(19px,1.75vw,24px)!important;line-height:1.27!important;
+}
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card>p{
- font-size:12px!important;line-height:1.46!important;min-height:0!important;
- max-height:none!important;margin:0!important;flex:none!important;
- overflow:visible!important;overflow-wrap:anywhere!important;word-break:keep-all!important;
+ font-size:12px!important;line-height:1.62!important;min-height:85px!important;
+ max-height:none!important;overflow:visible!important;overflow-wrap:anywhere!important;
+ word-break:keep-all!important;flex:1!important;
 }
 body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-card-buttons button{
- padding:6px 8px!important;font-size:11px!important;border-radius:4px!important;
+ padding:10px!important;font-size:12px!important;border-radius:7px!important;
 }
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-card-meta{font-size:9px!important}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal>footer{font-size:10px!important;padding:6px 0!important}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal.m904-selected .m902-infusion-card:not([data-selected="true"]){display:none!important}
-body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal.m904-selected .m902-infusion-card[data-selected="true"]{grid-column:1!important;grid-row:auto!important}
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal.m904-selected .m902-infusion-card:not([data-selected="true"]){
+ display:flex!important;visibility:visible!important;pointer-events:none!important;
+ animation:m904-disconnect .48s ease-in forwards!important;
+}
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal.m904-selected .m902-infusion-card[data-selected="true"]{
+ grid-column:2!important;grid-row:1!important;
+}
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated>.m910-augment-collapse{
+ position:fixed!important;top:clamp(8px,2vh,20px)!important;right:clamp(8px,3vw,26px)!important;
+ z-index:20050!important;pointer-events:auto!important;
+}
+#liveAugmentPanel .m1013-specialty{
+ display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+ padding:6px 9px;border:1px solid #6c93c6;border-radius:6px;
+ background:rgba(55,87,137,.19);color:#bed7f9;font-size:10px;font-weight:650;
+}
+#liveAugmentPanel .m1013-specialty strong{color:#f0f6ff;font-size:12px}
+#liveAugmentPanel .m1013-specialty small{margin-left:auto;color:#a8c7df;font-size:10px}
 #liveAugmentPanel .m1012-details-btn{
  align-self:start!important;display:inline-block!important;margin:0!important;
- background:none!important;border:0!important;padding:2px 0!important;
+ background:none!important;border:0!important;padding:3px 0!important;
  font-size:11px!important;color:#acd1db!important;text-decoration:underline!important;
  cursor:pointer!important;
 }
@@ -203,17 +206,88 @@ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-moda
  background:rgba(13,24,36,.6);color:#d9e8f0;
 }
 #liveAugmentPanel .m1012-infusion-detail[hidden]{display:none!important}
-@media(max-width:1250px){
- body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated:not(.m910-collapsed){
-  inset:128px 14px auto auto!important;width:min(420px,calc(100vw - 30px))!important;
- }
- body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated>.m910-augment-collapse{right:16px!important}
+
+/* Codex: the list must allocate each grid row its actual card content height. */
+#liveCodex .codex-content:has(.m909-infusion-detail){
+ grid-auto-rows:max-content!important;align-content:start!important;
+ align-items:start!important;overflow-y:auto!important;
 }
-@media(max-width:850px){
- body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated:not(.m910-collapsed){
-  inset:90px 8px auto 8px!important;width:calc(100vw - 16px)!important;
-  max-height:calc(100dvh - 180px)!important;
+#liveCodex .m909-infusion-detail{height:auto!important;min-height:max-content!important;align-self:start!important}
+#liveCodex .m1013-codex-specialty{
+ display:inline-block;margin:6px 0 4px;padding:4px 8px;border:1px solid #557ca1;
+ border-radius:5px;background:#192b3a;color:#c5dcf2;font-size:11px;font-weight:650;
+}
+#liveCodex .m1013-codex-infusion-more{
+ margin-top:10px;border-top:1px solid rgba(145,177,196,.27);padding-top:9px;
+}
+#liveCodex .m1013-codex-infusion-more summary{cursor:pointer;color:#aacee0;font-size:12px;font-weight:700}
+#liveCodex .m1013-codex-infusion-more p{white-space:normal;line-height:1.65}
+
+/* Clean information-first shop, chat and synergy modules: remove decorative SVG
+   bezels, etched corners and layered metal skin; preserve interactions/data. */
+body[data-app-mode="game"] :is(
+ #roundModePanel,.game-bottom-dock,#currentSynergyPanel,#liveItemsPanel,
+ #m809LiveHpStandings,#m809DamagePanel,#liveGameChat,#liveTeamChat,#liveBattleDeck
+){
+ background-image:none!important;
+ background-color:#111b23!important;
+ border:1px solid #41535e!important;
+ border-radius:6px!important;
+ box-shadow:0 4px 16px rgba(0,0,0,.24)!important;
+}
+body[data-app-mode="game"] :is(
+ #roundModePanel,.game-bottom-dock,#currentSynergyPanel,#liveItemsPanel,
+ #m809LiveHpStandings,#m809DamagePanel,#liveGameChat,#liveTeamChat,#liveBattleDeck
+)::before{
+ content:none!important;display:none!important;background-image:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card{
+ background:#15212b!important;border:1px solid #516773!important;
+ border-radius:5px!important;box-shadow:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card::before,
+body[data-app-mode="game"] .game-bottom-dock .shop-card::after{
+ content:none!important;display:none!important;background-image:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-portrait{
+ border-bottom:1px solid #415760!important;
+ background:#14202a!important;box-shadow:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-portrait::after{
+ content:none!important;display:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-name{
+ background:#1d2d37!important;color:#f0f6f6!important;
+ border-left:0!important;text-shadow:none!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-meta{
+ background:#14212a!important;border-top:1px solid #31444f!important;
+ color:#d2dfdf!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled){
+ border-color:#98c6c2!important;box-shadow:0 0 0 1px #98c6c2!important;
+}
+body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark){
+ border-color:#c5ae78!important;box-shadow:inset 2px 0 #c5ae78!important;
+}
+/* Interest remains visible as a single star beside the unit name, not a second badge. */
+body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark)::after{content:none!important;display:none!important}
+
+@media(max-width:790px){
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-cards{
+  grid-template-columns:minmax(0,1fr)!important;gap:10px!important;
  }
- body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal{max-height:calc(100dvh - 185px)!important}
- body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated>.m910-augment-collapse{top:65px!important;right:10px!important}
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal{
+  max-height:calc(100dvh - 55px)!important;padding:16px!important;
+ }
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card{
+  min-height:0!important;padding:15px!important;
+ }
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card>p{min-height:0!important}
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-modal.m904-selected .m902-infusion-card[data-selected="true"]{
+  grid-column:1!important;grid-row:auto!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card{transition:none!important}
 }
