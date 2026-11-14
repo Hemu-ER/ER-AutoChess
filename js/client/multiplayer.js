@@ -12,8 +12,8 @@
    <div class="live-eyebrow">AGLAIA // L.I.V.E.</div><h1>LIVE</h1><p class="live-sub">Lumia Island Virtual Experiment</p>
    <div id="liveAuth" class="m1009-panel" aria-label="계정 인증">
     <div class="m1009-section-head"><span>ACCOUNT ACCESS</span><h2 id="authTitle">로그인</h2><p>계정으로 접속하면 현재 참가 중인 경기도 이어서 진행할 수 있습니다.</p></div>
-    <label class="m1009-field">아이디<input id="authId" autocomplete="username" placeholder="아이디 · 영문, 숫자, _ (3~20자)" maxlength="20"></label>
-    <label class="m1009-field">비밀번호<input id="authPw" type="password" autocomplete="current-password" placeholder="비밀번호 · 8자 이상"></label>
+    <label class="m1009-field">아이디<input id="authId" autocomplete="username" placeholder="아이디 3자 이상" maxlength="20"></label>
+    <label class="m1009-field">비밀번호<input id="authPw" type="password" autocomplete="current-password" placeholder="비밀번호 8자 이상"></label>
     <div id="registerFields" hidden><label class="m1009-field">닉네임<input id="authNickname" placeholder="사용할 닉네임 (2~16자)" maxlength="16"></label></div>
     <div class="m1009-auth-actions"><button id="authLogin" class="live-primary">로그인</button><button id="authRegister" type="button">회원가입 화면</button><button id="authBack" type="button" hidden>로그인으로 돌아가기</button></div>
     <small class="m1009-fineprint">계정 데이터는 현재 연결된 서버에 저장됩니다.</small>
@@ -30,7 +30,7 @@
       <div class="m1009-field-grid"><label class="m1009-field">방 제목<input id="liveRoomTitle" maxlength="32" placeholder="방 제목 (최대 32자)"></label>
       <label class="m1009-field">최대 참가 인원<select id="liveMaxPlayers" aria-label="최대 경기 인원"><option value="2" selected>2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option></select></label></div>
       <label class="m1009-field">방 공개 방식<select id="liveRoomAccess"><option value="public">공개 방 · 비밀번호 없이 입장</option><option value="private">비밀번호 방 · 비밀번호를 알아야 입장</option></select></label>
-      <label class="m1009-field" id="livePrivateCreateFields" hidden>방 비밀번호<input id="liveRoomPassword" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="비밀번호 6~72자"></label>
+      <label class="m1009-field" id="livePrivateCreateFields" hidden>방 비밀번호<input id="liveRoomPassword" type="password" autocomplete="new-password" minlength="4" maxlength="12" placeholder="비밀번호 4~12자"></label>
       <p class="m1009-hint">비밀번호 방은 방 찾기에 잠금 표시로 나타나며, 입장하려면 비밀번호가 필요합니다.</p>
       <button class="live-primary m1009-full-action" id="liveCreate">대기실 만들기</button>
     </section>
@@ -41,10 +41,11 @@
     </section>
    </div>
    <div id="liveWaiting" class="m1009-panel" hidden><div class="live-line"><h2 id="liveRoomName"></h2><button id="liveLeave">퇴장</button></div><div class="m1009-room-state" id="m1009RoomAccessState"></div><p id="liveMemberList"></p><div class="live-line"><button id="liveReady" class="live-primary">준비하기</button><button id="liveStart" hidden>게임 시작 (방장)</button></div><p class="live-help">전원 준비 후 방장이 시작하면 게임 화면으로 이동합니다.</p></div>
-   <div id="m1009PasswordDialog" class="m1009-password-mask" hidden><div class="m1009-password-card" role="dialog" aria-modal="true" aria-labelledby="m1009PasswordTitle"><span class="m1009-kicker">PRIVATE MATCH</span><h2 id="m1009PasswordTitle">비밀번호 방 입장</h2><p id="m1009PasswordRoomName"></p><label class="m1009-field">방 비밀번호<input id="m1009JoinPassword" type="password" autocomplete="off" maxlength="72" placeholder="방 비밀번호를 입력하세요"></label><p id="m1009PasswordError" class="m1009-dialog-error" role="alert" hidden></p><div class="live-line"><button id="m1009CancelPassword" type="button">취소</button><button id="m1009ConfirmPassword" type="button" class="live-primary">입장하기</button></div></div></div>
-   <div class="live-qa-link" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(151,183,177,.2)"><a href="/qa.html" style="display:block;text-align:center;color:#9fdfc9;text-decoration:none;font-weight:700;font-size:.85rem;letter-spacing:.05em">◇ 오프라인 QA LAB · 전투 검증 →</a><small style="display:block;text-align:center;margin-top:7px;opacity:.55">로그인 없이 실행 · 실제 계정·게임 결과와 분리</small></div>
-   <p id="liveNotice" role="status">로그인 후 방을 생성하거나 참가해.</p></div>`;document.body.appendChild(gate);
+   <div id="m1009PasswordDialog" class="m1009-password-mask" hidden><div class="m1009-password-card" role="dialog" aria-modal="true" aria-labelledby="m1009PasswordTitle"><span class="m1009-kicker">PRIVATE MATCH</span><h2 id="m1009PasswordTitle">비밀번호 방 입장</h2><p id="m1009PasswordRoomName"></p><label class="m1009-field">방 비밀번호<input id="m1009JoinPassword" type="password" autocomplete="off" minlength="4" maxlength="12" placeholder="비밀번호 4~12자"></label><p id="m1009PasswordError" class="m1009-dialog-error" role="alert" hidden></p><div class="live-line"><button id="m1009CancelPassword" type="button">취소</button><button id="m1009ConfirmPassword" type="button" class="live-primary">입장하기</button></div></div></div>
+   <div class="live-qa-link" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(151,183,177,.2)"><a href="/qa.html" style="display:block;text-align:center;color:#9fdfc9;text-decoration:none;font-weight:700;font-size:.85rem;letter-spacing:.05em">◇ 오프라인 QA LAB · 전투 / 미니게임 시험 →</a><small style="display:block;text-align:center;margin-top:7px;opacity:.55">로그인 없이 실행 · 실제 계정·게임 결과와 분리</small></div>
+   <p id="liveNotice" role="status"></p></div>`;document.body.appendChild(gate);
   const dock=document.createElement('aside');dock.id='liveGameChat';dock.hidden=true;dock.innerHTML=`<div class="live-chat-head" data-drag-handle><b>채팅</b><span id="liveGameMembers"></span><button type="button" class="live-chat-toggle" aria-label="채팅 접기">−</button></div><div class="live-chat-body"><div id="liveMessages" class="live-chat-log"></div><div class="live-chat-send"><input id="liveChatInput" maxlength="240" placeholder="채팅 입력"><button id="liveSend">전송</button></div></div>`;document.body.appendChild(dock);
+  const teamDock=document.createElement('aside');teamDock.id='liveTeamChat';teamDock.hidden=true;teamDock.innerHTML=`<div class="live-chat-head" data-drag-handle><b>AGLAIA · 폭발물 해체 전용 채팅</b><button type="button" class="live-chat-toggle" aria-label="채팅 접기">−</button></div><div class="live-chat-body"><div id="liveTeamMessages" class="live-chat-log"></div><div class="live-chat-send"><input id="liveTeamChatInput" maxlength="240" placeholder="조원에게만 전송"><button id="liveTeamSend">전송</button></div></div>`;document.body.appendChild(teamDock);
   function makeMovable(panel){
     let drag=null;const head=panel.querySelector('[data-drag-handle]');
     head.addEventListener('pointerdown',e=>{if(e.button!==0||e.target.closest('button'))return;const r=panel.getBoundingClientRect();drag={x:e.clientX-r.left,y:e.clientY-r.top};head.setPointerCapture?.(e.pointerId);e.preventDefault()});
@@ -52,7 +53,8 @@
     for(const evt of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(evt,()=>drag=null);
     panel.querySelector('.live-chat-toggle').addEventListener('click',()=>{const collapsed=panel.classList.toggle('live-chat-collapsed');panel.querySelector('.live-chat-toggle').textContent=collapsed?'+':'−'});
   }
-  makeMovable(dock);
+  makeMovable(dock);makeMovable(teamDock);
+  function drawTeamChat(){const g=room?.game,active=g?.phase==='special'&&g.specialType==='experiment'&&g.experimentId==='bomb'&&!!g.bombTeamId;teamDock.hidden=!active;if(!active)return;$('#liveTeamMessages').innerHTML=(g.teamMessages||[]).map(m=>`<div><b>${safe(m.name)}</b>: ${safe(m.text)}</div>`).join('');$('#liveTeamMessages').scrollTop=$('#liveTeamMessages').scrollHeight}
 
   const notice=t=>{$('#liveNotice').textContent=t};
   // The end overlay uses the server's final result, not independently simulated HP.
@@ -61,6 +63,7 @@
   document.body.appendChild(endScreen);
   $('#liveEndLeave').onclick=async()=>{
    await api('leave').catch(()=>{});disconnect();openedGame=false;
+   if(typeof returnToModeStart==='function')returnToModeStart();
    endScreen.hidden=true;document.body.classList.add('live-gated');gate.hidden=false;
    display('rooms');notice('게임이 종료됐어. 새 방을 만들거나 참가할 수 있어.');
   };
@@ -99,7 +102,7 @@
   }
   $('#m1009BrowsePanel').addEventListener('click',e=>{const b=e.target.closest('[data-m1009-filter]');if(!b)return;roomFilter=b.dataset.m1009Filter;document.querySelectorAll('[data-m1009-filter]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));renderRoomDirectory()});
   function openPrivateJoin(r){pendingPrivateRoom=r.roomId;$('#m1009PasswordRoomName').textContent=r.name;$('#m1009PasswordDialog').hidden=false;$('#m1009JoinPassword').value='';$('#m1009PasswordError').hidden=true;$('#m1009PasswordError').textContent='';$('#m1009JoinPassword').focus()}
-  $('#m1009ConfirmPassword').onclick=async()=>{if(!pendingPrivateRoom)return;const password=$('#m1009JoinPassword').value;const roomId=pendingPrivateRoom;try{connectMatch(await api('join',{roomId,password}));closePrivateJoin()}catch(e){notice(e.message);$('#m1009PasswordError').textContent=e.message;$('#m1009PasswordError').hidden=false;$('#m1009JoinPassword').focus();$('#m1009JoinPassword').select()}};
+  $('#m1009ConfirmPassword').onclick=async()=>{if(!pendingPrivateRoom)return;const password=$('#m1009JoinPassword').value;const roomId=pendingPrivateRoom;if(password.length<4||password.length>12){$('#m1009PasswordError').textContent='비밀번호는 4~12자로 입력해.';$('#m1009PasswordError').hidden=false;return;}try{connectMatch(await api('join',{roomId,password}));closePrivateJoin()}catch(e){notice(e.message);$('#m1009PasswordError').textContent=e.message;$('#m1009PasswordError').hidden=false;$('#m1009JoinPassword').focus();$('#m1009JoinPassword').select()}};
   $('#m1009JoinPassword').addEventListener('keydown',e=>{if(e.key==='Enter')$('#m1009ConfirmPassword').click()});
   $('#liveRoomAccess').addEventListener('change',()=>{const privateRoom=$('#liveRoomAccess').value==='private';$('#livePrivateCreateFields').hidden=!privateRoom;$('#liveRoomPassword').required=privateRoom;if(!privateRoom)$('#liveRoomPassword').value='';});
 
@@ -116,10 +119,10 @@
   function setIdentity(j){username=j.username;nickname=j.nickname||j.username;$('#liveAccount').textContent=nickname;$('#liveNickname').value=nickname;}
   function showRoom(){if(!room)return;display('waiting');$('#liveRoomName').textContent=(room.displayName||'대기실')+' · '+room.players.length+'/'+room.maxPlayers+'명';$('#m1009RoomAccessState').textContent=room.isPublic?'공개 대기실':'비밀번호로 보호된 대기실';const own=room.players.find(p=>p.id===playerId);$('#liveMemberList').innerHTML=room.players.map(p=>`<div class="live-member"><b>${safe(p.name)}${p.id===room.hostPlayerId?' · 방장':''}</b><span>${p.connected?'● 접속':'○ 연결 중'} · ${p.ready?'준비 완료':'대기'}</span></div>`).join('');$('#liveReady').textContent=own?.ready?'준비 취소':'준비하기';const ready=room.players.length>=2&&room.players.every(p=>p.ready&&p.connected);$('#liveStart').hidden=own?.id!==room.hostPlayerId;$('#liveStart').disabled=!ready;notice(ready?'모두 준비 완료! 방장이 게임을 시작할 수 있어.':'참가자 모두 준비해야 시작할 수 있어.');if(room.started)openGame();}
   function drawChat(){if(!room)return;$('#liveGameMembers').textContent=room.players.length+'/'+room.maxPlayers;$('#liveMessages').innerHTML=room.messages.map(m=>`<div>${m.system?'<i>시스템</i>':`<b>${safe(m.name)}</b>`}: ${safe(m.text)}</div>`).join('');$('#liveMessages').scrollTop=$('#liveMessages').scrollHeight;}
-  function openGame(){if(openedGame)return;openedGame=true;document.body.classList.remove('live-gated');gate.hidden=true;dock.hidden=false;$('#devExit')?.setAttribute('hidden','');if(typeof enterAppMode==='function')enterAppMode('game');$('#devExit')?.setAttribute('hidden','');drawChat();lastTeam='';poller=setInterval(pushTeam,700);clock=setInterval(()=>{if(room?.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);},250);pushTeam();}
-  async function pushTeam(){if(!token||!room||!openedGame||room.game?.phase!=='prep'||room.game?.hp?.[room.players.find(p=>p.id===playerId)?.slot]<=0||typeof teams==='undefined'||!Array.isArray(teams.A))return;const me=room.players.find(p=>p.id===playerId),limit=me?.infusionIds?.includes('P01')?4:3;const team=teams.A.slice(0,limit).map(x=>({ownedId:x.ownedId,characterId:x.characterId,x:x.x,y:x.y,star:x.star,items:[...(gameState.owned.find(o=>o.uid===x.ownedId)?.equipment||[])]}));const str=JSON.stringify([team,gameState.masteryLevel]);if(str===lastTeam)return;lastTeam=str;try{await api('team',{team,mastery:gameState.masteryLevel})}catch(e){lastTeam='';console.warn('배치 공유 실패',e)}}
-  function disconnect(){endScreen.hidden=true;dock.hidden=true;if(poller)clearInterval(poller);if(clock)clearInterval(clock);clock=null;poller=null;events?.close();events=null;token='';playerId='';room=null;lastTeam='';}
-  function connectMatch(j){token=j.token;playerId=j.playerId;room=j.room;{const url=new URL(location.href);url.searchParams.delete('room');history.replaceState(null,'',url.pathname+url.search+url.hash);}showRoom();events=new EventSource('/api/events?token='+encodeURIComponent(token));events.addEventListener('state',e=>{room=JSON.parse(e.data);if(openedGame){drawChat();if(room.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);showMatchEnd(room.game)}else showRoom()});events.onerror=()=>notice('서버 연결 재시도 중…');}
+  function openGame(){if(openedGame)return;openedGame=true;document.body.classList.remove('live-gated');gate.hidden=true;dock.hidden=false;drawTeamChat();$('#devExit')?.setAttribute('hidden','');if(typeof enterAppMode==='function')enterAppMode('game');$('#devExit')?.setAttribute('hidden','');drawChat();lastTeam='';poller=setInterval(pushTeam,700);clock=setInterval(()=>{if(room?.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);},250);pushTeam();}
+  async function pushTeam(){if(!token||!room||!openedGame||room.game?.phase!=='prep'||room.game?.hp?.[room.players.find(p=>p.id===playerId)?.slot]<=0||typeof teams==='undefined'||!Array.isArray(teams.A))return;const team=teams.A.slice(0,3).map(x=>({ownedId:x.ownedId,characterId:x.characterId,x:x.x,y:x.y,star:x.star,items:[...(gameState.owned.find(o=>o.uid===x.ownedId)?.equipment||[])]}));const str=JSON.stringify([team,gameState.masteryLevel]);if(str===lastTeam)return;lastTeam=str;try{await api('team',{team,mastery:gameState.masteryLevel})}catch(e){lastTeam='';console.warn('배치 공유 실패',e)}}
+  function disconnect(){endScreen.hidden=true;dock.hidden=true;teamDock.hidden=true;if(poller)clearInterval(poller);if(clock)clearInterval(clock);clock=null;poller=null;events?.close();events=null;token='';playerId='';room=null;lastTeam='';}
+  function connectMatch(j){token=j.token;playerId=j.playerId;room=j.room;{const url=new URL(location.href);url.searchParams.delete('room');history.replaceState(null,'',url.pathname+url.search+url.hash);}showRoom();events=new EventSource('/api/events?token='+encodeURIComponent(token));events.addEventListener('state',e=>{room=JSON.parse(e.data);if(openedGame){drawChat();drawTeamChat();if(room.game&&typeof window.LIVEApplyGame==='function')window.LIVEApplyGame(room.game,room.players.find(p=>p.id===playerId)?.slot||0,room.players);showMatchEnd(room.game)}else showRoom()});events.onerror=()=>notice('서버 연결 재시도 중…');}
   async function join(action,payload){try{connectMatch(await api(action,payload));}catch(e){notice(e.message)}}
   async function recoverMatch(){try{const r=await api('rejoin');connectMatch(r);}catch(e){if(e.message!=='복귀할 참가 중인 방이 없어.')console.warn('경기 복귀 실패:',e.message)}}
 
@@ -129,15 +132,24 @@
   $('#liveLogout').onclick=async()=>{await api('logout').catch(()=>{});session='';username='';sessionStorage.removeItem('live_session');display('auth');notice('로그아웃했어.')};
   $('#liveCreate').onclick=()=>{
    const isPublic=$('#liveRoomAccess').value==='public',password=$('#liveRoomPassword').value;
-   if(!isPublic&&(password.length<6||password.length>72)){notice('비밀번호 방은 6~72자 비밀번호를 설정해야 합니다.');$('#liveRoomPassword').focus();return;}
+   if(!isPublic&&(password.length<4||password.length>12)){notice('비밀번호 방은 4~12자 비밀번호를 설정해야 해.');$('#liveRoomPassword').focus();return;}
    join('create',{maxPlayers:Number($('#liveMaxPlayers').value),roomName:$('#liveRoomTitle').value,isPublic,...(!isPublic?{password}:{})});
   };
   $('#liveReady').onclick=async()=>{try{const own=room.players.find(p=>p.id===playerId);await api('ready',{ready:!own?.ready})}catch(e){notice(e.message)}};
   $('#liveStart').onclick=async()=>{try{await api('start')}catch(e){notice(e.message)}};
   $('#liveLeave').onclick=async()=>{await api('leave').catch(()=>{});disconnect();display('rooms');notice('방에서 퇴장했어.')};
+  $('#liveTeamSend').onclick=async()=>{const text=$('#liveTeamChatInput').value.trim();if(!text)return;try{await api('team-chat',{text});$('#liveTeamChatInput').value=''}catch(e){notice(e.message)}};$('#liveTeamChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveTeamSend').click()});
   $('#liveSend').onclick=async()=>{const text=$('#liveChatInput').value.trim();if(!text)return;try{await api('chat',{text});$('#liveChatInput').value=''}catch(e){console.warn(e.message)}};$('#liveChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveSend').click()});
   if(session)api('me').then(j=>{setIdentity(j);display('rooms');recoverMatch()}).catch(()=>{session='';sessionStorage.removeItem('live_session');display('auth')});else display('auth');
-  window.LIVEMultiplayer={getRoom:()=>room,getPlayerId:()=>playerId,getToken:()=>token,economy:(cmd,payload={})=>api('economy',{cmd,...payload}),market:(cmd,payload={})=>api('market',{cmd,...payload}),auction:amount=>api('auction',{amount}),auctionChooseUnit:(choiceId,characterId)=>api('auction-unit-choice',{choiceId,characterId}),augmentPick:(round,choice)=>api('augment-pick',{round,choice}),augmentReroll:(round,choice)=>api('augment-reroll',{round,choice}),augmentAssetsReady:round=>api('augment-assets-ready',{round}),purpleConfig:(kind,value)=>api('purple-config',{kind,value}),introComplete:round=>api('intro-complete',{round}).catch(e=>console.warn('연출 완료 보고 실패',e.message)), setRoundReady:async ready=>api('round-ready',{ready}), reportBossDone:async round=>{try{await api('boss-done',{round})}catch(e){console.warn('보스 완료 보고 실패:',e.message)}},reportFarmDone:async round=>{
+  async function quitToLobby(){
+   if(!openedGame||!token||!room)throw Error('진행 중인 경기가 없어.');
+   await api('leave'); // server eliminates only this player and broadcasts to the others
+   disconnect();openedGame=false;lastFarmReportRound=0;lastGameVersion=0;
+   if(typeof returnToModeStart==='function')returnToModeStart();
+   document.body.classList.add('live-gated');gate.hidden=false;display('rooms');
+   notice('경기를 포기하고 로비로 돌아왔어.');
+  }
+  window.LIVEMultiplayer={quitToLobby,getRoom:()=>room,getPlayerId:()=>playerId,getToken:()=>token,economy:(cmd,payload={})=>api('economy',{cmd,...payload}),market:(cmd,payload={})=>api('market',{cmd,...payload}),auction:amount=>api('auction',{amount}),auctionChooseUnit:(choiceId,characterId)=>api('auction-unit-choice',{choiceId,characterId}),augmentPick:(round,choice)=>api('augment-pick',{round,choice}),augmentReroll:(round,choice)=>api('augment-reroll',{round,choice}),augmentAssetsReady:round=>api('augment-assets-ready',{round}),purpleConfig:(kind,value)=>api('purple-config',{kind,value}),introComplete:round=>api('intro-complete',{round}).catch(e=>console.warn('연출 완료 보고 실패',e.message)), setRoundReady:async ready=>api('round-ready',{ready}), reportBossDone:async round=>{try{await api('boss-done',{round})}catch(e){console.warn('보스 완료 보고 실패:',e.message)}},reportFarmDone:async round=>{
    if(lastFarmReportRound===round)return;
    lastFarmReportRound=round;
    const retry=async()=>{

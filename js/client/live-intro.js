@@ -15,6 +15,7 @@
   #${ROOT_ID}.live-exit{opacity:0;visibility:hidden;pointer-events:none}
   #${ROOT_ID} .live-tablet{position:absolute;inset:clamp(12px,3vw,38px);overflow:hidden;border:1px solid #34474a;border-radius:clamp(10px,1.5vw,18px);background:radial-gradient(circle at 50% 48%,rgba(109,160,151,.055),transparent 42%),linear-gradient(180deg,#050a0b,#030607);box-shadow:inset 0 0 0 1px rgba(255,255,255,.018),inset 0 0 55px rgba(103,156,147,.025);animation:liveBorder 3s ease-in-out infinite}
   #${ROOT_ID} .live-tablet:before{content:"";position:absolute;inset:10px;border:1px solid rgba(166,211,203,.13);border-radius:calc(clamp(10px,1.5vw,18px) - 5px);pointer-events:none}
+  #${ROOT_ID} .live-tablet:after{content:"";position:absolute;z-index:0;inset:-40% 0;background:linear-gradient(180deg,transparent 45%,rgba(129,204,184,.055) 50%,transparent 55%);pointer-events:none;animation:liveScan 9s linear infinite}
   #${ROOT_ID} .live-terminal{position:absolute;left:30px;top:29px;color:#708681;font-size:9px;letter-spacing:.18em}
   #${ROOT_ID} .live-stage{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:58px 18px;text-align:center}
   #${ROOT_ID} .live-full{height:1.2em;display:flex;align-items:center;justify-content:flex-start;white-space:pre;font-size:clamp(22px,4vw,48px);font-weight:500;letter-spacing:.025em;line-height:1.2;color:#f4faf8;text-shadow:0 0 14px rgba(221,247,240,.08)}
@@ -26,8 +27,19 @@
   #${ROOT_ID} .live-final-target span{display:inline-block}
   #${ROOT_ID} .live-ko{position:absolute;left:50%;top:calc(50% + clamp(50px,7vw,78px));transform:translateX(-50%);font-family:Pretendard,"Noto Sans KR",system-ui,sans-serif;font-size:clamp(11px,1.4vw,15px);letter-spacing:.28em;color:#9baea9;opacity:0;transition:opacity .55s ease;white-space:nowrap}
   #${ROOT_ID}.show-subtitle .live-ko{opacity:1}
+  #${ROOT_ID}.live-ready .live-full .ch.initial{animation:livePulse 3.6s ease-in-out infinite;filter:drop-shadow(0 0 7px #a8e3cf70)}
+  #${ROOT_ID}.live-ready .live-full .ch.initial:nth-of-type(6n+1){animation-delay:.32s}
+  #${ROOT_ID}.live-ready .live-full .ch.initial:nth-of-type(6n+2){animation-delay:.68s}
+  #${ROOT_ID}.live-ready .live-ko{animation:liveSubtitle 5.2s ease-in-out infinite}
+  #${ROOT_ID} .live-link-state{position:absolute;bottom:30px;right:30px;color:#668780;font-size:9px;letter-spacing:.15em;display:flex;align-items:center;gap:7px}
+  #${ROOT_ID} .live-link-state:before{content:"";width:5px;height:5px;border-radius:50%;background:#a2e3cb;box-shadow:0 0 8px #7ce1b6;animation:liveSignal 2s steps(2,end) infinite}
   #${ROOT_ID} .live-enter{position:absolute;left:0;right:0;bottom:31px;text-align:center;color:#71847f;font-size:9px;letter-spacing:.18em;opacity:0;transition:opacity .5s ease}
-  #${ROOT_ID}.live-ready .live-enter{opacity:1}
+  #${ROOT_ID}.live-ready .live-enter{opacity:1;animation:livePrompt 2.2s ease-in-out infinite}
+  @keyframes livePulse{0%,100%{opacity:1;text-shadow:0 0 3px #91d7c844}45%{opacity:.65;text-shadow:0 0 19px #bbfbed90}52%{opacity:1}57%{opacity:.82}63%{opacity:1}}
+  @keyframes liveSubtitle{0%,100%{opacity:.9}48%{opacity:.65}52%{opacity:1}}
+  @keyframes liveSignal{50%{opacity:.3}}
+  @keyframes liveScan{from{transform:translateY(-55%)}to{transform:translateY(55%)}}
+  @keyframes livePrompt{0%,100%{opacity:.95}50%{opacity:.4}}
   @keyframes liveBorder{0%,100%{border-color:#34474a}50%{border-color:#718b85;box-shadow:inset 0 0 42px rgba(181,225,216,.04),0 0 18px rgba(122,172,162,.05)}}
   @media(max-width:600px){#${ROOT_ID} .live-tablet{inset:8px}#${ROOT_ID} .live-terminal{left:22px;top:22px;font-size:7px}#${ROOT_ID} .live-full{font-size:clamp(14px,4.4vw,24px)}#${ROOT_ID} .live-final-target{font-size:clamp(52px,18vw,82px)}#${ROOT_ID} .live-ko{top:calc(50% + clamp(44px,11vw,62px))}}
   @media(prefers-reduced-motion:reduce){#${ROOT_ID} *{transition-duration:.001ms!important;animation-duration:.001ms!important}}`;
@@ -52,6 +64,7 @@
       <div class="live-ko">루미아 섬 가상 실험</div>
     </div>
     <div class="live-enter">CLICK / TAP TO CONTINUE</div>
+    <div class="live-link-state" aria-hidden="true">LINK · STANDBY</div>
   </div>`;
   document.body.appendChild(root);
 
