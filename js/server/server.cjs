@@ -250,7 +250,7 @@ if(url.pathname==='/api/purple-config'){
  p.purpleChoice??={};p.purpleChoice[kind]=v;if(kind==='target')p.assets.purpleTarget=v;
  p.roundReady=false;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
 }
-if(url.pathname==='/api/round-ready'){if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0)return reply(res,409,{error:'준비 단계가 아니야.'});p.roundReady=!!body.ready;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/round-ready'){if(!r.game||r.game.phase!=='prep'||r.game.hp[p.slot]<=0)return reply(res,409,{error:'준비 단계가 아니야.'});if(body.ready&&r.game.augment&&!r.game.augment.picks[p.slot])return reply(res,409,{error:'인퓨전을 선택한 뒤 준비 완료할 수 있습니다.'});p.roundReady=!!body.ready;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
  if(url.pathname==='/api/intro-complete'){
   const g=r.game;
   if(!g||g.phase!=='intro'||g.round!==Number(body.round)||g.hp[p.slot]<=0)return reply(res,409,{error:'라운드 연출 단계가 아니야.'});
@@ -274,21 +274,22 @@ if(url.pathname==='/api/boss-done'){
  p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true});
 }
 if(url.pathname==='/api/farm-done'){if(!r.game||r.game.kind!=='farm'||r.game.phase!=='combat'||!r.game.pve||r.game.hp[p.slot]<=0)return reply(res,409,{error:'파밍 단계가 아니야.'});if(Number(body.round)!==r.game.round)return reply(res,409,{error:'지난 라운드 보고야.'});const farm=r.game.farmResults?.[p.slot];const expected=farm?.time;const elapsed=Date.now()-r.game.combatStartedAt;if(elapsed<1000||farm?.won!==false&&Number.isFinite(expected)&&elapsed<Math.min(60,expected)*1000-250)return reply(res,409,{error:'파밍 전투가 아직 끝나지 않았어.'});p.farmDone=true;refreshEarlyFinish(r);broadcast(r);return reply(res,200,{ok:true})}
-if(url.pathname==='/api/start'){if(p.id!==r.hostPlayerId)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;member.augments=[];member.assets.augmentIds=[];member.purpleChoice={};member.purpleLosses=0;}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'augment',endsAt:Date.now()+augment.DURATION_MS,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};r.game.augment=augment.open(living(r),1);for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
+if(url.pathname==='/api/start'){if(p.id!==r.hostPlayerId)return reply(res,403,{error:'방장만 시작할 수 있어.'});if(r.started)return reply(res,409,{error:'이미 시작했어.'});if(r.players.size<2||!([...r.players.values()].every(x=>x.ready&&x.connected)))return reply(res,409,{error:'최소 2명 접속 및 전원 준비가 필요해.'});r.started=true;for(const member of r.players.values()){member.assets=economy.makeInitial();member.team=economy.ownTeam(member.assets);member.mastery=member.assets.level;member.augments=[];member.assets.augmentIds=[];member.purpleChoice={};member.purpleLosses=0;}for(const member of r.players.values())member.progress={exploration:{visited:[],stacks:0},infiltration:0,infiltrationRewards:0,bloodMoonGranted:false};r.game={round:1,kind:'farm',phase:'prep',endsAt:Date.now()+60000,hp:Array.from({length:r.maxPlayers},(_,i)=>[...r.players.values()].some(p=>p.slot===i)?100:0),schedule:createSchedule(),byeCounts:{},previousByeSlot:null,lastOpponents:{},version:1,seed:0,battle:null,pairs:[],earlyEndsAt:null};r.game.augment=augment.open(living(r),1);for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}broadcast(r);return reply(res,200,{ok:true})}
 if(url.pathname==='/api/augment-assets-ready'){
- const g=r.game;if(!g||g.phase!=='augment-sync'||!g.augment||Number(body.round)!==g.round||g.hp[p.slot]<=0||!g.augment.picks[p.slot])return reply(res,409,{error:'증강 다운로드 확인 단계가 아니야.'});
+ const g=r.game;if(!g||!['prep','augment-sync'].includes(g.phase)||!g.augment||Number(body.round)!==g.round||g.hp[p.slot]<=0||!g.augment.picks[p.slot])return reply(res,409,{error:'증강 다운로드 확인 단계가 아니야.'});
  g.augment.downloads[p.slot]=true;g.augment.revision++;
- if(augment.allDownloaded(g.augment,living(r)))g.earlyEndsAt=Date.now()+350;
+ if(g.phase==='augment-sync'&&augment.allDownloaded(g.augment,living(r)))g.earlyEndsAt=Date.now()+350;
  g.version++;broadcast(r);return reply(res,200,{ok:true,readyCount:Object.values(g.augment.downloads).filter(Boolean).length});
 }
 if(url.pathname==='/api/augment-reroll'||url.pathname==='/api/augment-pick'){
  const g=r.game;
- if(!g||g.phase!=='augment'||!g.augment||g.hp[p.slot]<=0||g.round!==Number(body.round)||Date.now()>=g.endsAt||g.earlyEndsAt&&Date.now()>=g.earlyEndsAt)return reply(res,409,{error:'인퓨전 선택 시간이 아니야.'});
+ if(!g||!['prep','augment'].includes(g.phase)||!g.augment||g.hp[p.slot]<=0||g.round!==Number(body.round)||Date.now()>=g.endsAt||g.earlyEndsAt&&Date.now()>=g.earlyEndsAt)return reply(res,409,{error:'인퓨전 선택 시간이 아니야.'});
  try{
   const result=url.pathname==='/api/augment-reroll'?augment.reroll(g.augment,p,body.choice):augment.pick(g.augment,p,body.choice);
   if(url.pathname==='/api/augment-pick'&&p.assets)p.assets.infusionIds=[...(p.augments||[])];
   if(p.assets)p.assets.augmentIds=[...(p.augments||[])];
-  if(augment.allChosen(g.augment,living(r)))g.earlyEndsAt=Date.now()+250;
+  if(g.phase==='augment'&&augment.allChosen(g.augment,living(r)))g.earlyEndsAt=Date.now()+250;
+  if(g.phase==='prep'){p.roundReady=false;refreshEarlyFinish(r);}
   g.version++;broadcast(r);return reply(res,200,{ok:true,result});
  }catch(e){return reply(res,409,{error:e.message})}
 }
@@ -363,7 +364,7 @@ function join(r,res,username){const slot=Array.from({length:r.maxPlayers},(_,i)=
 function refreshEarlyFinish(r){
  const g=r.game;if(!g||!['prep','combat','supply'].includes(g.phase))return;
  const players=living(r);
- const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?p.roundReady:g.phase==='supply'?!!g.supplyResolved?.[p.slot]:(g.pve&&p.farmDone)));
+ const eligible=players.length>=2&&players.every(p=>p.connected&&(g.phase==='prep'?(p.roundReady&&(!g.augment||!!g.augment.picks[p.slot])):g.phase==='supply'?!!g.supplyResolved?.[p.slot]:(g.pve&&p.farmDone)));
  if(eligible){if(!g.earlyEndsAt)g.earlyEndsAt=Date.now()+(g.phase==='supply'?250:5000);}
  else g.earlyEndsAt=null;
 }
@@ -410,6 +411,8 @@ function advanceRoom(r){
   g.augment=null;g.phase='prep';g.endsAt=Date.now()+60000;g.earlyEndsAt=null;g.version++;broadcast(r);return;
  }
  if(g.phase==='prep'){
+  // Infusions share the preparation clock: auto-select unchosen offers before combat.
+  if(g.augment){augment.autoPick(g.augment,living(r));for(const ply of living(r))if(ply.assets){ply.assets.infusionIds=[...(ply.augments||[])];ply.assets.augmentIds=[...(ply.augments||[])];}g.augment=null;}
   const players=living(r).sort((a,b)=>a.slot-b.slot);
   if(finishGameIfNeeded(r))return;
   g.kind=roundKind(g.round,g.schedule);
@@ -556,7 +559,7 @@ function advanceRoom(r){
  }
  if(g.phase==='result'){
   if(finishGameIfNeeded(r))return;
-  g.round++;for(const player of living(r))if(player.assets){player.assets.augmentIds=[...(player.augments||[])];economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);prepareUpcomingPairs(r);const augmentRound=augment.ROUNDS.includes(g.round);g.phase=augmentRound?'augment':'prep';g.endsAt=Date.now()+(augmentRound?augment.DURATION_MS:60000);g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.purpleSpent=null;g.augment=augmentRound?augment.open(living(r),g.round):null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
+  g.round++;for(const player of living(r))if(player.assets){player.assets.augmentIds=[...(player.augments||[])];economy.roundIncome(player.assets,g.round);auction.onRoundIncome(player);player.mastery=player.assets.level;player.team=economy.ownTeam(player.assets)}g.kind=roundKind(g.round,g.schedule);prepareUpcomingPairs(r);const augmentRound=augment.ROUNDS.includes(g.round);g.phase='prep';g.endsAt=Date.now()+60000;g.battle=null;g.pairs=[];g.seed=0;g.pve=false;g.region=null;g.earlyEndsAt=null;g.specialType=null;g.specialNotice=null;g.introReady=null;g.introStartedAt=null;g.supplyOptions=null;g.supplyResolved=null;g.farmResults=null;g.selection=null;g.market=null;g.auction=null;g.boss=null;g.purpleSpent=null;g.augment=augmentRound?augment.open(living(r),g.round):null;g.missingTeamGraceStartedAt=null;for(const member of r.players.values()){member.roundReady=false;member.farmDone=false}
   g.version++;broadcast(r);
  }
 }

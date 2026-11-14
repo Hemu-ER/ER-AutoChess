@@ -614,10 +614,8 @@ function m901OwnedAugmentHud(){
  return `<div class="m901-owned-augments" aria-label="보유 인퓨전"><b>보유 인퓨전 ${owned.length}/3</b>${owned.map(a=>`<span tabindex="0" class="m904-infusion-tip ${esc(a.tier)}" data-infusion-id="${esc(a.id)}" data-infusion-help="${esc((window.LIVEInfusionText?.explain?.(a)||a.description||a.detail||window.LIVEFormalText.infusion(a)))}">${esc(colors[a.tier]||a.tier)} · ${esc(a.name)}</span>`).join('')}<small>회색·파랑·보라 인퓨전 효과 적용</small></div>`;
 }
 function m1010InfusionSummary(card,detail){
- const desc=String(card?.description||detail||'효과 정보가 없습니다.').replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
- const leading=desc.split(/[.;。]/)[0].replace(/(?:자세한 효과|상세 수치)는? Shift.*$/i,'').trim();
- const short=leading.replace(/[+−-]?\d+(?:[.,]\d+)?\s*(?:%p|%|C|EXP|초|회|칸|명|중첩|스택|포인트|HP|배)(?=\s|[가-힣.,;]|$)/gi,'일정 수치').replace(/\s+/g,' ').slice(0,110).trim();
- return short||'조건을 충족하면 특별한 효과를 얻습니다.';
+ // Individual, manually edited 131-card summary; never hide numbers or conditions.
+ return window.LIVEInfusionText?.summary?.(card)||String(detail||card?.description||'효과 정보가 없습니다.');
 }
 function m904BindInfusionTips(){
  if(document.body.dataset.m904InfusionBound)return;document.body.dataset.m904InfusionBound='1';
@@ -662,18 +660,19 @@ function renderRoundUI(){
  const readyPlayer=liveRoom?.players?.find(x=>x.id===window.LIVEMultiplayer?.getPlayerId?.());
  const stableKey=JSON.stringify([appMode,roundState.active,roundState.phase,roundState.round,roundState.hp.A,roundState.hp.B,
    kind,liveInfo?.kind,liveInfo?.phase,liveInfo?.opponentSlot,liveInfo?.bye,liveInfo?.specialType,showBoss,
-   readyPlayer?.roundReady,foe?.name,scoutSlot,bossBonus,arenaSummary,m901OwnedAugmentHud(),livePermanentBuffHud(),
+   readyPlayer?.roundReady,liveInfo?.augment?.selected?.id,foe?.name,scoutSlot,bossBonus,arenaSummary,m901OwnedAugmentHud(),livePermanentBuffHud(),
    m809TopCollapsed,liveMarketCollapsed,liveAuctionCollapsed,m809SelectionCollapsed]);
  if(p._m1010Key===stableKey&&p.querySelector('.round-center strong')){
    const centerEl=p.querySelector('.round-center strong');if(centerEl.textContent!==center)centerEl.textContent=center;
    return;
  }
  p._m1010Key=stableKey;
- p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds">${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div>${roundState.phase==='prep'?`<div class="round-side enemy m1008-prep-next"><div class="round-side-line"><b>이번 라운드</b><strong>${esc(liveRoom?.started?(liveInfo?.kind==='pvp'?(liveInfo?.bye?'부전승':'결투'):liveRoundKind(roundState.round)):liveRoundKind(roundState.round))}</strong></div><small>전투 준비 단계</small></div>`:pveRound&&!showBoss?`<div class="round-side enemy m1010-farm-side"><strong>파밍</strong><small>처치한 야생동물만 아이템 획득</small></div>`:`<div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div>`}</div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
+ p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds">${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div>${roundState.phase==='prep'?`<div class="round-side enemy m1008-prep-next"><div class="round-side-line"><b>이번 라운드</b><strong>${esc(liveRoom?.started?(liveInfo?.kind==='pvp'?(liveInfo?.bye?'부전승':'결투'):liveRoundKind(roundState.round)):liveRoundKind(roundState.round))}</strong></div><small>전투 준비 단계</small></div>`:pveRound&&!showBoss?`<div class="round-side enemy m1010-farm-side"><strong>파밍</strong><small>처치한 야생동물만 아이템 획득</small></div>`:`<div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div>`}</div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':(liveInfo?.augment&&!liveInfo.augment.selected?'인퓨전 선택 후 준비 완료':'준비 완료')}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
  if(!window.LIVEMultiplayer?.getRoom()?.started)liveUpdateHpStandings({hp:[roundState.hp.A,roundState.hp.B]},[{slot:0,name:'나'},{slot:1,name:'상대'}],0);
  const newlyRenderedReady=p.querySelector('#roundOnlineReady');
- if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
+ if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;previousReady.disabled=newlyRenderedReady.disabled;newlyRenderedReady.replaceWith(previousReady)}
  else if(newlyRenderedReady){
+  newlyRenderedReady.disabled=!!(liveInfo?.augment&&!liveInfo.augment.selected);
   newlyRenderedReady.addEventListener('click',async()=>{
    if(newlyRenderedReady.dataset.pending==='1')return;
    const net=window.LIVEMultiplayer?.getRoom(),me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());
@@ -904,7 +903,7 @@ function renderGameEconomy(){
 function startRoundMode(){
  syncBoardPresentation._key=null;
  livePhaseVersion=-1;liveCompletedRound=0;liveCombatActive=false;
- m910AugmentCollapsed=false;m901AugmentStamp='';
+ m910AugmentCollapsed=true;m1012AugmentRound=null;m901AugmentStamp='';
  window.LIVEOpponentExploration=null;clearRoundTimer();
  if(running||battle)reset();
  teams={A:[],B:[]};
@@ -1388,7 +1387,7 @@ function m907RoundTransition(net){
 }
 // M9-01: authoritative, personal augment choice. Re-render only for state changes, not each 250ms clock tick.
 let m901AugmentStamp='',m901AugmentNotice='',m901AugmentBusy=false,m902PreviousOffers=[];
-let m910AugmentCollapsed=false;
+let m910AugmentCollapsed=true,m1012AugmentRound=null;
 const m907AssetPromises=new Map(),m907SentRounds=new Set();
 function m907PreloadAssets(round){
  if(m907AssetPromises.has(round))return m907AssetPromises.get(round);
@@ -1400,17 +1399,18 @@ function m907PreloadAssets(round){
  const task=Promise.all([...images,document.fonts?.ready||Promise.resolve()]);m907AssetPromises.set(round,task);task.catch(()=>m907AssetPromises.delete(round));return task;
 }
 function m907ReportAssets(net){
- if(net.phase!=='augment-sync'||!net.augment?.selected||net.augment.downloadReady||m907SentRounds.has(net.round))return;
+ if(!['prep','augment-sync'].includes(net.phase)||!net.augment?.selected||net.augment.downloadReady||m907SentRounds.has(net.round))return;
  m907SentRounds.add(net.round);
  m907PreloadAssets(net.round).then(()=>{const ready=window.LIVEMultiplayer?.augmentAssetsReady;if(!ready)throw new Error('멀티플레이 다운로드 동기화 기능 없음');return ready(net.round)}).catch(err=>{m907SentRounds.delete(net.round);m901AugmentNotice='에셋 로딩이 끝나지 않았어: '+err.message+' · 새로고침 후 재시도';m901AugmentStamp='';console.warn(err)});
 }
 function liveAugmentUi(net,slot){
  let panel=document.querySelector('#liveAugmentPanel');
  if(!panel){panel=document.createElement('section');panel.id='liveAugmentPanel';panel.hidden=true;document.body.appendChild(panel);}
- const active=['augment','augment-sync'].includes(net?.phase)&&!!net.augment&&net.hp?.[slot]>0;
+ const active=['prep','augment','augment-sync'].includes(net?.phase)&&!!net.augment&&net.hp?.[slot]>0;
+ if(active&&m1012AugmentRound!==net.round){m1012AugmentRound=net.round;m910AugmentCollapsed=true;m901AugmentStamp='';}
  if(active&&panel.hidden){panel.classList.add('m909-opening');setTimeout(()=>panel.classList.remove('m909-opening'),1000)}
  panel.hidden=!active;
-  if(!active)m910AugmentCollapsed=false;panel.classList.toggle('m910-collapsed',m910AugmentCollapsed);
+  if(!active)m1012AugmentRound=null;panel.classList.toggle('m1012-integrated',active&&net.phase==='prep');panel.classList.toggle('m910-collapsed',m910AugmentCollapsed);
   document.body.classList.toggle('m901-augment-active',active&&!m910AugmentCollapsed);
  if(!active){m901AugmentStamp='';m901AugmentNotice='';m901AugmentBusy=false;m902PreviousOffers=[];return;}
  m907ReportAssets(net);const a=net.augment,tier=a.tier||'gray',tierName={gray:'1단계',blue:'2단계',purple:'3단계'}[tier]||tier;
@@ -1420,10 +1420,10 @@ function liveAugmentUi(net,slot){
   const chosen=!!a.selected;
   const changedCards=(a.offers||[]).map((c,i)=>m902PreviousOffers[i]!==c.id);
   m902PreviousOffers=(a.offers||[]).map(c=>c.id);
-  panel.innerHTML=`<button type="button" class="m910-augment-collapse" data-m910-collapse aria-expanded="${!m910AugmentCollapsed}">${m910AugmentCollapsed?'인퓨전 선택창 열기 ▾':'인퓨전 선택창 접기 ▴'}</button><div class="m901-augment-modal ${esc(tier)} ${chosen?'m904-selected':''}" role="dialog" aria-modal="true" aria-labelledby="m901AugmentTitle">
-   <header><div><small>AGLAIA // INFUSION SELECTION · ROUND ${net.round}</small><h2 id="m901AugmentTitle">${esc(tierName)} 인퓨전 수신</h2><p>TACTICAL PACKAGE // 데이터 패키지 세 가지 중 하나를 설치해</p></div><div class="m901-augment-clock"><small>연결 종료까지</small><strong id="m901AugmentTime">30</strong><small>SEC</small></div></header>
-   <div class="m901-augment-cards">${(a.offers||[]).map((c,i)=>`<article class="m902-infusion-card ${changedCards[i]?'m902-animate':''}" style="--seq:${i}" data-infusion-slot="${i}" data-infusion-id="${esc(c.id)}" data-infusion-help="${esc(m910Effect(window.LIVEInfusionText.explain(c)))}" ${chosen&&a.selected.id===c.id?'data-selected="true"':''}><div class="m902-card-meta"><span>${esc(tierName)} // ${c.targetType==='role'?'역할':c.target?'소속':'공통'}</span><span class="m902-activity">● LINK READY</span></div><div class="m902-emblem" aria-hidden="true"><span>${c.targetType==='role'?'◇':c.target?'✧':'⬡'}</span></div><h3>${esc(c.name)}</h3><p>${esc(m1010InfusionSummary(c,m910Effect(window.LIVEInfusionText.explain(c))))}</p><small class="m1010-infusion-help">마우스를 올려 요약 · Shift를 누르면 상세 수치를 볼 수 있습니다.</small><small class="m902-status">${c.prototype?'미구현 · 시범 카드':c.tier==='blue'?'2단계 · 전투 및 상점 효과':c.tier==='purple'?'3단계 · 특수 전투 및 경제 효과':'1단계 · 효과 개발 중'}</small><div class="m902-download">DATA SYNCHRONIZED<i></i></div><div class="m902-card-buttons"><button type="button" data-augment-pick="${i}" ${chosen?'disabled':''}>${chosen?(a.selected.id===c.id?'✓ 설치 완료':'선택 종료'):'인퓨전 설치'}</button><button type="button" class="m902-reroll" data-augment-reroll="${i}" ${chosen||(a.rerollsUsed||[]).includes(i)?'disabled':''} aria-label="${i+1}번째 카드 재수신">${(a.rerollsUsed||[]).includes(i)?'재수신 완료':'⟳ 재수신'}</button></div></article>`).join('')}</div>
-   <footer><span>효과를 확인하고 선택해 주세요.</span><span>${net.phase==='augment-sync'?a.downloadReadyCount+'명 다운로드 완료':a.readyCount+'명 선택 완료'}</span><span>재수신 ${a.rerollsLeft}/3</span></footer><p id="m901AugmentNotice" role="status">${esc(m901AugmentNotice||(chosen?'설치 완료 · 에셋 동기화 대기':'시간 종료 시 자동 인퓨전 설치'))}</p>
+  panel.innerHTML=`<button type="button" class="m910-augment-collapse" data-m910-collapse aria-expanded="${!m910AugmentCollapsed}">${m910AugmentCollapsed?(chosen?'✓ 인퓨전 선택 완료 · 다시 보기':'✧ 인퓨전 선택하기 ▾'):'인퓨전 접기 ▴'}</button><div class="m901-augment-modal ${esc(tier)} ${chosen?'m904-selected':''}" role="dialog" aria-modal="false" aria-labelledby="m901AugmentTitle">
+   <header><div><small>AGLAIA // INFUSION SELECTION · ROUND ${net.round}</small><h2 id="m901AugmentTitle">${esc(tierName)} 인퓨전 수신</h2><p>상점과 편성을 확인하며 세 가지 중 하나를 선택할 수 있습니다.</p></div><div class="m901-augment-clock"><small>연결 종료까지</small><strong id="m901AugmentTime">60</strong><small>SEC</small></div></header>
+   <div class="m901-augment-cards">${(a.offers||[]).map((c,i)=>`<article class="m902-infusion-card ${changedCards[i]?'m902-animate':''}" style="--seq:${i}" data-infusion-slot="${i}" data-infusion-id="${esc(c.id)}" data-infusion-help="${esc(m910Effect(window.LIVEInfusionText.explain(c)))}" ${chosen&&a.selected.id===c.id?'data-selected="true"':''}><div class="m902-card-meta"><span>${esc(tierName)} // ${c.targetType==='role'?'역할':c.target?'소속':'공통'}</span><span class="m902-activity">● LINK READY</span></div><div class="m902-emblem" aria-hidden="true"><span>${c.targetType==='role'?'◇':c.target?'✧':'⬡'}</span></div><h3>${esc(c.name)}</h3><p>${esc(m1010InfusionSummary(c,m910Effect(window.LIVEInfusionText.explain(c))))}</p><div class="m1012-infusion-detail" hidden>${esc(window.LIVEInfusionText.explain(c))}</div><button type="button" class="m1012-details-btn" data-infusion-detail="${i}" aria-expanded="false">상세 설명 보기 ▾</button><small class="m902-status">${c.prototype?'미구현 · 시범 카드':c.tier==='blue'?'2단계 · 전투 및 상점 효과':c.tier==='purple'?'3단계 · 특수 전투 및 경제 효과':'1단계 · 효과 개발 중'}</small><div class="m902-download">DATA SYNCHRONIZED<i></i></div><div class="m902-card-buttons"><button type="button" data-augment-pick="${i}" ${chosen?'disabled':''}>${chosen?(a.selected.id===c.id?'✓ 설치 완료':'선택 종료'):'인퓨전 설치'}</button><button type="button" class="m902-reroll" data-augment-reroll="${i}" ${chosen||(a.rerollsUsed||[]).includes(i)?'disabled':''} aria-label="${i+1}번째 카드 재수신">${(a.rerollsUsed||[]).includes(i)?'재수신 완료':'⟳ 재수신'}</button></div></article>`).join('')}</div>
+   <footer><span>효과를 확인하고 선택해 주세요.</span><span>${a.readyCount}명 선택 완료</span><span>재수신 ${a.rerollsLeft}/3</span></footer><p id="m901AugmentNotice" role="status">${esc(m901AugmentNotice||(chosen?'인퓨전 선택 완료 · 준비와 편성을 계속할 수 있습니다.':'준비 시간 종료 시 미선택 인퓨전은 자동 선택됩니다.'))}</p>
   </div>`;
   panel.querySelector('[data-m910-collapse]')?.addEventListener('click',()=>{m910AugmentCollapsed=!m910AugmentCollapsed;m901AugmentStamp='';liveAugmentUi(net,slot)});
    const request=async(cmd,choice)=>{if(m901AugmentBusy)return;m901AugmentBusy=true;panel.querySelectorAll('button').forEach(b=>b.disabled=true);
@@ -1431,6 +1431,7 @@ function liveAugmentUi(net,slot){
     catch(err){m901AugmentNotice=err?.message||'요청 실패';panel.querySelector('#m901AugmentNotice').textContent=m901AugmentNotice;m901AugmentStamp='';}
     finally{m901AugmentBusy=false;}
   };
+  panel.querySelectorAll('[data-infusion-detail]').forEach(btn=>btn.addEventListener('click',()=>{const box=panel.querySelector(`.m902-infusion-card[data-infusion-slot="${btn.dataset.infusionDetail}"] .m1012-infusion-detail`);if(!box)return;box.hidden=!box.hidden;btn.setAttribute('aria-expanded',String(!box.hidden));btn.textContent=box.hidden?'상세 설명 보기 ▾':'상세 설명 접기 ▴';}));
   panel.querySelectorAll('[data-augment-pick]').forEach(btn=>btn.onclick=()=>request('pick',Number(btn.dataset.augmentPick)));
   panel.querySelectorAll('[data-augment-reroll]').forEach(btn=>btn.onclick=()=>request('reroll',Number(btn.dataset.augmentReroll)));
  }
@@ -1440,7 +1441,7 @@ function liveAugmentUi(net,slot){
  const augmentClock=panel.querySelector('.m901-augment-clock');
  if(augmentClock){
   const captions=augmentClock.querySelectorAll('small');
-  if(captions[0])captions[0].textContent=augmentSync?'에셋 동기화':'연결 종료까지';
+  if(captions[0])captions[0].textContent=augmentSync?'에셋 동기화':'준비 종료까지';
   if(captions[1])captions[1].textContent=augmentSync?'':'SEC';
  }
  const timer=panel.querySelector('#m901AugmentTime');
