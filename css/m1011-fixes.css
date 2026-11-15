@@ -291,3 +291,52 @@ body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark)::a
 @media(prefers-reduced-motion:reduce){
  body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card{transition:none!important}
 }
+
+
+/* M10-14 — Server-authoritative combat loading. Never fade to the board while
+   game.phase is still intro; the server independently advances/fallbacks. */
+body[data-app-mode="game"] #liveRoundIntro{
+ position:fixed!important;inset:0!important;z-index:17500!important;
+ display:flex!important;justify-content:center!important;align-items:center!important;
+ box-sizing:border-box!important;padding:20px!important;
+ background:radial-gradient(ellipse at 50% 45%,#17272f 0%,#090f15 52%,#05080d 100%)!important;
+ color:#e4f1ec!important;opacity:1!important;animation:none!important;
+ backdrop-filter:blur(5px);pointer-events:auto!important;
+}
+#liveRoundIntro .m1014-load-content{
+ width:min(520px,100%);display:flex;flex-direction:column;align-items:center;
+ gap:13px;text-align:center;font-family:system-ui,'Pretendard',sans-serif;
+}
+#liveRoundIntro .m1014-load-caption{font-size:10px;letter-spacing:.28em;color:#789b9b}
+#liveRoundIntro .m1014-load-logo{font:800 clamp(40px,8vw,78px)/1.1 system-ui,sans-serif;letter-spacing:.16em;animation:m1014-logo-glow 3s ease-in-out infinite}
+#liveRoundIntro .m1014-load-content>small{font-size:12px;color:#91aaa9;letter-spacing:.19em}
+#liveRoundIntro .m1014-load-content>strong{font-size:18px;font-weight:700;letter-spacing:.12em;color:#daeae7}
+#liveRoundIntro .m1014-load-content>p{margin:0;font-size:11px;color:#89a7a4;letter-spacing:.09em}
+#liveRoundIntro .m1014-load-track{height:3px;width:min(320px,80vw);background:#293f46;overflow:hidden;border-radius:5px;position:relative}
+#liveRoundIntro .m1014-load-track i{position:absolute;left:0;top:0;width:34%;height:100%;background:linear-gradient(90deg,transparent,#a0cec2,transparent);animation:m1014-load-scan 2.1s ease-in-out infinite}
+@keyframes m1014-load-scan{from{transform:translateX(-120%)}to{transform:translateX(400%)}}
+@keyframes m1014-logo-glow{0%,100%{opacity:.7;text-shadow:0 0 8px #9fc6b61c}50%{opacity:1;text-shadow:0 0 24px #9fc6b64a}}
+@media(prefers-reduced-motion:reduce){#liveRoundIntro .m1014-load-track i,#liveRoundIntro .m1014-load-logo{animation:none!important}}
+
+/* M10-14 — Desktop Shift replaces the summary *inside the original card*.
+   Long explanations scroll within their text area; installation controls stay reachable. */
+body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card>p.m1014-infusion-description.m1014-expanded{
+ max-height:clamp(100px,25dvh,220px)!important;min-height:85px!important;
+ overflow-y:auto!important;overscroll-behavior:contain!important;
+ scrollbar-width:thin;scrollbar-color:#547481 transparent;
+ flex:1 1 auto!important;
+}
+#liveAugmentPanel .m1014-infusion-shift-hint{display:block;font-size:10px;color:#98b5c2;letter-spacing:.02em}
+#liveAugmentPanel .m1014-infusion-touch-toggle{display:none!important}
+@media (hover:none),(pointer:coarse){
+ #liveAugmentPanel .m1014-infusion-shift-hint{display:none!important}
+ #liveAugmentPanel .m1014-infusion-touch-toggle{
+  display:inline-block!important;align-self:flex-start!important;
+  border:1px solid #527381!important;border-radius:5px!important;
+  background:rgba(32,52,66,.55)!important;padding:5px 9px!important;
+  color:#c3dce5!important;font-size:11px!important;cursor:pointer!important;
+ }
+ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card>p.m1014-expanded{
+  max-height:min(29dvh,250px)!important;min-height:0!important;
+ }
+}
