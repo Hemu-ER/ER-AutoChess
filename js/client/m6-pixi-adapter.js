@@ -35,18 +35,32 @@
  
  let activeFloor=false;
  const nodes=new Map(), loading=new Map();
- const hits=[], pendingHits=new Map(), lastBasic=new Map(), motions=new Map(), floatTexts=new Map();
+ const floats=[], pendingFloats=new Map(), skillLabels=new Map(), lastBasic=new Map(), motions=new Map();
  let motionFrame=0;
  const clock=()=>performance.now();
  function showDomIfFormation(formation){if(app?.canvas)app.canvas.style.visibility=formation?'hidden':'visible';if(formation){board.classList.remove('m6-pixi-active');if(layer)layer.visible=false;}}
 
- function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
-  const at=clock(),id=String(e.unitId);
-  const bucket=Math.floor(at/500),key=id+':'+bucket;
-  const current=pendingHits.get(key)||{id,amount:0,at:at,bucket,critical:false};
-  current.amount+=Number(e.amount);current.critical ||= !!e.critical;pendingHits.set(key,current);
-  motions.set(id,{kind:'hit',at});startMotion();
+ function floatFlavor(e){
+  if(e?.type==='heal')return 'heal';
+  const tags=new Set(Array.isArray(e?.tags)?e.tags:[]);
+  if(tags.has('shared'))return 'shared';
+  if(tags.has('delayed'))return 'delayed';
+  if(tags.has('dot'))return 'dot';
+  if(e?.kind==='skill')return 'skill';
+  if(e?.kind==='passive'||e?.kind==='synergy')return 'effect';
+  return 'basic';
  }
+ function impact(e){if(!ready||!e?.unitId||!(Number(e.amount)>0))return;
+  const at=clock(),id=String(e.unitId),flavor=floatFlavor(e),type=e.type==='heal'?'heal':'damage';
+  const bucket=Math.floor(at/420),key=[type,id,flavor,bucket].join(':');
+  const current=pendingFloats.get(key)||{id,amount:0,at,bucket,critical:false,flavor,type,sourceId:e.sourceId||null};
+  current.amount+=Number(e.amount);current.critical ||= !!e.critical;current.sourceId=e.sourceId||current.sourceId||null;pendingFloats.set(key,current);
+  if(type==='damage')motions.set(id,{kind:'hit',at});
+  if(e.sourceId)motions.set(String(e.sourceId),{kind:'attack',at});
+  startMotion();
+ }
+ function skillCast(e){if(!ready||!e?.unitId||!e?.skill)return;skillLabels.set(String(e.unitId),{text:String(e.skill),at:clock()});motions.set(String(e.unitId),{kind:'attack',at:clock()});startMotion()}
+ function combatEvent(e){if(!e)return;if(e.type==='damage'||e.type==='heal')impact(e);else if(e.type==='skill')skillCast(e)}
  function combatSnapshot(units){if(!ready||!Array.isArray(units))return;
   const present=new Set();const at=clock();
   for(const u of units){const id=String(u.id);present.add(id);const n=Number(u.basicCount||0),old=lastBasic.get(id);
@@ -58,34 +72,47 @@
  function startMotion(){if(motionFrame||!ready)return;motionFrame=requestAnimationFrame(animateMotion)}
  function animateMotion(){motionFrame=0;if(!ready||!app)return;
   const now=clock();let active=false;
-  // Merge rapid periodic/shared-damage popups in 0.5s presentation buckets.
-  for(const [key,hit] of pendingHits){if(now>=(hit.bucket+1)*500){hits.push({...hit,at:now});pendingHits.delete(key);}else active=true;}
-  while(hits.length>65){const oldest=hits.shift();const t=floatTexts.get(oldest);if(t){t.parent?.removeChild(t);t.destroy();floatTexts.delete(oldest)}}
+  for(const [key,hit] of pendingFloats){if(now>=(hit.bucket+1)*420){floats.push({...hit,at:now});pendingFloats.delete(key);}else active=true;}
+  while(floats.length>96)floats.shift();
   for(const [id,entry] of nodes){const m=motions.get(id);let dx=0,dy=0;
    if(m){const age=now-m.at,duration=m.kind==='attack'?170:220;
     if(age<duration){const t=age/duration,k=Math.sin(Math.PI*t);dx=m.kind==='attack'?(entry.team==='B'?-1:1)*9*k:0;dy=m.kind==='hit'?4*k:0;
-     entry.sprite.tint=m.kind==='hit'?0xffb9bf:0xffffff;active=true;
+     entry.sprite.tint=m.kind==='hit'?0xffc9ce:0xffffff;active=true;
     }else{motions.delete(id);entry.sprite.tint=0xffffff;}}
    entry.container.position.set(entry.baseX+dx,entry.baseY+dy);
   }
   const gfx=app.stage.getChildByLabel?.('m6-floats');
-  if(gfx){const damageLanes=new Map();for(const h of hits){const age=now-h.at;if(age>1050)continue;
-   const ent=nodes.get(h.id);if(!ent)continue;active=true;
-   let t=floatTexts.get(h);
-   if(!t){
-    t=new (P().Text)({text:Math.round(h.amount).toLocaleString('ko-KR'),style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?24:19,fontWeight:'900',fill:h.critical?0xffdc91:0xffb6bd,stroke:{color:0x101016,width:4}}});
-    t.anchor.set(.5,.5);floatTexts.set(h,t);gfx.addChild(t);
+  if(gfx){gfx.removeChildren().forEach(c=>c.destroy?.());const damageLanes=new Map(),labelLanes=new Map();
+   const styleFor=float=>{
+    const styles={
+      basic:{fill:0xffc0c8,size:19,fontStyle:'normal'},
+      skill:{fill:0xffd39a,size:21,fontStyle:'italic'},
+      effect:{fill:0xf8d3a3,size:18,fontStyle:'italic'},
+      dot:{fill:0xffaa87,size:17,fontStyle:'italic'},
+      delayed:{fill:0xd4bcff,size:18,fontStyle:'italic'},
+      shared:{fill:0xbfc8ff,size:18,fontStyle:'italic'},
+      heal:{fill:0x9ce8c7,size:19,fontStyle:'normal'}
+    };return styles[float.flavor]||styles.basic;
+   };
+   for(const h of floats){const age=now-h.at;if(age>1100)continue;const ent=nodes.get(h.id);if(!ent)continue;active=true;
+    const style=styleFor(h);const prefix=h.type==='heal'?'+':'';
+    const t=new (P().Text)({text:`${prefix}${Math.round(h.amount).toLocaleString('ko-KR')}`,style:{fontFamily:'Arial,sans-serif',fontSize:h.critical?style.size+3:style.size,fontWeight:'900',fontStyle:style.fontStyle,fill:style.fill,stroke:{color:0x101016,width:4}}});
+    t.anchor.set(.5,.5);const lane=(damageLanes.get(h.id)||0);damageLanes.set(h.id,lane+1);
+    t.position.set(ent.baseX+Math.max(12,ent.visualHeight*.24)+(lane%4)*7,ent.baseY-Math.max(22,ent.visualHeight*.78)-(lane%5)*11-age*.046);t.alpha=Math.max(0,Math.min(1,(1100-age)/360));gfx.addChild(t);
    }
-   const lane=(damageLanes.get(h.id)||0);damageLanes.set(h.id,lane+1);
-   t.position.set(ent.baseX+Math.max(15,ent.visualHeight*.27)+(lane%4)*7,ent.baseY-Math.max(25,ent.visualHeight*.77)-(lane%5)*11-age*.047);t.alpha=Math.min(1,(1050-age)/360);
-  }}
-  for(let i=hits.length-1;i>=0;i--)if(now-hits[i].at>1050){const old=hits.splice(i,1)[0];const t=floatTexts.get(old);if(t){t.parent?.removeChild(t);t.destroy();floatTexts.delete(old)}};
+   for(const [id,label] of skillLabels){const age=now-label.at;if(age>650){skillLabels.delete(id);continue;}const ent=nodes.get(id);if(!ent)continue;active=true;
+    const lane=(labelLanes.get(id)||0);labelLanes.set(id,lane+1);
+    const t=new (P().Text)({text:label.text,style:{fontFamily:'Arial,sans-serif',fontSize:12,fontWeight:'800',fill:0xeef8fb,stroke:{color:0x091116,width:3},letterSpacing:0.2}});
+    t.anchor.set(.5,1);t.position.set(ent.baseX,ent.baseY-ent.visualHeight-12-lane*14-age*.016);t.alpha=Math.max(0,Math.min(1,1-age/650));gfx.addChild(t);
+   }
+  }
+  for(let i=floats.length-1;i>=0;i--)if(now-floats[i].at>1100)floats.splice(i,1);
   if(active)startMotion();
  }
 
  const P=()=>window.PIXI;
  const queue=()=>{drawVersion++;if(drawing){dirty=true;return;}if(!scheduled){scheduled=true;requestAnimationFrame(()=>{scheduled=false;draw().catch(error=>{console.warn('[M6 Pixi] fallback:',error);fallback();});});}};
- function fallback(){ready=false;drawing=false;dirty=false;drawVersion++;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();hits.length=0;floatTexts.clear();pendingHits.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
+ function fallback(){ready=false;drawing=false;dirty=false;drawVersion++;board.classList.remove('m6-pixi-active');delete shell.dataset.m6Pixi;document.getElementById('m6-field-label')?.remove();if(app){try{app.destroy(true,{children:true});}catch(_){ }app=null;}layer=null;floorSprite=null;effects=null;activeFloor=false;nodes.clear();loading.clear();floats.length=0;pendingFloats.clear();skillLabels.clear();motions.clear();lastBasic.clear();if(motionFrame)cancelAnimationFrame(motionFrame);motionFrame=0;}
  async function init(){
   if(app||busy||!P()?.Application)return;
   busy=true;
@@ -185,5 +212,5 @@
  let attempts=0;const begin=()=>{if(P()?.Application)init();else if(++attempts<30)setTimeout(begin,300);};
  begin();
  setInterval(()=>{if(ready && desiredFloor()!== (activeFloor?floorId:null))queue();},350);
- window.M6PixiAdapter={refresh:queue,disable:fallback,showDomIfFormation,impact,combatSnapshot};
+ window.M6PixiAdapter={refresh:queue,disable:fallback,showDomIfFormation,impact,combatEvent,combatSnapshot};
 })();
