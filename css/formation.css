@@ -368,16 +368,12 @@ body[data-app-mode="game"] #currentSynergyPanel.m1010-battle-synergy .current-sy
 #board .unit.live-hit-flash .sd-slot {animation:m1010-hit-bump .18s ease-out both}
 #board .unit.live-attack-flash .sd-slot {animation:m1010-attack-accent .22s ease-out both}
 #board .unit.live-hit-flash .hit-vfx::after {
- content:"";position:absolute;left:50%;top:44%;width:32px;height:32px;transform:translate(-50%,-50%) rotate(-9deg);pointer-events:none;opacity:0;
- background:
-  linear-gradient(135deg,transparent 44%,rgba(255,248,238,.95) 48%,rgba(255,169,146,.95) 50%,rgba(255,248,238,.95) 52%,transparent 56%),
-  linear-gradient(45deg,transparent 44%,rgba(255,248,238,.88) 48%,rgba(255,132,116,.92) 50%,rgba(255,248,238,.88) 52%,transparent 56%),
-  linear-gradient(90deg,transparent 47%,rgba(255,204,176,.50) 49%,rgba(255,204,176,.50) 51%,transparent 53%);
- filter:drop-shadow(0 0 7px rgba(255,120,102,.26));animation:m1010-hit-cross .26s ease-out forwards;
+ content:"";position:absolute;inset:-16px;border-radius:50%;pointer-events:none;
+ border:2px solid #ffd3a0;box-shadow:0 0 12px #ed8869aa;animation:m1010-hit-ring .28s ease-out forwards;
 }
 @keyframes m1010-hit-bump {0%{filter:brightness(1.9);transform:translateX(3px)}60%{filter:brightness(1.3);transform:translateX(-2px)}100%{filter:brightness(1);transform:none}}
 @keyframes m1010-attack-accent {0%{filter:brightness(1.1);transform:translateY(0)}45%{filter:brightness(1.5);transform:translateY(-4px)}100%{filter:brightness(1);transform:none}}
-@keyframes m1010-hit-cross {0%{opacity:.92;transform:translate(-50%,-50%) scale(.55) rotate(-16deg)}65%{opacity:.72}100%{opacity:0;transform:translate(-50%,-50%) scale(1.15) rotate(10deg)}}
+@keyframes m1010-hit-ring {from{opacity:.9;transform:scale(.45)}to{opacity:0;transform:scale(1.5)}}
 /* No external busy cursor for network-ready actions; stable DOM prevents flicker. */
 #roundModePanel #roundOnlineReady{cursor:pointer!important;transition:background-color .15s,border-color .15s,opacity .15s!important}
 #roundModePanel #roundOnlineReady[aria-busy="true"]{cursor:default!important;opacity:.77!important}
@@ -422,4 +418,43 @@ body[data-app-mode="game"]{overflow-x:clip}
 @media(prefers-reduced-motion:reduce){
  #board .unit.live-hit-flash .sd-slot,#board .unit.live-attack-flash .sd-slot,
  #board .unit.live-hit-flash .hit-vfx::after{animation:none!important}
+}
+
+/* M10 stability: independent synergy HUD (no phantom board grid column). */
+body[data-app-mode="game"] .game-board-row{grid-template-columns:minmax(0,1fr)!important;justify-content:center!important;}
+body[data-app-mode="game"] #currentSynergyPanel.current-synergy-panel{
+ position:fixed!important;display:block!important;
+ left:max(12px,calc(50vw - 790px))!important;
+ top:var(--live-synergy-safe-top,150px)!important;
+ right:auto!important;bottom:auto!important;
+ width:clamp(170px,15vw,218px)!important;
+ max-height:max(100px,calc(100dvh - var(--live-synergy-safe-top,150px) - 24px))!important;
+ overflow:auto!important;z-index:8200!important;
+}
+@media(max-width:850px){
+ body[data-app-mode="game"] #currentSynergyPanel.current-synergy-panel{
+  top:auto!important;left:10px!important;bottom:clamp(120px,22dvh,210px)!important;
+  width:calc(100vw - 20px)!important;max-height:65px!important;
+  overflow-x:auto!important;overflow-y:hidden!important;
+ }
+ body[data-app-mode="game"] #currentSynergyPanel .synergy-strip{flex-direction:row!important;flex-wrap:nowrap!important;}
+}
+
+/* Higher-specificity scene overrides: older M10-10 selectors also used !important. */
+body[data-app-mode="game"][data-live-scene="formation"] .game-board-row,
+body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
+ grid-template-columns:minmax(0,1fr)!important;
+ justify-items:center!important;
+}
+body[data-app-mode="game"][data-live-scene] #currentSynergyPanel.current-synergy-panel.m1010-battle-synergy{
+ top:var(--live-synergy-safe-top,150px)!important;
+ left:max(12px,calc(50vw - 790px))!important;
+ width:clamp(170px,15vw,218px)!important;
+ max-height:max(100px,calc(100dvh - var(--live-synergy-safe-top,150px) - 24px))!important;
+}
+@media(max-width:850px){
+ body[data-app-mode="game"][data-live-scene] #currentSynergyPanel.current-synergy-panel.m1010-battle-synergy{
+  top:auto!important;left:10px!important;bottom:clamp(120px,22dvh,210px)!important;
+  width:calc(100vw - 20px)!important;max-height:65px!important;
+ }
 }
