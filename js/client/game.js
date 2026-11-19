@@ -260,6 +260,43 @@ function supplyCanReceive(characterId,star){return gameState.owned.filter(o=>o.l
 
 function isOnlineMatch(){return !!window.LIVEMultiplayer?.getRoom()?.started}
 function onlineEconomyAction(cmd,payload={}){return window.LIVEMultiplayer?.economy?.(cmd,payload).catch(e=>{gameState.message=e.message||'서버 정산 오류';renderGameEconomy()})}
+// M10-15R: animations follow *confirmed* formation changes; never change game state.
+// Capture both existing board silhouettes and bench sources before an economy redraw.
+let m1015PlacementOrigins=null;
+function m1015CapturePlacementOrigins(){
+ if(appMode!=='game'||roundState.phase!=='prep'||running||document.hidden){m1015PlacementOrigins=null;return;}
+ const sources=new Map();
+ document.querySelectorAll('#board .unit[data-owned-drag], #gameBottomDock .bench-unit[data-owned-drag]').forEach(el=>{
+  const rect=el.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  sources.set(String(el.dataset.ownedDrag),{
+   x:rect.left+rect.width/2,y:rect.top+rect.height/2,
+   area:el.closest('#board')?'board':'bench'
+  });
+ });
+ m1015PlacementOrigins=sources.size?sources:null;
+}
+function m1015AnimatePlacement(el,uid,area){
+ if(!m1015PlacementOrigins||uid==null)return false;
+ const key=String(uid),from=m1015PlacementOrigins.get(key);
+ if(!from)return false;
+ m1015PlacementOrigins.delete(key);
+ if(document.hidden||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches||typeof el.animate!=='function')return true;
+ const rect=el.getBoundingClientRect();if(!rect.width||!rect.height)return true;
+ let dx=from.x-(rect.left+rect.width/2),dy=from.y-(rect.top+rect.height/2);
+ const crossing=from.area!==area;
+ // Do not fly across the HUD or clip into the shop's scroll viewport.
+ if(crossing){dx=Math.max(-28,Math.min(28,dx));dy=Math.max(-43,Math.min(43,dy));}
+ if(Math.hypot(dx,dy)<2)return true;
+ try{
+  el._m1015Animation?.cancel();
+  el._m1015Animation=el.animate([
+   {transform:`translate3d(${dx}px,${dy}px,0) scale(${crossing ? .94 : 1})`,opacity:crossing ? .65 : 1},
+   {transform:'translate3d(0,0,0) scale(1)',opacity:1}
+  ],{duration:crossing?275:220,easing:'cubic-bezier(.2,.78,.26,1)'});
+ }catch(_){/* Animation availability must never block placements. */}
+ return true;
+}
 let liveEconomyStamp='',liveEconomyPhase='';
 let m909MasteryLevel=0,m909MasteryProgress=0;
 function applyLiveEconomy(assets,phase){
@@ -279,6 +316,7 @@ function applyLiveEconomy(assets,phase){
   // Do not keep the locally randomized starter until the first purchase: the server owns the opening unit.
   const authoritative=gameState.owned.filter(o=>o.location==='board').map(o=>({ownedId:o.uid,characterId:o.characterId,star:o.star,x:o.x,y:o.y}));
   const changed=JSON.stringify(teams.A)!==JSON.stringify(authoritative);
+  if(changed&&phase==='prep'&&oldPhase==='prep')m1015CapturePlacementOrigins();
   if(changed)teams.A=authoritative;
   if(roundState.phase==='prep'&&!running&&(changed||oldPhase!==phase))reset();
  }
@@ -437,8 +475,8 @@ function renderItemPanel(){
 panel.querySelectorAll('[data-item-index]').forEach(b=>{b.addEventListener('pointerdown',e=>beginItemPointerDrag(e,+b.dataset.itemIndex,b));b.addEventListener('pointermove',moveItemPointerDrag);b.addEventListener('pointerup',endItemPointerDrag);b.addEventListener('pointercancel',cancelItemPointerDrag)});
  panel.querySelector('#liveCodexOpen').onclick=openLiveCodex;bindItemTooltips(panel);
 }
-function deployOwned(uid){if(isOnlineMatch()){const pos=firstFreeCell();if(pos)onlineEconomyAction('deploy',{uid,x:pos.x,y:pos.y});return;}if(roundState.phase!=='prep'||teams.A.length>=m907TeamLimit('A'))return;const o=gameState.owned.find(x=>x.uid===uid);if(!o||o.location!=='bench')return;const pos=firstFreeCell();if(!pos)return;teams.A.push({characterId:o.characterId,star:o.star,...pos,ownedId:o.uid});o.location='board';reset();renderGameEconomy()}
-function benchOwned(uid){if(isOnlineMatch()){onlineEconomyAction('recall',{uid:uid});return;}if(roundState.phase!=='prep')return;const i=teams.A.findIndex(e=>e.ownedId===uid);if(i<0)return;teams.A.splice(i,1);const o=gameState.owned.find(x=>x.uid===uid);if(o)o.location='bench';reset();renderGameEconomy()}
+function deployOwned(uid){if(isOnlineMatch()){const pos=firstFreeCell();if(pos)onlineEconomyAction('deploy',{uid,x:pos.x,y:pos.y});return;}if(roundState.phase!=='prep'||teams.A.length>=m907TeamLimit('A'))return;const o=gameState.owned.find(x=>x.uid===uid);if(!o||o.location!=='bench')return;const pos=firstFreeCell();if(!pos)return;m1015CapturePlacementOrigins();teams.A.push({characterId:o.characterId,star:o.star,...pos,ownedId:o.uid});o.location='board';reset();renderGameEconomy()}
+function benchOwned(uid){if(isOnlineMatch()){onlineEconomyAction('recall',{uid:uid});return;}if(roundState.phase!=='prep')return;const i=teams.A.findIndex(e=>e.ownedId===uid);if(i<0)return;m1015CapturePlacementOrigins();teams.A.splice(i,1);const o=gameState.owned.find(x=>x.uid===uid);if(o)o.location='bench';reset();renderGameEconomy()}
 function masteryExpToNext(level=gameState.masteryLevel){return level>=20?0:(MASTERY_EXP_TO_NEXT[level]||6)}
 function addMasteryProgress(amount=1,reason='숙련도'){
  if(gameState.masteryLevel>=20)return;
@@ -802,7 +840,9 @@ function clearRolePlacementHints(){
 }
 function moveOwnedToCell(uid,cell){
  if(appMode!=='game'||roundState.phase!=='prep'||!cell)return false;const o=gameState.owned.find(x=>x.uid===uid);if(!o)return false;const gx=+cell.dataset.x,y=+cell.dataset.y;if(gx>2)return false;let entry=teams.A.find(e=>e.ownedId===uid),occupied=teams.A.find(e=>e!==entry&&e.x===gx&&e.y===y);
- if(!entry){if(teams.A.length>=m907TeamLimit('A')&&!occupied){gameState.message='전장에는 최대 3명까지 배치할 수 있어.';renderGameEconomy();return false}entry={characterId:o.characterId,star:o.star,x:gx,y,ownedId:o.uid};if(occupied){const old=gameState.owned.find(x=>x.uid===occupied.ownedId);if(old)old.location='bench';teams.A.splice(teams.A.indexOf(occupied),1)}teams.A.push(entry);o.location='board'}else if(occupied){const ox=entry.x,oy=entry.y;entry.x=gx;entry.y=y;occupied.x=ox;occupied.y=oy}else{entry.x=gx;entry.y=y}reset();renderGameEconomy();return true
+ if(!entry&&teams.A.length>=m907TeamLimit('A')&&!occupied){gameState.message='전장에는 최대 3명까지 배치할 수 있어.';renderGameEconomy();return false}
+ m1015CapturePlacementOrigins();
+ if(!entry){entry={characterId:o.characterId,star:o.star,x:gx,y,ownedId:o.uid};if(occupied){const old=gameState.owned.find(x=>x.uid===occupied.ownedId);if(old)old.location='bench';teams.A.splice(teams.A.indexOf(occupied),1)}teams.A.push(entry);o.location='board'}else if(occupied){const ox=entry.x,oy=entry.y;entry.x=gx;entry.y=y;occupied.x=ox;occupied.y=oy}else{entry.x=gx;entry.y=y}reset();renderGameEconomy();return true
 }
 const OWNED_DRAG_THRESHOLD=10;
 function clearOwnedDrag(){document.querySelector('#liveMarketDrop')?.classList.remove('is-dragover');
@@ -919,6 +959,10 @@ function renderGameEconomy(){
  const m909ProgressStart=gameState.masteryLevel===m909MasteryLevel?Math.max(0,m909MasteryProgress):0;
  dock.classList.toggle('collapsed',shopDockCollapsed);dock.innerHTML=`<button type="button" class="dock-toggle" id="dockToggle" aria-expanded="${shopDockCollapsed?'false':'true'}">${shopDockCollapsed?'▲ 상점 올리기':'▼ 상점 내리기'}</button><div class="dock-side"><span class="dock-label">보유 크레딧</span><span class="dock-credit">${creditHtml(gameState.credits,'credit-wallet')}</span>${interestUi}${m910ShopFocusUi()}<div class="dock-actions"><button class="econ-btn reroll-btn" id="shopReroll" ${prep?'':'disabled'}><span>↻ 리롤</span>${creditHtml(GAME_TEMP.rerollCost)}</button><button class="econ-btn shop-lock-btn ${gameState.shopLocked?'locked':''}" id="shopLock" ${prep?'':'disabled'}>${gameState.shopLocked?'🔒 고정 중':'🔓 상점 고정'}</button></div></div><div class="dock-center"><div class="dock-shop">${shopCards}</div><div class="bench-zone"><div class="bench-head"><span>벤치 · 드래그로 배치</span><b>${benchOwned.length}/${GAME_TEMP.benchSize}</b></div><div class="bench-row">${bench}</div>${livePendingSupplyUnits.length?`<div class="supply-bench-queue" role="status">보급 실험체 ${livePendingSupplyUnits.map(o=>esc(displayName(byId[o.characterId]))+' ★'+o.star).join(', ')} 영입 대기 · 벤치 자리를 비워줘.</div>`:''}</div></div><div class="dock-mastery"><div class="mastery-line"><span><span class="dock-label">팀 숙련도</span><br><b>Lv.${gameState.masteryLevel}</b></span><small>적응형 능력치 +${bonus}%</small></div><div class="mastery-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="팀 숙련도 경험치"><i style="width:${m909ProgressStart}%"></i></div><small>${gameState.masteryLevel>=20?'MAX':`${prog} / ${max} 경험치 · 라운드마다 +${GAME_TEMP.masteryNaturalExp} 경험치`}</small><small class="shop-odds">${shopOddsLabel()}</small><button class="econ-btn mastery-buy" id="masteryInvest" ${prep&&gameState.masteryLevel<20?'':'disabled'}><span>숙련도 경험치 +${GAME_TEMP.masteryInvestExp}</span>${creditHtml(GAME_TEMP.masteryInvestCost)}</button></div>`;
  dock.style.setProperty('--m910-shop-columns',String(Math.max(5,gameState.shop.length)));m910BindShopFocus(dock);dock.querySelector('#dockToggle')?.addEventListener('click',()=>{shopDockCollapsed=!shopDockCollapsed;dock.classList.toggle('collapsed',shopDockCollapsed);const t=dock.querySelector('#dockToggle');t.textContent=shopDockCollapsed?'▲ 상점 올리기':'▼ 상점 내리기';t.setAttribute('aria-expanded',String(!shopDockCollapsed))});dock.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>buyShop(+b.dataset.buy)));dock.querySelector('#shopReroll')?.addEventListener('click',rerollShop);dock.querySelector('#shopLock')?.addEventListener('click',toggleShopLock);dock.querySelector('#masteryInvest')?.addEventListener('click',investMastery);bindEconomyInspect(dock);bindShopSynergyTags(dock);bindOwnedPointerDrag(dock);bindItemTooltips(dock);normalizeVisuals(dock);renderItemPanel();
+  if(m1015PlacementOrigins){
+   dock.querySelectorAll('.bench-unit[data-owned-drag]').forEach(el=>m1015AnimatePlacement(el,el.dataset.ownedDrag,'bench'));
+   m1015PlacementOrigins=null; // Never replay on unrelated shop/ready updates.
+  }
  const m909Bar=dock.querySelector('.mastery-track i');
  if(m909Bar){requestAnimationFrame(()=>{if(m909Bar.isConnected){void m909Bar.offsetWidth;m909Bar.style.width=pct+'%'}})}
  m909MasteryLevel=gameState.masteryLevel;m909MasteryProgress=pct;
@@ -1821,6 +1865,8 @@ function render(){
   if(u.dead||u.hp<=0)continue;
   const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;
   const id=String(u.id);alive.add(id);
+  const placementUid=appMode==='game'&&u.team==='A'&&roundState.phase==='prep'
+   ? teams.A.find(t=>t.ownedId!=null&&String(t.ownedId)===id.slice(id.lastIndexOf(':')+1))?.ownedId : null;
   let e=existing.get(id);
   if(!e){
    e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}`;e.dataset.id=id;e.dataset.inspectCharacter=u.characterId;e.innerHTML=unitMarkup(u);
@@ -1832,7 +1878,7 @@ function render(){
   }else{
    if(e.parentElement!==cell){
     const prev=e.getBoundingClientRect();cell.appendChild(e);
-    if(!document.hidden&&typeof e.animate==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+    if(!(placementUid!=null&&m1015PlacementOrigins?.has(String(placementUid)))&&!document.hidden&&typeof e.animate==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
      const next=e.getBoundingClientRect(),dx=prev.left-next.left,dy=prev.top-next.top;
      if(dx||dy)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration:190,easing:'ease-out'});
     }
@@ -1843,6 +1889,7 @@ function render(){
    const states=m7UnitStatus(u),prev=e.querySelector('.m7-unit-states');if(states!==e._states){prev?.remove();if(states)e.insertAdjacentHTML('beforeend',states);e._states=states;}
   }
   e._liveUnit=u;
+  if(placementUid!=null)m1015AnimatePlacement(e,placementUid,'board');
   if(characterTipState.unit?.id===u.id&&!characterTipState.mobile)characterTipState.unit=u;
   if(e.dataset.ownedDrag){const equipped=gameState.owned.find(o=>String(o.uid)===e.dataset.ownedDrag);if(equipped){const signature=JSON.stringify(equipped.equipment||[]);if(e._equipmentSignature!==signature){const previous=e.querySelector('.live-equip-slots');if(previous)previous.outerHTML=equippedSlots(equipped);else e.insertAdjacentHTML('beforeend',equippedSlots(equipped));bindItemTooltips(e);e._equipmentSignature=signature}}}
   if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');if(!e.querySelector('.live-hit-spark')){const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}}else{e.classList.remove('live-hit-flash');e.querySelector('.live-hit-spark')?.remove()}

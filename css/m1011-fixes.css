@@ -340,3 +340,26 @@ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-car
   max-height:min(29dvh,250px)!important;min-height:0!important;
  }
 }
+
+/* M10-15R: restrained shop hover. Animate only the artwork INSIDE its clip;
+   never lift the whole card, which clips owned-count tags in the scroll tray. */
+@media (hover:hover) and (pointer:fine){
+ body[data-app-mode="game"] .game-bottom-dock .shop-card:not(:disabled){
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease!important;
+ }
+ body[data-app-mode="game"] .game-bottom-dock .shop-card:not(:disabled) .shop-portrait>img.m1004-card-portrait{
+  transition:transform .19s cubic-bezier(.2,.7,.3,1),filter .19s ease!important;
+  transform:translate3d(0,0,0)!important;
+ }
+ body[data-app-mode="game"] .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled) .shop-portrait>img.m1004-card-portrait{
+  transform:translate3d(0,-2px,0) scale(1.025)!important;
+  filter:brightness(1.085);
+ }
+ body[data-app-mode="game"] .game-bottom-dock .shop-card:active:not(:disabled) .shop-portrait>img.m1004-card-portrait{
+  transform:translate3d(0,0,0) scale(.992)!important;
+  filter:brightness(.98);
+ }
+}
+@media (prefers-reduced-motion:reduce){
+ body[data-app-mode="game"] .game-bottom-dock .shop-card .shop-portrait>img.m1004-card-portrait{transition:none!important;transform:none!important;filter:none!important}
+}
