@@ -283,9 +283,6 @@ function applyLiveEconomy(assets,phase){
   if(roundState.phase==='prep'&&!running&&(changed||oldPhase!==phase))reset();
  }
  renderGameEconomy();
- // Economy snapshots also change equipment without changing the formation.
- // Refresh the visible badges as soon as the server confirms the inventory update.
- if(phase==='prep')syncOwnedBoardEquipmentBadges();
  // In pointer-release cases the first draw can be suppressed by a captured drag.
  if(!itemPointerDrag&&document.querySelector('#liveItemsPanel'))requestAnimationFrame(()=>{if(appMode==='game')renderItemPanel()});
 }
@@ -323,24 +320,6 @@ function itemSalePrice(name){return LIVEItems.all[name]?.basic?2:5}
 function itemTooltip(name){const id=LIVEItems.bloodInfo?.(name)?'혈색반월':name;return `${LIVEItems.displayName(name)} | ${itemStatsText(name)||'스탯 없음'}${ITEM_EFFECT_HINTS[id]?' | 고유: '+ITEM_EFFECT_HINTS[id]:''}`;}
 function itemIconMarkup(name){return `<img src="${esc(itemIcon(name))}" alt="${esc(name)}" draggable="false">`}
 function equippedSlots(o){const arr=o?.equipment||[];return `<span class="live-equip-slots">${[0,1,2].map(i=>arr[i]?`<span class="live-equip-slot" data-item-tooltip="${esc(arr[i])}" title="${esc(itemTooltip(arr[i]))}">${itemIconMarkup(arr[i])}</span>`:`<span class="live-equip-slot empty" title="빈 장비 슬롯">+</span>`).join('')}</span>`}
-
-// An equipment change does not necessarily move a unit, so the regular render()
-// path might not run. Update only the board badges and preserve pointer/drag state.
-function syncOwnedBoardEquipmentBadges(){
- if(appMode!=='game'||roundState.phase!=='prep'||!board)return;
- const ownedByUid=new Map(gameState.owned.filter(o=>o.location==='board').map(o=>[String(o.uid),o]));
- for(const el of board.querySelectorAll('.unit[data-owned-drag]')){
-  const owned=ownedByUid.get(el.dataset.ownedDrag);
-  if(!owned)continue;
-  const signature=JSON.stringify(owned.equipment||[]),previous=el.querySelector('.live-equip-slots');
-  if(previous&&el._equipmentSignature===signature)continue;
-  if(previous)previous.outerHTML=equippedSlots(owned);
-  else el.insertAdjacentHTML('beforeend',equippedSlots(owned));
-  el._equipmentSignature=signature;
-  bindItemTooltips(el);
- }
-}
-
 let itemPointerDrag=null;let suppressItemClick=false;
 function ensureItemCursorTip(){let t=document.querySelector('#liveItemCursorTip');if(!t){t=document.createElement('div');t.id='liveItemCursorTip';document.body.appendChild(t)}return t}
 function showItemCursorTip(name,x,y){if(!LIVEItems.all[name])return;const t=ensureItemCursorTip();t.innerHTML=`<div class="live-tip-head">${itemIconMarkup(name)}<b>${esc(LIVEItems.displayName(name))}</b></div><div>${esc(itemStatsText(name)||'스탯 없음')}</div>${ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name]?`<div class="live-tip-effect">고유효과 · ${esc(m910Effect(ITEM_EFFECT_HINTS[LIVEItems.bloodInfo?.(name)?'혈색반월':name]))}</div>`:''}`;t.hidden=false;moveItemCursorTip(x,y)}
@@ -364,15 +343,12 @@ function codexSynergyStages(name){
 let liveAudioContext=null;
 function liveBeep(kind='pick'){
  try{
-  const config=window.LIVEAudioSettings;
-  const volume=config?Math.max(0,Math.min(100,Number(config.volume)??100))/100:1;
-  if(config?.muted||volume===0)return;
   const Context=window.AudioContext||window.webkitAudioContext;
   if(!Context)return;
   if(!liveAudioContext)liveAudioContext=new Context();
   if(liveAudioContext.state==='suspended'){liveAudioContext.resume().catch(()=>{});return;}
-  const now=liveAudioContext.currentTime,masterVolume=volume;
-  const play=(freq,start,duration,volume=0.025)=>{const osc=liveAudioContext.createOscillator(),gain=liveAudioContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(0.0001,start);gain.gain.exponentialRampToValueAtTime(Math.max(0.0001,volume*masterVolume),start+0.009);gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);osc.connect(gain);gain.connect(liveAudioContext.destination);osc.start(start);osc.stop(start+duration+0.008)};
+  const now=liveAudioContext.currentTime;
+  const play=(freq,start,duration,volume=0.025)=>{const osc=liveAudioContext.createOscillator(),gain=liveAudioContext.createGain();osc.type='sine';osc.frequency.setValueAtTime(freq,start);gain.gain.setValueAtTime(0.0001,start);gain.gain.exponentialRampToValueAtTime(volume,start+0.009);gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);osc.connect(gain);gain.connect(liveAudioContext.destination);osc.start(start);osc.stop(start+duration+0.008)};
   if(kind==='round'){play(392,now,0.14,0.032);play(523,now+0.13,0.17,0.037);play(784,now+0.28,0.28,0.046)}
   else if(kind==='level'){play(523,now,0.12,0.039);play(659,now+0.11,0.13,0.039);play(784,now+0.22,0.21,0.047)}
   else if(kind==='drop')play(440,now,0.075);
@@ -394,12 +370,12 @@ function showMasteryLevelUp(level){
 function openLiveCodex(){
  let dlg=document.querySelector('#liveCodex');if(!dlg){dlg=document.createElement('div');dlg.id='liveCodex';document.body.appendChild(dlg)}
  const entries={
- infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target,c.targetType,window.LIVEInfusionText.summary(c)].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.tier==='blue'?(c.targetType==='role'?'역할 특화':'소속 특화'):'공통')}</small>${c.tier==='blue'?`<span class="m1013-codex-specialty">특화 시너지 · ${esc(c.target)} (${c.targetType==='role'?'역할':'소속'})</span>`:''}<h4>${esc(c.name)}</h4><p>${esc(window.LIVEInfusionText.summary(c))}</p><details class="m1013-codex-infusion-more"><summary>상세 설명 보기</summary><p>${esc(window.LIVEInfusionText.explain(c))}</p></details>${c.id==='P07'?'<details class="m1008-codex-detail"><summary>여섯 가지 발동 효과</summary><p>① 적 전체 최대 체력의 12% 피해 · ② 아군 전체 최대 체력의 20% 회복 · ③ 아군 전체 최대 체력의 25% 보호막 · ④ 적 전체 행동불능 0.8초 · ⑤ 4초간 아군 피해량 35% 증가 · ⑥ 사망한 아군 1명 체력 25%로 부활(없으면 아군 전체 최대 체력의 15% 보호막)</p><small>1.5초 후 첫 발동, 이후 7초마다 여섯 효과 중 하나가 무작위로 발동합니다.</small></details>':''}</article>`})),
+ infusion:(window.LIVEInfusionCatalog||[]).map(c=>({tier:c.tier,search:[c.name,c.tier,c.description,c.target].join(' '),html:`<article class="m904-infusion-entry m909-infusion-detail"><small>${esc(window.LIVEInfusionText.stage(c.tier))} · ${esc(c.target||'공통')}</small><h4>${esc(c.name)}</h4><p>${esc(m910Effect(window.LIVEM1007?.polite?.(window.LIVEInfusionText.explain(c))||window.LIVEInfusionText.explain(c)))}</p>${c.id==='P07'?'<details class="m1008-codex-detail"><summary>여섯 가지 발동 효과</summary><p>① 적 전체 최대 체력의 12% 피해 · ② 아군 전체 최대 체력의 20% 회복 · ③ 아군 전체 최대 체력의 25% 보호막 · ④ 적 전체 행동불능 0.8초 · ⑤ 4초간 아군 피해량 35% 증가 · ⑥ 사망한 아군 1명 체력 25%로 부활(없으면 아군 전체 최대 체력의 15% 보호막)</p><small>1.5초 후 첫 발동, 이후 7초마다 여섯 효과 중 하나가 무작위로 발동합니다.</small></details>':''}</article>`})),
  items:Object.keys(LIVEItems.all).map(n=>({search:n+' '+itemStatsText(n)+' '+(ITEM_EFFECT_HINTS[n]||'')+' '+(LIVEItems.all[n].materials||[]).join(' '),html:`<article class="codex-item-card"><div class="codex-item-head">${itemIconMarkup(n)}<h4>${esc(n)}</h4></div><p class="codex-item-stats">${esc(m909DisplayStat(itemStatsText(n)))}</p>${ITEM_EFFECT_HINTS[n]?`<p class="codex-item-effect"><b>고유효과</b> ${esc(m910Effect(ITEM_EFFECT_HINTS[n]))}</p>`:''}${LIVEItems.all[n].basic?'':`<p class="codex-tier">조합: ${esc((LIVEItems.all[n].materials||[]).join(' + '))}</p>`}</article>`})),
  synergy:Object.keys(SYNERGY_EFFECT_TEXT).map(n=>{const stages=codexSynergyStages(n);return {search:n+' '+stages.map(x=>x[0]+' '+x[1]).join(' '),html:`<article class="codex-synergy-card"><h4>${esc(n)}</h4>${stages.map(([label,effect])=>`<div class="codex-synergy-stage"><b>${esc(label)}</b><p>${esc(m909DisplayStat(effect))}</p></div>`).join('')}</article>`}}),
  characters:roster.filter(r=>!r.pveOnly).map(r=>{const skill=skillInfo[r.id]||{};const active=skill.active||[];const passive=skill.passive||[];const nickname=skinName(r);return {search:[r.name,displayName(r),nickname,r.role,...(r.affiliations||[]),...active,...passive].join(' '),html:`<article class="codex-character-card" tabindex="0" role="button" aria-label="${esc(displayName(r))} 상세 스킬 및 성급별 계수 열기" data-codex-card="${esc(r.id)}"><div class="codex-character-art">${characterPortrait(r,'codex-character-portrait')}</div><div class="codex-character-details"><h4>${esc(displayName(r))}</h4><p class="codex-character-nickname">${esc(nickname)}</p><p class="codex-character-meta">${esc(r.cost)}C · ${esc(r.role)} · ${esc((r.affiliations||[]).join(' / '))}</p><div class="codex-skill"><b>ACTIVE · ${esc(active[0]||'없음')}</b><p>${esc(m910Effect(active[1]||'설명 없음'))}</p></div><div class="codex-skill"><b>PASSIVE · ${esc(passive[0]||'없음')}</b><p>${esc(m910Effect(passive[1]||'설명 없음'))}</p></div><button type="button" class="m904-codex-detail-trigger" data-codex-unit="${esc(r.id)}" aria-label="${esc(displayName(r))} 상세 정보 열기">상세 스킬 · 성급별 계수 보기 →</button></div></article>`}})
  };
- dlg.innerHTML=`<div class="codex-window" role="dialog" aria-modal="true" aria-label="이리체스 도감"><header><b>이리체스 도감</b><span class="m1008-codex-round" data-m1008-codex-timer role="status" aria-live="off"></span><button data-codex-close>닫기 ×</button></header><nav><button data-codex-tab="items">아이템</button><button data-codex-tab="synergy">시너지</button><button data-codex-tab="characters">캐릭터</button><button data-codex-tab="infusion">인퓨전</button></nav><div class="codex-search-wrap"><input type="search" data-codex-search placeholder="이름, 소속, 역할, 효과 검색" aria-label="도감 검색"></div><div class="m909-codex-stages" data-codex-stages hidden><button type="button" data-stage="gray">1단계</button><button type="button" data-stage="blue">2단계</button><button type="button" data-stage="purple">3단계</button></div><section class="codex-content" data-codex-content></section><footer>실제 전투 구현 계수와 발동 조건을 기준으로 하며, 미구현 효과는 별도로 표시합니다.</footer></div>`;
+ dlg.innerHTML=`<div class="codex-window" role="dialog" aria-modal="true" aria-label="이리체스 도감"><header><b>이리체스 도감</b><span class="m1008-codex-round" data-m1008-codex-timer role="status" aria-live="off"></span><button data-codex-close>닫기 ×</button></header><nav><button data-codex-tab="items">아이템</button><button data-codex-tab="synergy">시너지</button><button data-codex-tab="characters">캐릭터</button><button data-codex-tab="infusion">인퓨전</button></nav><div class="codex-search-wrap"><input type="search" data-codex-search placeholder="이름, 소속, 역할, 효과 검색" aria-label="도감 검색"></div><div class="m909-codex-stages" data-codex-stages hidden><button type="button" data-stage="gray">1단계</button><button type="button" data-stage="blue">2단계</button><button type="button" data-stage="purple">3단계</button></div><section class="codex-content" data-codex-content></section><footer>실제 전투 구현 계수·발동 조건을 우선하며, 미구현 효과는 별도 표시해.</footer></div>`;
  let current='items',currentStage='gray';const search=dlg.querySelector('[data-codex-search]');const display=()=>{const q=search.value.trim().toLocaleLowerCase('ko-KR');const filtered=entries[current].filter(e=>(current!=='infusion'||e.tier===currentStage)&&e.search.toLocaleLowerCase('ko-KR').includes(q));const content=dlg.querySelector('[data-codex-content]');content.classList.toggle('character-layout',current==='characters');content.innerHTML=filtered.map(e=>e.html).join('')||'<p>검색 결과가 없어.</p>';dlg.querySelector('[data-codex-stages]').hidden=current!=='infusion';dlg.querySelectorAll('[data-stage]').forEach(b=>{b.classList.toggle('active',b.dataset.stage===currentStage);b.setAttribute('aria-pressed',String(b.dataset.stage===currentStage))});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.classList.toggle('active',b.dataset.codexTab===current))};dlg.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>{currentStage=b.dataset.stage;display()});dlg.querySelectorAll('[data-codex-tab]').forEach(b=>b.onclick=()=>{current=b.dataset.codexTab;display()});search.addEventListener('input',display);dlg.querySelector('[data-codex-close]').onclick=()=>dlg.remove();const openCharacterDetail=id=>{const unit=byId[id];if(!unit)return;const r=roster.find(x=>x.id===id)||unit;const skill=skillInfo[id]||{};dlg.querySelector('.m905-codex-detail')?.remove();const d=document.createElement('section');d.className='m905-codex-detail';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label',`${displayName(r)} 스킬 상세`);d.innerHTML=`<div class="m905-detail-header"><div><small>EXPERIMENT SUBJECT // ${esc(r.role||'')}</small><h2>${esc(displayName(r))}</h2><small>${esc((r.affiliations||[]).join(' / '))} · ${esc(r.cost)}C</small></div><button type="button" class="m905-detail-close" data-detail-close>← 도감으로</button></div><div class="m905-detail-body"><div class="m905-detail-portrait">${characterPortrait(r,'codex-character-portrait')}</div><div class="m905-detail-text"><div class="m905-detail-skill"><strong>액티브 · ${esc(skill.active?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.active?.[1]||'상세 설명 없음'))}</p></div><div class="m905-detail-skill"><strong>패시브 · ${esc(skill.passive?.[0]||'없음')}</strong><p>${esc(m909DisplayStat(skill.passive?.[1]||'상세 설명 없음'))}</p></div><h3>성급별 스킬 계수</h3>${coefficientDetailHtml(id,1)}<p>1성 강조 · 2/3성 계수 함께 표시. 실제 발동 상황 및 장비에 따라 피해량은 달라질 수 있어.</p></div></div>`;dlg.querySelector('.codex-window').append(d);d.querySelector('[data-detail-close]').onclick=()=>{d.remove();dlg.querySelector(`[data-codex-card="${CSS.escape(id)}"]`)?.focus()};d.querySelector('[data-detail-close]').focus()};dlg.addEventListener('click',e=>{if(e.target.closest('.m905-codex-detail'))return;const card=e.target.closest('[data-codex-card]');if(card)openCharacterDetail(card.dataset.codexCard)});dlg.addEventListener('keydown',e=>{if(e.key==='Escape'){const d=dlg.querySelector('.m905-codex-detail');if(d){e.preventDefault();d.querySelector('[data-detail-close]').click()}else dlg.remove()}if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-codex-card]')){e.preventDefault();openCharacterDetail(e.target.dataset.codexCard)}});dlg.onclick=e=>{if(e.target===dlg)dlg.remove()};
  const updateCodexTimer=()=>{if(!dlg.isConnected){clearInterval(tick);return}const el=dlg.querySelector('[data-m1008-codex-timer]');if(!el)return;
  const online=window.LIVEMultiplayer?.getRoom?.()?.game;
@@ -483,7 +459,7 @@ function ensureAppShell(){
  ["start","pause","step","reset","batch","speed","seed","fixedSeed","masteryA","masteryB","moveInterval"].forEach(id=>{const el=document.getElementById(id);if(!el)return;(el.closest("label")||el).classList.add("dev-control-hidden")});document.body.classList.add("mode-start");
 }
 function enterAppMode(mode){appMode=mode;document.body.dataset.appMode=mode;document.body.classList.remove('mode-start');$('#appModeStart').hidden=true;$('#devExit').hidden=false;if(mode==='game')startRoundMode();else stopRoundMode()}
-function returnToModeStart(){liveHideRoundCurtain();syncBoardPresentation._key=null;clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase='idle';appMode=null;delete document.body.dataset.appMode;document.body.classList.add('mode-start');$('#appModeStart').hidden=false;$('#devExit').hidden=true;renderRoundUI();renderGameEconomy()}
+function returnToModeStart(){clearRoundTimer();if(running||battle)reset();roundState.active=false;roundState.phase='idle';appMode=null;delete document.body.dataset.appMode;document.body.classList.add('mode-start');$('#appModeStart').hidden=false;$('#devExit').hidden=true;renderRoundUI();renderGameEconomy()}
 function ensureRoundUI(){
  if(document.querySelector('#roundModePanel'))return;const style=document.createElement('style');style.id='gameUiCleanupStyle';style.textContent=`
  #roundModePanel{position:fixed;left:50%;top:7px;transform:translateX(-50%);z-index:8600;width:min(760px,calc(100% - 18px));margin:0;padding:5px 9px;border:1px solid rgba(255,255,255,.13);border-radius:9px;background:rgba(8,11,17,.88);backdrop-filter:blur(9px);display:grid;gap:3px;box-shadow:0 5px 18px rgba(0,0,0,.24)}
@@ -635,8 +611,10 @@ function m901OwnedAugmentHud(){
  return `<div class="m901-owned-augments" aria-label="보유 인퓨전"><b>보유 인퓨전 ${owned.length}/3</b>${owned.map(a=>`<span tabindex="0" class="m904-infusion-tip ${esc(a.tier)}" data-infusion-id="${esc(a.id)}" data-infusion-help="${esc((window.LIVEInfusionText?.explain?.(a)||a.description||a.detail||window.LIVEFormalText.infusion(a)))}">${esc(colors[a.tier]||a.tier)} · ${esc(a.name)}</span>`).join('')}<small>회색·파랑·보라 인퓨전 효과 적용</small></div>`;
 }
 function m1010InfusionSummary(card,detail){
- // Individual, manually edited 131-card summary; never hide numbers or conditions.
- return window.LIVEInfusionText?.summary?.(card)||String(detail||card?.description||'효과 정보가 없습니다.');
+ const desc=String(card?.description||detail||'효과 정보가 없습니다.').replace(/\([^)]*\)/g,'').replace(/\s+/g,' ').trim();
+ const leading=desc.split(/[.;。]/)[0].replace(/(?:자세한 효과|상세 수치)는? Shift.*$/i,'').trim();
+ const short=leading.replace(/[+−-]?\d+(?:[.,]\d+)?\s*(?:%p|%|C|EXP|초|회|칸|명|중첩|스택|포인트|HP|배)(?=\s|[가-힣.,;]|$)/gi,'일정 수치').replace(/\s+/g,' ').slice(0,110).trim();
+ return short||'조건을 충족하면 특별한 효과를 얻습니다.';
 }
 function m904BindInfusionTips(){
  if(document.body.dataset.m904InfusionBound)return;document.body.dataset.m904InfusionBound='1';
@@ -644,10 +622,7 @@ function m904BindInfusionTips(){
  const tip=()=>{let el=document.getElementById('m904InfusionTooltip');if(!el){el=document.createElement('div');el.id='m904InfusionTooltip';el.setAttribute('role','tooltip');document.body.appendChild(el)}return el};
  const resolveCard=el=>{const id=el?.dataset.infusionId;return id?(window.LIVEInfusionCatalog||[]).find(c=>c.id===id):null};
  const draw=()=>{
-  const el=hovered||focused,t=tip();
-  // Selection cards switch their own descriptions with Shift (or touch).
-  // Do not cover them with a second, duplicated floating tooltip.
-  if(!el||!el.isConnected||el.closest?.('#liveAugmentPanel .m902-infusion-card')){t.hidden=true;return}
+  const el=hovered||focused,t=tip();if(!el||!el.isConnected){t.hidden=true;return}
   const card=resolveCard(el),fullRaw=el.dataset.infusionHelp|| (card?(window.LIVEInfusionText?.explain?.(card)||card.description||''):'');
   const full=window.LIVEM1007?.polite?.(fullRaw)||window.LIVEFormalText?.formal(fullRaw)||fullRaw;
   const short=m1010InfusionSummary(card,full);
@@ -684,19 +659,18 @@ function renderRoundUI(){
  const readyPlayer=liveRoom?.players?.find(x=>x.id===window.LIVEMultiplayer?.getPlayerId?.());
  const stableKey=JSON.stringify([appMode,roundState.active,roundState.phase,roundState.round,roundState.hp.A,roundState.hp.B,
    kind,liveInfo?.kind,liveInfo?.phase,liveInfo?.opponentSlot,liveInfo?.bye,liveInfo?.specialType,showBoss,
-   readyPlayer?.roundReady,liveInfo?.augment?.selected?.id,foe?.name,scoutSlot,bossBonus,arenaSummary,m901OwnedAugmentHud(),livePermanentBuffHud(),
+   readyPlayer?.roundReady,foe?.name,scoutSlot,bossBonus,arenaSummary,m901OwnedAugmentHud(),livePermanentBuffHud(),
    m809TopCollapsed,liveMarketCollapsed,liveAuctionCollapsed,m809SelectionCollapsed]);
  if(p._m1010Key===stableKey&&p.querySelector('.round-center strong')){
    const centerEl=p.querySelector('.round-center strong');if(centerEl.textContent!==center)centerEl.textContent=center;
    return;
  }
  p._m1010Key=stableKey;
- p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds">${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div>${roundState.phase==='prep'?`<div class="round-side enemy m1008-prep-next"><div class="round-side-line"><b>이번 라운드</b><strong>${esc(liveRoom?.started?(liveInfo?.kind==='pvp'?(liveInfo?.bye?'부전승':'결투'):liveRoundKind(roundState.round)):liveRoundKind(roundState.round))}</strong></div><small>전투 준비 단계</small></div>`:pveRound&&!showBoss?`<div class="round-side enemy m1010-farm-side"><strong>파밍</strong><small>처치한 야생동물만 아이템 획득</small></div>`:`<div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div>`}</div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':(liveInfo?.augment&&!liveInfo.augment.selected?'인퓨전 선택 후 준비 완료':'준비 완료')}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
+ p.innerHTML=`${m809TopButtons(liveInfo)}<div class="m809-top-content"><div class="live-round-schedule"><span class="live-now-round">현재 R${roundState.round} · ${kind}</span><span class="live-next-rounds">${nextRounds}</span></div>${bossBonus?`<div class="live-boss-bonus-line" style="color:#eac2ff;font-size:11px;padding:4px 8px">보스 처치 버프 · ${bossBonus}</div>`:""}${arenaSummary}<div class="round-hud"><div class="round-side ally"><div class="round-side-line"><b>나</b><strong>${roundState.hp.A}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${roundState.hp.A}%"></i></div></div><div class="round-center"><b>ROUND ${roundState.round}</b><strong>${center}</strong></div>${roundState.phase==='prep'?`<div class="round-side enemy m1008-prep-next"><div class="round-side-line"><b>이번 라운드</b><strong>${esc(liveRoom?.started?(liveInfo?.kind==='pvp'?(liveInfo?.bye?'부전승':'결투'):liveRoundKind(roundState.round)):liveRoundKind(roundState.round))}</strong></div><small>전투 준비 단계</small></div>`:pveRound&&!showBoss?`<div class="round-side enemy m1010-farm-side"><strong>파밍</strong><small>처치한 야생동물만 아이템 획득</small></div>`:`<div class="round-side enemy" ${Number.isInteger(scoutSlot)?`data-scout-slot="${scoutSlot}" role="button" tabindex="0" title="${esc(opp)} 배치 정찰"`:''}><div class="round-side-line"><b>${esc(opp)}</b><strong>${oppHp}</strong><span>체력</span></div><div class="round-hpbar"><i style="width:${oppHp}%"></i></div>`}</div>${livePermanentBuffHud()}${m901OwnedAugmentHud()}</div><div class="round-actions">${roundState.active&&roundState.phase==='prep'?(window.LIVEMultiplayer?.getRoom()?.started?`<button class="round-btn" id="roundOnlineReady">${window.LIVEMultiplayer.getRoom().players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId())?.roundReady?'준비 취소':'준비 완료'}</button>`:'<button class="round-btn" id="roundSkip">준비 완료 · 전투 시작</button>'):''}</div>`;
  if(!window.LIVEMultiplayer?.getRoom()?.started)liveUpdateHpStandings({hp:[roundState.hp.A,roundState.hp.B]},[{slot:0,name:'나'},{slot:1,name:'상대'}],0);
  const newlyRenderedReady=p.querySelector('#roundOnlineReady');
- if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;previousReady.disabled=newlyRenderedReady.disabled;newlyRenderedReady.replaceWith(previousReady)}
+ if(previousReady&&newlyRenderedReady){if(previousReady.dataset.pending!=='1')previousReady.textContent=newlyRenderedReady.textContent;newlyRenderedReady.replaceWith(previousReady)}
  else if(newlyRenderedReady){
-  newlyRenderedReady.disabled=!!(liveInfo?.augment&&!liveInfo.augment.selected);
   newlyRenderedReady.addEventListener('click',async()=>{
    if(newlyRenderedReady.dataset.pending==='1')return;
    const net=window.LIVEMultiplayer?.getRoom(),me=net?.players.find(x=>x.id===window.LIVEMultiplayer.getPlayerId());
@@ -925,9 +899,6 @@ function renderGameEconomy(){
 }
 
 function startRoundMode(){
- liveHideRoundCurtain();syncBoardPresentation._key=null;
- livePhaseVersion=-1;liveCompletedRound=0;liveCombatActive=false;
- m910AugmentCollapsed=true;m1012AugmentRound=null;m901AugmentStamp='';
  window.LIVEOpponentExploration=null;clearRoundTimer();
  if(running||battle)reset();
  teams={A:[],B:[]};
@@ -1105,39 +1076,19 @@ function liveSelectionUi(net,slot){
 let livePreviousUnitStats=new Map(),liveLastHit=0;const liveHitUntil=new Map(),liveAttackUntil=new Map();
 function liveRenderHitEffects(){
  if(!battle||!running){livePreviousUnitStats.clear();liveHitUntil.clear();liveAttackUntil.clear();return}
- const now=performance.now(),hits=[];
- for(const u of units){const old=livePreviousUnitStats.get(u.id);if(old!==undefined&&u.hp<old-0.5)hits.push(u);livePreviousUnitStats.set(u.id,u.hp)}
- if(now-liveLastHit<110)return;liveLastHit=now;
- for(const u of hits.slice(0,6)){
-  liveHitUntil.set(u.id,now+390);
-  const attackers=units.filter(a=>a.team!==u.team&&!a.dead&&a.hp>0);
-  attackers.sort((a,b)=>((a.x-u.x)**2+(a.y-u.y)**2)-((b.x-u.x)**2+(b.y-u.y)**2));
-  if(attackers[0])liveAttackUntil.set(attackers[0].id,now+250);
- }
+ const now=performance.now();
+ for(const [id,until] of [...liveHitUntil])if(until<=now)liveHitUntil.delete(id);
+ for(const [id,until] of [...liveAttackUntil])if(until<=now)liveAttackUntil.delete(id);
 }
-// M10-14: server intro may last longer than the original 1.7s fade.
-// Keep the loading curtain until the *authoritative* phase leaves intro.
-let m1014IntroReadyTimer=null;
-function liveHideRoundCurtain(){
- if(m1014IntroReadyTimer!==null){clearTimeout(m1014IntroReadyTimer);m1014IntroReadyTimer=null;}
- document.querySelector('#liveRoundIntro')?.remove();
-}
+function liveHideRoundCurtain(){const curtain=document.querySelector('#liveRoundIntro');if(curtain)curtain.remove()}
 function liveRoundCurtain(net){
- const present=document.querySelector('#liveRoundIntro');
- if(present?.dataset.round===String(net.round))return; // room version updates must not restart the animation
  liveHideRoundCurtain();
- const curtain=document.createElement('div');curtain.id='liveRoundIntro';curtain.dataset.round=String(net.round);
- curtain.setAttribute('role','status');curtain.setAttribute('aria-live','polite');
- curtain.innerHTML=`<div class="m1014-load-content"><span class="m1014-load-caption">AGLAIA // COMBAT PROTOCOL</span><b class="m1014-load-logo">L.I.V.E.</b><small>ROUND ${net.round} · ${net.kind==='farm'?'파밍':'결투'}</small><strong>전투 준비 중</strong><div class="m1014-load-track" aria-hidden="true"><i></i></div><p>전장 동기화 · 서버 전환 대기</p></div>`;
+ const curtain=document.createElement('div');curtain.id='liveRoundIntro';curtain.setAttribute('aria-live','polite');
+ curtain.innerHTML=`<b>ROUND ${net.round}</b><small>${net.kind==='farm'?'파밍':'결투'} 시작</small>`;
  document.body.appendChild(curtain);
- // Do not couple the server acknowledgement to CSS animationend: the overlay must stay visible.
- // The server retains its own 5s fallback if a browser tab is hidden or a request fails.
- m1014IntroReadyTimer=setTimeout(()=>{
-  m1014IntroReadyTimer=null;
-  if(!curtain.isConnected||window.LIVEMultiplayer?.getRoom?.()?.game?.phase!=='intro')return;
-  try{Promise.resolve(window.LIVEMultiplayer?.introComplete?.(net.round)).catch(err=>console.warn('[L.I.V.E.] intro ready:',err));}
-  catch(err){console.warn('[L.I.V.E.] intro ready:',err)}
- },1700);
+ const done=()=>{curtain.removeEventListener('animationend',done);curtain.remove();window.LIVEMultiplayer?.introComplete?.(net.round)};
+ curtain.addEventListener('animationend',done,{once:true});
+ // Reduced motion/hidden tab: animation event may be missing. Server still has a 5s fallback.
 }
 
 // M8-04: docked market booth. Drag a real owned unit/item; never trust a browser-provided item payload.
@@ -1425,31 +1376,7 @@ function m907RoundTransition(net){
 }
 // M9-01: authoritative, personal augment choice. Re-render only for state changes, not each 250ms clock tick.
 let m901AugmentStamp='',m901AugmentNotice='',m901AugmentBusy=false,m902PreviousOffers=[];
-let m910AugmentCollapsed=true,m1012AugmentRound=null;
-// M10-14: shift-only detailed infusion text. Touch users get one optional expand button.
-// Updating textContent in place preserves card focus, reroll buttons and server state.
-let m1014InfusionShiftHeld=false;
-function m1014SyncInfusionDescriptions(panel=document.querySelector('#liveAugmentPanel')){
- if(!panel||panel.hidden)return;
- panel.querySelectorAll('.m902-infusion-card .m1014-infusion-description').forEach(p=>{
-  const card=p.closest('.m902-infusion-card');
-  const detailed=m1014InfusionShiftHeld||card?.dataset.m1014TouchFull==='true';
-  if(p.dataset.m1014Visible!==String(detailed)){
-   p.textContent=detailed?(p.dataset.infusionFull||''):(p.dataset.infusionBrief||'');
-   p.dataset.m1014Visible=String(detailed);
-  }
-  p.classList.toggle('m1014-expanded',detailed);
- });
-}
-document.addEventListener('keydown',e=>{
- if(e.key==='Shift'&&!m1014InfusionShiftHeld){m1014InfusionShiftHeld=true;m1014SyncInfusionDescriptions();}
-});
-document.addEventListener('keyup',e=>{
- if(e.key==='Shift'){m1014InfusionShiftHeld=false;m1014SyncInfusionDescriptions();}
-});
-window.addEventListener('blur',()=>{
- if(m1014InfusionShiftHeld){m1014InfusionShiftHeld=false;m1014SyncInfusionDescriptions();}
-});
+let m910AugmentCollapsed=false;
 const m907AssetPromises=new Map(),m907SentRounds=new Set();
 function m907PreloadAssets(round){
  if(m907AssetPromises.has(round))return m907AssetPromises.get(round);
@@ -1461,18 +1388,17 @@ function m907PreloadAssets(round){
  const task=Promise.all([...images,document.fonts?.ready||Promise.resolve()]);m907AssetPromises.set(round,task);task.catch(()=>m907AssetPromises.delete(round));return task;
 }
 function m907ReportAssets(net){
- if(!['prep','augment-sync'].includes(net.phase)||!net.augment?.selected||net.augment.downloadReady||m907SentRounds.has(net.round))return;
+ if(net.phase!=='augment-sync'||!net.augment?.selected||net.augment.downloadReady||m907SentRounds.has(net.round))return;
  m907SentRounds.add(net.round);
  m907PreloadAssets(net.round).then(()=>{const ready=window.LIVEMultiplayer?.augmentAssetsReady;if(!ready)throw new Error('멀티플레이 다운로드 동기화 기능 없음');return ready(net.round)}).catch(err=>{m907SentRounds.delete(net.round);m901AugmentNotice='에셋 로딩이 끝나지 않았어: '+err.message+' · 새로고침 후 재시도';m901AugmentStamp='';console.warn(err)});
 }
 function liveAugmentUi(net,slot){
  let panel=document.querySelector('#liveAugmentPanel');
  if(!panel){panel=document.createElement('section');panel.id='liveAugmentPanel';panel.hidden=true;document.body.appendChild(panel);}
- const active=['prep','augment','augment-sync'].includes(net?.phase)&&!!net.augment&&net.hp?.[slot]>0;
- if(active&&m1012AugmentRound!==net.round){m1012AugmentRound=net.round;m910AugmentCollapsed=false;m901AugmentStamp='';}
+ const active=['augment','augment-sync'].includes(net?.phase)&&!!net.augment&&net.hp?.[slot]>0;
  if(active&&panel.hidden){panel.classList.add('m909-opening');setTimeout(()=>panel.classList.remove('m909-opening'),1000)}
  panel.hidden=!active;
-  panel.classList.toggle('m1012-integrated',active&&net.phase==='prep');panel.classList.toggle('m910-collapsed',m910AugmentCollapsed);
+  if(!active)m910AugmentCollapsed=false;panel.classList.toggle('m910-collapsed',m910AugmentCollapsed);
   document.body.classList.toggle('m901-augment-active',active&&!m910AugmentCollapsed);
  if(!active){m901AugmentStamp='';m901AugmentNotice='';m901AugmentBusy=false;m902PreviousOffers=[];return;}
  m907ReportAssets(net);const a=net.augment,tier=a.tier||'gray',tierName={gray:'1단계',blue:'2단계',purple:'3단계'}[tier]||tier;
@@ -1482,10 +1408,10 @@ function liveAugmentUi(net,slot){
   const chosen=!!a.selected;
   const changedCards=(a.offers||[]).map((c,i)=>m902PreviousOffers[i]!==c.id);
   m902PreviousOffers=(a.offers||[]).map(c=>c.id);
-  panel.innerHTML=`<button type="button" class="m910-augment-collapse" data-m910-collapse aria-expanded="${!m910AugmentCollapsed}">${m910AugmentCollapsed?(chosen?'✓ 인퓨전 선택 완료 · 다시 보기':'● 인퓨전 미선택 · 펼치기 ▾'):'인퓨전 접기 ▴'}</button><div class="m901-augment-modal ${esc(tier)} ${chosen?'m904-selected':''}" role="dialog" aria-modal="true" aria-labelledby="m901AugmentTitle">
-   <header><div><small>AGLAIA // INFUSION SELECTION · ROUND ${net.round}</small><h2 id="m901AugmentTitle">${esc(tierName)} 인퓨전 수신</h2><p>상점과 편성을 확인하며 세 가지 중 하나를 선택할 수 있습니다.</p></div><div class="m901-augment-clock"><small>연결 종료까지</small><strong id="m901AugmentTime">60</strong><small>SEC</small></div></header>
-   <div class="m901-augment-cards">${(a.offers||[]).map((c,i)=>`<article class="m902-infusion-card ${changedCards[i]?'m902-animate':''}" style="--seq:${i}" data-infusion-slot="${i}" data-infusion-id="${esc(c.id)}" data-infusion-help="${esc(m910Effect(window.LIVEInfusionText.explain(c)))}" ${chosen&&a.selected.id===c.id?'data-selected="true"':''}><div class="m902-card-meta"><span>${esc(tierName)} // ${c.tier==='blue'?(c.targetType==='role'?'역할 특화':'소속 특화'):'공통'}</span><span class="m902-activity">● LINK READY</span></div><div class="m902-emblem" aria-hidden="true"><span>${c.targetType==='role'?'◇':c.target?'✧':'⬡'}</span></div>${c.tier==='blue'?`<div class="m1013-specialty">특화 시너지 · <strong>${esc(c.target)}</strong><small>${c.targetType==='role'?'역할':'소속'}</small></div>`:''}<h3>${esc(c.name)}</h3><p class="m1014-infusion-description" data-infusion-brief="${esc(m1010InfusionSummary(c,m910Effect(window.LIVEInfusionText.explain(c))))}" data-infusion-full="${esc(m910Effect(window.LIVEInfusionText.explain(c)))}">${esc(m1010InfusionSummary(c,m910Effect(window.LIVEInfusionText.explain(c))))}</p><span class="m1014-infusion-shift-hint" aria-hidden="true">SHIFT 누르는 동안 상세 설명</span><button type="button" class="m1014-infusion-touch-toggle" data-infusion-touch-detail="${i}" aria-expanded="false">상세 설명 보기 ▾</button><small class="m902-status">${c.prototype?'미구현 · 시범 카드':c.tier==='blue'?'2단계 · 전투 및 상점 효과':c.tier==='purple'?'3단계 · 특수 전투 및 경제 효과':'1단계 · 효과 개발 중'}</small><div class="m902-download">DATA SYNCHRONIZED<i></i></div><div class="m902-card-buttons"><button type="button" data-augment-pick="${i}" ${chosen?'disabled':''}>${chosen?(a.selected.id===c.id?'✓ 설치 완료':'선택 종료'):'인퓨전 설치'}</button><button type="button" class="m902-reroll" data-augment-reroll="${i}" ${chosen||(a.rerollsUsed||[]).includes(i)?'disabled':''} aria-label="${i+1}번째 카드 재수신">${(a.rerollsUsed||[]).includes(i)?'재수신 완료':'⟳ 재수신'}</button></div></article>`).join('')}</div>
-   <footer><span>효과를 확인하고 선택해 주세요.</span><span>${a.readyCount}명 선택 완료</span><span>재수신 ${a.rerollsLeft}/3</span></footer><p id="m901AugmentNotice" role="status">${esc(m901AugmentNotice||(chosen?'인퓨전 선택 완료 · 준비와 편성을 계속할 수 있습니다.':'준비 시간 종료 시 미선택 인퓨전은 자동 선택됩니다.'))}</p>
+  panel.innerHTML=`<button type="button" class="m910-augment-collapse" data-m910-collapse aria-expanded="${!m910AugmentCollapsed}">${m910AugmentCollapsed?'인퓨전 선택창 열기 ▾':'인퓨전 선택창 접기 ▴'}</button><div class="m901-augment-modal ${esc(tier)} ${chosen?'m904-selected':''}" role="dialog" aria-modal="true" aria-labelledby="m901AugmentTitle">
+   <header><div><small>AGLAIA // INFUSION SELECTION · ROUND ${net.round}</small><h2 id="m901AugmentTitle">${esc(tierName)} 인퓨전 수신</h2><p>TACTICAL PACKAGE // 데이터 패키지 세 가지 중 하나를 설치해</p></div><div class="m901-augment-clock"><small>연결 종료까지</small><strong id="m901AugmentTime">30</strong><small>SEC</small></div></header>
+   <div class="m901-augment-cards">${(a.offers||[]).map((c,i)=>`<article class="m902-infusion-card ${changedCards[i]?'m902-animate':''}" style="--seq:${i}" data-infusion-slot="${i}" data-infusion-id="${esc(c.id)}" data-infusion-help="${esc(m910Effect(window.LIVEInfusionText.explain(c)))}" ${chosen&&a.selected.id===c.id?'data-selected="true"':''}><div class="m902-card-meta"><span>${esc(tierName)} // ${c.targetType==='role'?'역할':c.target?'소속':'공통'}</span><span class="m902-activity">● LINK READY</span></div><div class="m902-emblem" aria-hidden="true"><span>${c.targetType==='role'?'◇':c.target?'✧':'⬡'}</span></div><h3>${esc(c.name)}</h3><p>${esc(m1010InfusionSummary(c,m910Effect(window.LIVEInfusionText.explain(c))))}</p><small class="m1010-infusion-help">마우스를 올려 요약 · Shift를 누르면 상세 수치를 볼 수 있습니다.</small><small class="m902-status">${c.prototype?'미구현 · 시범 카드':c.tier==='blue'?'2단계 · 전투 및 상점 효과':c.tier==='purple'?'3단계 · 특수 전투 및 경제 효과':'1단계 · 효과 개발 중'}</small><div class="m902-download">DATA SYNCHRONIZED<i></i></div><div class="m902-card-buttons"><button type="button" data-augment-pick="${i}" ${chosen?'disabled':''}>${chosen?(a.selected.id===c.id?'✓ 설치 완료':'선택 종료'):'인퓨전 설치'}</button><button type="button" class="m902-reroll" data-augment-reroll="${i}" ${chosen||(a.rerollsUsed||[]).includes(i)?'disabled':''} aria-label="${i+1}번째 카드 재수신">${(a.rerollsUsed||[]).includes(i)?'재수신 완료':'⟳ 재수신'}</button></div></article>`).join('')}</div>
+   <footer><span>효과를 확인하고 선택해 주세요.</span><span>${net.phase==='augment-sync'?a.downloadReadyCount+'명 다운로드 완료':a.readyCount+'명 선택 완료'}</span><span>재수신 ${a.rerollsLeft}/3</span></footer><p id="m901AugmentNotice" role="status">${esc(m901AugmentNotice||(chosen?'설치 완료 · 에셋 동기화 대기':'시간 종료 시 자동 인퓨전 설치'))}</p>
   </div>`;
   panel.querySelector('[data-m910-collapse]')?.addEventListener('click',()=>{m910AugmentCollapsed=!m910AugmentCollapsed;m901AugmentStamp='';liveAugmentUi(net,slot)});
    const request=async(cmd,choice)=>{if(m901AugmentBusy)return;m901AugmentBusy=true;panel.querySelectorAll('button').forEach(b=>b.disabled=true);
@@ -1493,13 +1419,6 @@ function liveAugmentUi(net,slot){
     catch(err){m901AugmentNotice=err?.message||'요청 실패';panel.querySelector('#m901AugmentNotice').textContent=m901AugmentNotice;m901AugmentStamp='';}
     finally{m901AugmentBusy=false;}
   };
-  panel.querySelectorAll('[data-infusion-touch-detail]').forEach(btn=>btn.addEventListener('click',()=>{
-   const card=btn.closest('.m902-infusion-card');if(!card)return;
-   const full=card.dataset.m1014TouchFull!=='true';card.dataset.m1014TouchFull=String(full);
-   btn.setAttribute('aria-expanded',String(full));btn.textContent=full?'상세 설명 접기 ▴':'상세 설명 보기 ▾';
-   m1014SyncInfusionDescriptions(panel);
-  }));
-  m1014SyncInfusionDescriptions(panel);
   panel.querySelectorAll('[data-augment-pick]').forEach(btn=>btn.onclick=()=>request('pick',Number(btn.dataset.augmentPick)));
   panel.querySelectorAll('[data-augment-reroll]').forEach(btn=>btn.onclick=()=>request('reroll',Number(btn.dataset.augmentReroll)));
  }
@@ -1509,7 +1428,7 @@ function liveAugmentUi(net,slot){
  const augmentClock=panel.querySelector('.m901-augment-clock');
  if(augmentClock){
   const captions=augmentClock.querySelectorAll('small');
-  if(captions[0])captions[0].textContent=augmentSync?'에셋 동기화':'준비 종료까지';
+  if(captions[0])captions[0].textContent=augmentSync?'에셋 동기화':'연결 종료까지';
   if(captions[1])captions[1].textContent=augmentSync?'':'SEC';
  }
  const timer=panel.querySelector('#m901AugmentTime');
@@ -1525,9 +1444,8 @@ window.LIVEApplyGame=function(net,slot,players){
  if(net.version!==livePhaseVersion){
   livePhaseVersion=net.version;if(typeof m907RoundTransition==='function')m907RoundTransition(net);
   clearRoundTimer();
-  if(net.phase!=='intro')liveHideRoundCurtain();
   if(net.phase==='prep'){
-   roundState.phase='prep';teams.B=[];syncBoardPresentation();
+   roundState.phase='prep';teams.B=[];
    // Reset battle damage/death state into fresh preparation units, even after some or all units died.
    reset();window.M6PixiAdapter?.refresh?.();
    if(net.round>1&&liveCompletedRound!==net.round){liveCompletedRound=net.round;if(!me?.assets){if(!gameState.shopLocked)rollShop();addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');gameState.credits+=roundCreditIncome().total;}}
@@ -1547,7 +1465,7 @@ window.LIVEApplyGame=function(net,slot,players){
    if(net.hp[slot]<=0){teams.B=[];reset();$('#status').textContent='탈락 · 다른 플레이어 경기 관전 중';}else if(net.bye){teams.B=[];reset();$('#status').textContent='부전승 · HP 피해 없음';}else if(net.battle?.auto){teams.B=[];reset();$('#status').textContent=net.battle.outcome==='양 팀 패배'?'양 팀 편성 없음 · 자동 패배':net.battle.outcome==='A팀 승리'?'상대 편성 없음 · 자동 승리':'편성 없음 · 자동 패배';}else if(!start()){$('#status').textContent='전투 재생 오류 · 서버 결과를 기다리는 중'}
    window.LIVENetReplaySeed=original;renderGameEconomy();
   }else if(['augment','augment-sync'].includes(net.phase)){
-    if(typeof liveClearAllDrags==='function')liveClearAllDrags();teams.B=[];roundState.phase=net.phase;syncBoardPresentation();reset();
+    if(typeof liveClearAllDrags==='function')liveClearAllDrags();teams.B=[];roundState.phase=net.phase;reset();
     $('#status').textContent=`ROUND ${net.round} · 인퓨전 선택 중`;renderGameEconomy();
   }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='special'){teams.B=[];roundState.phase='special';reset();$('#status').textContent=net.kind==='boss'?`ROUND ${net.round} · ${net.boss?.info?.name||'보스'} 등장!`:`ROUND ${net.round} · ${liveRoundKind(net.round)} · 서버 연동 준비 중`;renderGameEconomy();}else if(net.phase==='result'){
    if(typeof liveClearAllDrags==='function')liveClearAllDrags();if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
@@ -1845,7 +1763,7 @@ function render(){
   e._liveUnit=u;
   if(characterTipState.unit?.id===u.id&&!characterTipState.mobile)characterTipState.unit=u;
   if(e.dataset.ownedDrag){const equipped=gameState.owned.find(o=>String(o.uid)===e.dataset.ownedDrag);if(equipped){const signature=JSON.stringify(equipped.equipment||[]);if(e._equipmentSignature!==signature){const previous=e.querySelector('.live-equip-slots');if(previous)previous.outerHTML=equippedSlots(equipped);else e.insertAdjacentHTML('beforeend',equippedSlots(equipped));bindItemTooltips(e);e._equipmentSignature=signature}}}
-  if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');if(!e.querySelector('.live-hit-spark')){const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}}else{e.classList.remove('live-hit-flash');e.querySelector('.live-hit-spark')?.remove()}
+  if((liveHitUntil.get(u.id)||0)>performance.now())e.classList.add('live-hit-flash');else e.classList.remove('live-hit-flash');
   e.classList.toggle('live-attack-flash',(liveAttackUntil.get(u.id)||0)>performance.now());
  }
  for(const [id,e] of existing)if(!alive.has(id))e.remove();
@@ -1868,7 +1786,15 @@ const m809AreaHits=new Map();
 function m809DrawAreaHits(){for(const [key,data] of m809AreaHits){if(data.until<performance.now()){m809AreaHits.delete(key);board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"] .m809-area-mark`)?.remove();continue}const cell=board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"]`);if(cell&&!cell.querySelector('.m809-area-mark')){const v=document.createElement('span');v.className='m809-area-mark';v.setAttribute('aria-label',data.skill);cell.appendChild(v)}}}
 function sync(){
  const result=battle.getResult();units=result.units;time=result.time;
- for(const event of battle.drainEvents()){if(event.type==='augment')m907AugmentVfx(event);if(event.type==='attack'||event.type==='execute')window.LIVEAttackFX?.emit?.(event);if(event.type==='area-hit'&&event.x>=0&&event.y>=0){const key=event.x+':'+event.y;m809AreaHits.set(key,{x:event.x,y:event.y,skill:event.skill,until:performance.now()+680})}}
+ for(const event of battle.drainEvents()){
+  const now=performance.now();
+  if(event.type==='augment')m907AugmentVfx(event);
+  if(event.type==='damage'){if(event.unitId)liveHitUntil.set(event.unitId,now+320);if(event.sourceId)liveAttackUntil.set(event.sourceId,now+220);window.M6PixiAdapter?.combatEvent?.(event)}
+  if(event.type==='heal'||event.type==='skill')window.M6PixiAdapter?.combatEvent?.(event);
+  if(event.type==='attack'){if(event.unitId)liveAttackUntil.set(event.unitId,now+220);window.LIVEAttackFX?.emit?.(event)}
+  if(event.type==='execute')window.LIVEAttackFX?.emit?.(event);
+  if(event.type==='area-hit'&&event.x>=0&&event.y>=0){const key=event.x+':'+event.y;m809AreaHits.set(key,{x:event.x,y:event.y,skill:event.skill,until:now+680})}
+ }
  window.M6PixiAdapter?.combatSnapshot?.(units);
  $("#clock").textContent=time.toFixed(1)+"s";
  if(result.battleOver){if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='boss'&&roundState.phase==='combat')window.LIVEMultiplayer.reportBossDone?.(roundState.round);if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='farm'&&roundState.phase==='combat'){const room=window.LIVEMultiplayer.getRoom();window.LIVEMultiplayer.reportFarmDone(room.game.round)}running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
