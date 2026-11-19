@@ -34,6 +34,25 @@ body[data-app-mode="test"] .field-b {
 }
 </style>
 
+<style id="m1016-boot-guard">
+/* Don't paint the legacy combat laboratory until a match is really opened.
+   Standalone QA ?qa=combat|round bypasses this entirely. */
+html:not(.m611-qa) body:not(.m1016-game-open) .app,
+html:not(.m611-qa) body:not(.m1016-game-open) #roundModePanel,
+html:not(.m611-qa) body:not(.m1016-game-open) #gameBottomDock,
+html:not(.m611-qa) body:not(.m1016-game-open) #devExit{visibility:hidden!important;pointer-events:none!important}
+</style>
+<script id="m1016-startup-fallback">
+// If the account/intro bootstrap fails entirely, don't leave a silent blank page.
+window.addEventListener('load',()=>setTimeout(()=>{
+ if(document.documentElement.classList.contains('m611-qa')||document.getElementById('liveGate'))return;
+ const notice=document.createElement('div');notice.id='m1016BootFailure';
+ notice.style.cssText='position:fixed;z-index:100200;inset:0;display:grid;place-content:center;gap:14px;padding:24px;text-align:center;background:#030607;color:#d9e9e3;font:14px/1.6 system-ui,sans-serif';
+ const message=document.createElement('strong');message.textContent='L.I.V.E. 초기화에 실패했습니다. 새로고침 후 다시 시도해 주세요.';
+ const retry=document.createElement('button');retry.textContent='새로고침';retry.style.cssText='margin:auto;padding:10px 20px;background:#243d3b;color:#e6faf1;border:1px solid #71948a;border-radius:5px;cursor:pointer';
+ retry.onclick=()=>location.reload();notice.append(message,retry);document.body.appendChild(notice);
+},6000));
+</script>
 <style id="m611-first-paint">
 /* M6-11 intro guard: restore initial scene cover until the intro is ready. */
 body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::before{content:"";position:fixed;inset:0;z-index:99999;background:#030607;pointer-events:none;}
@@ -203,6 +222,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script src="js/client/battlefield.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
 <script defer src="js/client/m6-pixi-adapter.js"></script>
+<link rel="stylesheet" href="css/m1016-combat-vfx.css" />
+<script defer src="js/client/m1016-combat-vfx.js"></script>
 <script>
 /* Restored M6-07 development QA shortcut; respects authentication for game mode. */
 (()=>{

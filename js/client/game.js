@@ -1148,16 +1148,9 @@ function liveSelectionUi(net,slot){
 }
 let livePreviousUnitStats=new Map(),liveLastHit=0;const liveHitUntil=new Map(),liveAttackUntil=new Map();
 function liveRenderHitEffects(){
- if(!battle||!running){livePreviousUnitStats.clear();liveHitUntil.clear();liveAttackUntil.clear();return}
- const now=performance.now(),hits=[];
- for(const u of units){const old=livePreviousUnitStats.get(u.id);if(old!==undefined&&u.hp<old-0.5)hits.push(u);livePreviousUnitStats.set(u.id,u.hp)}
- if(now-liveLastHit<110)return;liveLastHit=now;
- for(const u of hits.slice(0,6)){
-  liveHitUntil.set(u.id,now+390);
-  const attackers=units.filter(a=>a.team!==u.team&&!a.dead&&a.hp>0);
-  attackers.sort((a,b)=>((a.x-u.x)**2+(a.y-u.y)**2)-((b.x-u.x)**2+(b.y-u.y)**2));
-  if(attackers[0])liveAttackUntil.set(attackers[0].id,now+250);
- }
+ // M10-16: never guess an attacker from HP loss. Real calculated VFX events
+ // are routed through LIVECombatVFX; the old heuristic duplicated impacts.
+ if(!battle||!running){livePreviousUnitStats.clear();liveHitUntil.clear();liveAttackUntil.clear();}
 }
 // M10-14: server intro may last longer than the original 1.7s fade.
 // Keep the loading curtain until the *authoritative* phase leaves intro.
@@ -1619,7 +1612,7 @@ function startPrepTimer(){if(window.LIVEMultiplayer?.getRoom()?.started){clearRo
 function beginRoundCombat(){if(window.LIVEMultiplayer?.getRoom()?.started)return;if(!roundState.active||roundState.phase!=='prep')return;if(!teams.A.length){gameState.message='전장에 실험체를 최소 1명 배치해야 해.';$('#status').textContent='준비 시간 종료 · 실험체 배치 대기';renderGameEconomy();return}clearRoundTimer();if(![1,3,10].includes(roundState.round))m7TravelAward(ERCombat.pickArenaRegion('local',roundState.round));setupRoundOpponent();roundState.phase='combat';roundState.remaining=0;renderRoundUI();renderGameEconomy();if(!start()){roundState.phase='prep';teams.B=[];reset();startPrepTimer();return}$('#status').textContent=roundState.round===1?'ROUND 1 · 파밍 전투 중':`ROUND ${roundState.round} · 전투 중`}
 function finishRound(outcome){if(window.LIVEMultiplayer?.getRoom()?.started){running=false;return}if(!roundState.active||roundState.phase!=='combat')return;const erebus=new Set(teams.A.filter(e=>byId[e.characterId]?.affiliations?.includes('에레보스')).map(e=>e.characterId)).size;m7InfiltrationAward(erebus);roundState.phase='result';roundState.lastOutcome=outcome;roundState.lastDamage=0;const itemKillReward=Number(battle?.getResult()?.itemKillCredits?.A||0);if(itemKillReward>0)gameState.credits+=itemKillReward;let resultText=outcome;if([1,3,10].includes(roundState.round)){{const defeated=outcome==='A팀 승리'?(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물')):[];const rewards=[];for(const animal of defeated){const count=1+(Math.random()<0.05?1:0);for(let i=0;i<count;i++){const item=BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)];pushItem(item);rewards.push(item)}}gameState.message=outcome!=='A팀 승리'?'파밍 실패 · 아이템 보상이 없습니다.':rewards.length?`야생동물 ${defeated.length}마리 처치 · ${rewards.join(' / ')} 획득`:'처치한 야생동물이 없어 아이템 보상 없음';}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome==='A팀 승리'?'파밍 성공':'파밍 실패'} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}else{const dmg=roundDamage(roundState.round);if(outcome==='A팀 승리'){const tier=battle?.getResult()?.synergies?.A?.affiliations?.['페르소나']?.tier||0;roundState.hp.B=Math.max(0,roundState.hp.B-dmg-(tier>=3?2:tier>=2?1:0));roundState.lastDamage=dmg}else if(outcome==='B팀 승리'){roundState.hp.A=Math.max(0,roundState.hp.A-dmg);roundState.lastDamage=dmg}{const income=roundCreditIncome();gameState.credits+=income.total;resultText=`${outcome} · 정산 +${income.total} 크레딧 (기본 ${income.base}${income.interest?` + 이자 ${income.interest}`:''})`}}addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');if(itemKillReward>0)resultText+=` · 프시케의 칼날 +${itemKillReward}C`;$('#status').textContent=`ROUND ${roundState.round} 결과 · ${resultText}`;roundState.remaining=ROUND_RESULT_SECONDS;renderRoundUI();renderGameEconomy();if(roundState.hp.A<=0||roundState.hp.B<=0){roundState.phase='finished';roundState.active=false;clearRoundTimer();renderRoundUI();return}clearRoundTimer();roundTimer=setInterval(()=>{roundState.remaining-=1;renderRoundUI();if(roundState.remaining<=0){clearRoundTimer();roundState.round+=1;roundState.active=true;roundState.phase='prep';if(!gameState.shopLocked)rollShop();setupRoundOpponent();reset();gameState.message=roundState.round===2?'ROUND 2 진입 · 상점/벤치/숙련도 사용 가능 · PvP 상대는 현재 임시 AI야.':'다음 라운드 준비';$('#status').textContent=`ROUND ${roundState.round} · 준비 단계`;renderRoundUI();renderGameEconomy();startPrepTimer()}},1000)}
 
-function reset(){if(typeof m809AreaHits!=='undefined')m809AreaHits.clear();sync._uiAt=0;
+function reset(){if(typeof m809AreaHits!=='undefined')m809AreaHits.clear();sync._uiAt=0;window.LIVECombatVFX?.clear?.();
  cancelItemPointerDrag();clearOwnedDrag();document.querySelectorAll('.drag-ghost').forEach(e=>e.remove());
  if(frame!==null)cancelAnimationFrame(frame); frame=null;
  running=false;paused=false;accumulator=0;time=0;battle=null;
@@ -1915,11 +1908,19 @@ const m809AreaHits=new Map();
 function m809DrawAreaHits(){for(const [key,data] of m809AreaHits){if(data.until<performance.now()){m809AreaHits.delete(key);board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"] .m809-area-mark`)?.remove();continue}const cell=board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"]`);if(cell&&!cell.querySelector('.m809-area-mark')){const v=document.createElement('span');v.className='m809-area-mark';v.setAttribute('aria-label',data.skill);cell.appendChild(v)}}}
 function sync(){
  const result=battle.getResult();units=result.units;time=result.time;
- for(const event of battle.drainEvents()){if(event.type==='augment')m907AugmentVfx(event);if(event.type==='attack'||event.type==='execute')window.LIVEAttackFX?.emit?.(event);if(event.type==='area-hit'&&event.x>=0&&event.y>=0){const key=event.x+':'+event.y;m809AreaHits.set(key,{x:event.x,y:event.y,skill:event.skill,until:performance.now()+680})}}
+ const presentation=[];
+ // Drop stale visual events after tab suspension or catch-up; keep all engine events and battle results unchanged.
+ const minVisualTime=Math.max(0,time-.45);
+ for(const event of battle.drainEvents()){
+  if(event.type==='augment')m907AugmentVfx(event);
+  if(event.type==='attack'||event.type==='execute')window.LIVEAttackFX?.emit?.(event);
+  if(event.type==='area-hit'&&event.x>=0&&event.y>=0){const key=event.x+':'+event.y;m809AreaHits.set(key,{x:event.x,y:event.y,skill:event.skill,until:performance.now()+680})}
+  if(!document.hidden&&event.type?.startsWith('vfx-')&&event.time>=minVisualTime&&presentation.length<48)presentation.push(event);
+ }
  window.M6PixiAdapter?.combatSnapshot?.(units);
  $("#clock").textContent=time.toFixed(1)+"s";
  if(result.battleOver){if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='boss'&&roundState.phase==='combat')window.LIVEMultiplayer.reportBossDone?.(roundState.round);if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='farm'&&roundState.phase==='combat'){const room=window.LIVEMultiplayer.getRoom();window.LIVEMultiplayer.reportFarmDone(room.game.round)}running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
- liveRenderHitEffects();render();m809DrawAreaHits();const uiNow=performance.now();if(!sync._uiAt||uiNow-sync._uiAt>=220||result.battleOver){sync._uiAt=uiNow;meters();syncLiveBattleDeck();m809UpdateDamagePanel(roundState.phase==='combat'||roundState.phase==='result');}
+ liveRenderHitEffects();render();window.LIVECombatVFX?.emitBatch?.(presentation);m809DrawAreaHits();const uiNow=performance.now();if(!sync._uiAt||uiNow-sync._uiAt>=220||result.battleOver){sync._uiAt=uiNow;meters();syncLiveBattleDeck();m809UpdateDamagePanel(roundState.phase==='combat'||roundState.phase==='result');}
 }
 function start(){
  if(running)return true;
