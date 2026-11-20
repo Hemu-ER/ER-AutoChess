@@ -630,6 +630,8 @@ function liveSceneForRound(){
  if(roundState.phase==='prep')return 'formation';
  if(roundState.phase==='combat'||roundState.phase==='result'){
   const kind=window.LIVEMultiplayer?.getRoom?.()?.game?.kind||([1,3,10].includes(roundState.round)?'farm':'pvp');
+  // Special-round result screens are events, not fake PvP duels.
+  if(!['pvp','farm','boss'].includes(kind))return 'event';
   return kind==='farm'?'farm':kind==='boss'?'boss':'duel';
  }
  return 'event';
@@ -639,7 +641,7 @@ function syncBoardPresentation(){
  if(syncBoardPresentation._key===presentationKey)return;syncBoardPresentation._key=presentationKey;
  document.body.dataset.liveScene=liveSceneForRound();
  if(!board)return;
- const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special','augment','augment-sync'].includes(roundState.phase)||(roundState.phase==='result'&&liveRoundKind(roundState.round)==='보급'));window.M6PixiAdapter?.showDomIfFormation?.(prep);
+ const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special','augment','augment-sync'].includes(roundState.phase)||(roundState.phase==='result'&&liveSceneForRound()==='event'));window.M6PixiAdapter?.showDomIfFormation?.(prep);
  board.classList.toggle('formation-board',prep);
  board.classList.toggle('combat-board',!prep);
  document.body.classList.toggle('formation-phase',prep);
@@ -934,6 +936,33 @@ function syncLiveBattleDeck(){
  const liveClock=panel.querySelector('#m1010BattleClock');if(liveClock)liveClock.textContent=running?`${time.toFixed(1)}초`:'-';
  const liveDamage=panel.querySelector('#m1010BattleDamage');if(liveDamage)liveDamage.textContent=Math.round(teamA.reduce((sum,u)=>sum+Object.values(u.damage||{}).reduce((t,n)=>t+(Number(n)||0),0),0)).toLocaleString('ko-KR');
 }
+// M10-17: special rounds retain a read-only view of the actual server-owned assets.
+// Never reuse the buy/deploy DOM: those actions are intentionally prep-only.
+function m1017RenderStageIntel(){
+ const intel=window.LIVEStageIntel;if(!intel)return;
+ const net=window.LIVEMultiplayer?.getRoom?.()?.game;
+ const phase=roundState.phase,kind=net?.kind||'supply';
+ const active=appMode==='game'&&roundState.active&&!!net&&(
+  phase==='supply'||(phase==='special'&&net?.specialType!=='shop')||
+  (phase==='result'&&!['farm','pvp','boss'].includes(kind)));
+ if(!active){intel.clear();return;}
+ const owned=(gameState.owned||[]).map(o=>{
+  const r=byId[o.characterId],pos=teams.A.find(t=>String(t.ownedId)===String(o.uid));
+  return {uid:o.uid,name:r?displayName(r):String(o.characterId),star:Number(o.star)||1,
+   role:r?.role||'',location:o.location==='board'?'board':'bench',
+   x:pos?.x??o.x,y:pos?.y??o.y,
+   equipment:(o.equipment||[]).map(item=>({name:LIVEItems.displayName(item),icon:itemIcon(item)}))};
+ });
+ const shop=(gameState.shop||[]).map(id=>{
+  const r=byId[id];return r?{name:displayName(r),role:r.role||'',
+   cost:m1004ShopPrice(id,r.cost),owned:owned.filter(o=>o.name===displayName(r)).length}:null;
+ });
+ intel.render({phase,kind,specialType:net?.specialType||'',round:roundState.round,
+  credits:gameState.credits,level:gameState.masteryLevel,exp:gameState.masteryProgress,
+  expMax:masteryExpToNext(),shopLocked:!!gameState.shopLocked,
+  benchCapacity:GAME_TEMP.benchSize,items:(gameState.items||[]).map(item=>({name:LIVEItems.displayName(item),icon:itemIcon(item)})),
+  owned,shop,pendingItems:Number(gameState.pendingItemCount)||0,pendingUnits:Number(gameState.pendingUnitCount)||0});
+}
 function renderGameEconomy(){
  renderCurrentSynergyPanel();liveFlushSupplyUnitQueue();
  const p=$('#gameEconomyPanel');if(!p)return;let dock=$('#gameBottomDock');
@@ -941,8 +970,9 @@ function renderGameEconomy(){
  // The special-round player market still needs the bench drag source.
  const showEconomy=scene==='formation'||(roundState.phase==='special'&&liveMarketVisible());
  if(appMode!=='game'||!showEconomy){
-  p.innerHTML='';if(dock)dock.remove();renderLiveBattleDeck(scene);renderItemPanel();return;
+  p.innerHTML='';if(dock)dock.remove();renderLiveBattleDeck(scene);renderItemPanel();m1017RenderStageIntel();return;
  }
+ window.LIVEStageIntel?.clear?.();
  renderLiveBattleDeck(scene);
  const prep=roundState.phase==='prep';if(prep&&!isOnlineMatch())m7ErebusGrant();
  const shopCards=gameState.shop.map((id,i)=>{if(!id)return `<div class="shop-card sold"><span>판매 완료</span></div>`;const r=byId[id],owned=gameState.owned.filter(o=>o.characterId===id),copyCount=owned.reduce((sum,o)=>sum+3**(o.star-1),0),ownTag=copyCount?`<span class="shop-owned-count" title="보유 실험체 ${owned.length}명 · 합성 재료 환산 ${copyCount}장">보유 ${owned.length}</span>`:'';return `<button type="button" class="shop-card" data-buy="${i}" data-inspect-character="${esc(r.id)}" ${prep?'':'disabled'}>${ownTag}${characterPortrait(r,'shop-portrait')}<span class="shop-name">${esc(displayName(r))}${m910FocusMatches(r).length?'<i class="m910-focus-mark" title="관심 시너지 일치">✦</i>':''}</span><span class="shop-meta"><span class="shop-meta-label"><small>${esc(r.role)}</small>${shopSynergyTags(r)}</span>${creditHtml(m1004ShopPrice(id,r.cost))}</span></button>`}).join('');
@@ -1454,11 +1484,9 @@ function m907AugmentVfx(event){
  clearTimeout(m910DiceNoticeTimer);m910DiceNoticeTimer=setTimeout(()=>hud.hidden=true,4500);
 }
 function m907RoundTransition(net){
- const signature=net.round+':'+net.phase;if(signature===m907PhaseSignature)return;m907PhaseSignature=signature;
- if(!['prep','combat','result','augment-sync','augment'].includes(net.phase))return;
- const label={prep:'준비',combat:'교전',result:'결과',augment:'증강 선택','augment-sync':'에셋 동기화'}[net.phase]||net.phase;
- const box=document.createElement('div');box.className='m907-round-transition';box.innerHTML='<span>R'+Number(net.round)+'</span><strong>'+esc(label)+'</strong><i></i>';
- document.body.appendChild(box);setTimeout(()=>box.remove(),1450);
+ // M10-17: retired purple phase banner. Keep the tracker, never create the old DOM.
+ m907PhaseSignature=net.round+':'+net.phase;
+ document.querySelectorAll('.m907-round-transition').forEach(el=>el.remove());
 }
 // M9-01: authoritative, personal augment choice. Re-render only for state changes, not each 250ms clock tick.
 let m901AugmentStamp='',m901AugmentNotice='',m901AugmentBusy=false,m902PreviousOffers=[];

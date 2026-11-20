@@ -40,12 +40,15 @@ body[data-app-mode="test"] .field-b {
 html:not(.m611-qa) body:not(.m1016-game-open) .app,
 html:not(.m611-qa) body:not(.m1016-game-open) #roundModePanel,
 html:not(.m611-qa) body:not(.m1016-game-open) #gameBottomDock,
-html:not(.m611-qa) body:not(.m1016-game-open) #devExit{visibility:hidden!important;pointer-events:none!important}
+html:not(.m611-qa) body:not(.m1016-game-open) #devExit,
+html:not(.m611-qa) body:not(.m1016-game-open) #appModeStart{visibility:hidden!important;pointer-events:none!important}
+/* Keep both the obsolete login skin and modern gate out of the first paint until auth JS is wired. */
+html:not(.m611-qa):not(.m1017-gate-ready) #liveGate{visibility:hidden!important;pointer-events:none!important}
 </style>
 <script id="m1016-startup-fallback">
 // If the account/intro bootstrap fails entirely, don't leave a silent blank page.
 window.addEventListener('load',()=>setTimeout(()=>{
- if(document.documentElement.classList.contains('m611-qa')||document.getElementById('liveGate'))return;
+ if(document.documentElement.classList.contains('m611-qa')||document.documentElement.classList.contains('m1017-gate-ready'))return;
  const notice=document.createElement('div');notice.id='m1016BootFailure';
  notice.style.cssText='position:fixed;z-index:100200;inset:0;display:grid;place-content:center;gap:14px;padding:24px;text-align:center;background:#030607;color:#d9e9e3;font:14px/1.6 system-ui,sans-serif';
  const message=document.createElement('strong');message.textContent='L.I.V.E. 초기화에 실패했습니다. 새로고침 후 다시 시도해 주세요.';
@@ -218,6 +221,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <link rel="stylesheet" href="css/lobby.css" />
 <script src="js/client/multiplayer.js"></script>
 <link rel="stylesheet" href="css/m1011-fixes.css" />
+<link rel="stylesheet" href="css/m1017-stage-intel.css" />
+<script src="js/client/m1017-stage-intel.js"></script>
 <script src="js/client/m1011-settings.js"></script>
 <script src="js/client/battlefield.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>

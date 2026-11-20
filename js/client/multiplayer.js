@@ -141,6 +141,8 @@
   $('#liveTeamSend').onclick=async()=>{const text=$('#liveTeamChatInput').value.trim();if(!text)return;try{await api('team-chat',{text});$('#liveTeamChatInput').value=''}catch(e){notice(e.message)}};$('#liveTeamChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveTeamSend').click()});
   $('#liveSend').onclick=async()=>{const text=$('#liveChatInput').value.trim();if(!text)return;try{await api('chat',{text});$('#liveChatInput').value=''}catch(e){console.warn(e.message)}};$('#liveChatInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('#liveSend').click()});
   if(session)api('me').then(j=>{setIdentity(j);display('rooms');recoverMatch()}).catch(()=>{session='';sessionStorage.removeItem('live_session');display('auth')});else display('auth');
+  // M10-17: release first-paint login guard only after the account UI and handlers exist.
+  document.documentElement.classList.add('m1017-gate-ready');
   async function quitToLobby(){
    if(!openedGame||!token||!room)throw Error('진행 중인 경기가 없어.');
    await api('leave'); // server eliminates only this player and broadcasts to the others
