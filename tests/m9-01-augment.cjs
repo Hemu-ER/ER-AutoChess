@@ -4,7 +4,7 @@ const crypto=require('node:crypto');
 const aug=require('../js/server/match-augment.cjs');
 let checks=0;
 const test=(ok,msg)=>{assert.ok(ok,msg);checks++};
-test(aug.CARDS.gray.length===54,'기존 승인 회색 카드 54종');
+test(aug.CARDS.gray.length===53,'기존 승인 회색 카드 53종');
 test(aug.TIERS.length===3&&aug.ROUNDS.join(',')==='1,6,16','등급과 라운드');
 for(const t of aug.TIERS){test(aug.CARDS[t].length>=6,`${t} 후보 수`);test(new Set(aug.CARDS[t].map(c=>c.id)).size===aug.CARDS[t].length,`${t} 카드 고유 ID`)}
 const distribution={gray:0,blue:0,purple:0};for(let i=0;i<15000;i++)distribution[aug.drawTier()]++;
@@ -44,5 +44,5 @@ for(const tierIndex of [0,1,2]){
 }
 const p={slot:0,augments:[]};const state=aug.open([p],1);assert.throws(()=>aug.pick(state,p,NaN));checks++;assert.throws(()=>aug.pick(state,p,-1));checks++;assert.throws(()=>aug.pick(state,p,3));checks++;
 const chosen=aug.pick(state,p,0);test(!aug.drawOffers(state.tier,p.augments).includes(chosen.id),'이미 획득한 카드 제외');
-test(aug.CARDS.gray.every(c=>c.implemented===true),'M10-04 회색 54종 실제 구현 상태 반영');test(aug.CARDS.purple.length===46,'승인 46개 보라 인퓨전만 포함');test(aug.CARDS.purple.every(c=>c.implemented===true),'새 보라 인퓨전 카드 상태');
+test(aug.CARDS.gray.every(c=>c.implemented===true),'M10-04 회색 53종 실제 구현 상태 반영');test(aug.CARDS.purple.length===46,'승인 46개 보라 인퓨전만 포함');test(aug.CARDS.purple.every(c=>c.implemented===true),'새 보라 인퓨전 카드 상태');
 console.log(`M9-01 증강 선택 QA 성공: ${checks.toLocaleString()}개 검사, 등급 분포`,distribution);

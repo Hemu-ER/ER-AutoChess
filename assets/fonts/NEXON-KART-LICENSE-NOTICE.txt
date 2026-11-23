@@ -1,0 +1,5 @@
+NEXON Kart Gothic © NEXON Korea Corporation. All rights reserved.
+Source: https://brand.nexon.com/en/ci-brand-guidelines/typeface
+Webfont source: https://github.com/fonts-archive/KartriderKor
+NEXON permits personal and commercial use and distribution; font files may not be modified and resold. Include copyright notice when bundling or embedding.
+This patch references the original, unmodified font files from an external CDN; it does not distribute a copy of the font files. Offline fallback: existing Freesentation font files in the project.

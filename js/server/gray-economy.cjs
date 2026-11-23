@@ -25,7 +25,6 @@ function afterCraft(a){const s=ensure(a);if(s.crafts++===0&&has(a,'G056'))a.cred
 function afterMerge(a,newStar){if(has(a,'G058'))a.credits+=newStar===2?2:newStar===3?3:0}
 function beforeNextRound(a){const s=ensure(a),credits=a.credits;
  if(has(a,'G002')&&credits<=5)a.credits+=1;
- if(has(a,'G014')&&credits<=2)a.credits+=2;
  if(has(a,'G037')&&s.roundSpent===0)a.credits+=2;
  s.flatSavings=credits>=10?s.flatSavings+1:0;
  if(has(a,'G054')&&s.flatSavings>=2){a.credits+=2;s.flatSavings=0}

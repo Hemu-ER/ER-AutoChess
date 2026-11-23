@@ -15,12 +15,12 @@
   function shop(){
     return `<div class="m1017-shoplist">${data.shop.map((entry,i)=>entry?
       `<div class="m1017-shoprow"><span class="m1017-order">0${i+1}</span><b>${escapeHtml(entry.name)}</b><small>${escapeHtml(entry.role)}</small><span class="m1017-price">${escapeHtml(entry.cost)}C</span>${entry.owned?`<small>보유 ${entry.owned}</small>`:''}</div>`:
-      `<div class="m1017-shoprow m1017-sold"><span class="m1017-order">0${i+1}</span>판매 완료</div>`).join('')||'<p class="m1017-empty">표시할 상점 상품이 없어.</p>'}</div>`;
+      `<div class="m1017-shoprow m1017-sold"><span class="m1017-order">0${i+1}</span>판매 완료</div>`).join('')||'<p class="m1017-empty">표시할 상점 상품이 없습니다.</p>'}</div>`;
   }
   function squad(){
     const board=data.owned.filter(u=>u.location==='board'),bench=data.owned.filter(u=>u.location==='bench');
     return `<h4>현재 전장 · ${board.length}명</h4>${board.map(playerLine).join('')||'<p class="m1017-empty">배치된 실험체 없음</p>'}
-      <h4>벤치 · ${bench.length}/${data.benchCapacity}명</h4>${bench.map(playerLine).join('')||'<p class="m1017-empty">벤치가 비어 있어.</p>'}`;
+      <h4>벤치 · ${bench.length}/${data.benchCapacity}명</h4>${bench.map(playerLine).join('')||'<p class="m1017-empty">벤치가 비어 있습니다.</p>'}`;
   }
   function inventory(){
     const equipped=data.owned.filter(u=>u.equipment?.length);
@@ -50,7 +50,7 @@
     root.innerHTML=`<button type="button" class="m1017-toggle" data-intel-toggle aria-expanded="${open}" aria-controls="m1017IntelBody">
         <span><b>${name}</b><small>${sum}</small></span><span aria-hidden="true">${open?'접기 ▾':'펼치기 ▴'}</span></button>
       <div id="m1017IntelBody" class="m1017-drawer" ${open?'':'hidden'}>
-        <header><span>READ ONLY · ${escapeHtml(label)}</span><strong>현재 자산 조회</strong><p>선택에 필요한 정보만 확인할 수 있어. 구매와 편성 변경은 준비 단계에서 가능해.</p></header>
+        <header><span>READ ONLY · ${escapeHtml(label)}</span><strong>현재 자산 조회</strong><p>선택에 필요한 정보만 확인할 수 있습니다. 구매와 편성 변경은 준비 단계에서 가능합니다.</p></header>
         <nav class="m1017-tabs" aria-label="보유 정보 항목">${[['overview','요약'],['shop','상점'],['squad','편성'],['items','아이템']].map(([id,label])=>
         `<button type="button" data-intel-tab="${id}" aria-pressed="${tab===id}">${label}</button>`).join('')}</nav>
         <div class="m1017-content">${tab==='shop'?shop():tab==='squad'?squad():tab==='items'?inventory():overview()}</div>

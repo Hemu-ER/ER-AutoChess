@@ -1,0 +1,32 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let checks=0;
+const check=(truth,message)=>{assert.ok(truth,message);checks++};
+const {CARDS}=require('../js/server/match-augment.cjs');
+const cards=[...CARDS.gray,...CARDS.blue,...CARDS.purple];
+check(CARDS.gray.length===53&&CARDS.blue.length===31&&CARDS.purple.length===46,'correct stage counts');
+check(cards.length===130,'total card count');
+check(!cards.some(c=>c.id==='G014'),'G014 removed from server draw pool');
+for(const file of ['js/server/match-augment.cjs','js/server/gray-economy.cjs','js/shared/infusion-catalog.js','js/client/m909-infusion-text.js']){
+ check(!read(file).includes('G014'),`${file} has no deleted card`);
+}
+const ctx={window:{}};vm.runInNewContext(read('js/shared/infusion-catalog.js'),ctx);
+check(ctx.window.LIVEInfusionCatalog.length===130,'client codex has 130 cards');
+check(!ctx.window.LIVEInfusionCatalog.some(c=>c.id==='G014'),'client codex excludes G014');
+const stage=read('js/client/m1017-stage-intel.js');
+check(!stage.includes('표시할 상점 상품이 없어.')&&!stage.includes('벤치가 비어 있어.'),'special stage no legacy informal phrases');
+check(stage.includes('선택에 필요한 정보만 확인할 수 있습니다.'),'special stage uses polite copy');
+const html=read('index.html');
+check(html.includes('L.I.V.E. M10-18'),'version label updated');
+const css=read('css/base.css');
+check(css.includes('LIVE Kart Gothic')&&css.includes('KartriderKor-Medium.woff2')&&css.includes('KartriderKor-Bold.woff2')&&css.includes('KartriderKor-ExtraBold.woff2'),'three Nexon font weights referenced');
+check(css.includes("'LIVE Kart Gothic','Freesentation'"),'offline fallback retained');
+check(fs.existsSync(path.join(root,'assets/fonts/NEXON-KART-LICENSE-NOTICE.txt')),'font attribution notice included');
+check(read('js/client/game.js').includes('LIVECombatVFX')&&read('js/client/game.js').includes('LIVEStageIntel'),'M10-16/17 integration hooks retained');
+for(const filename of ['js/client/m1016-combat-vfx.js','css/m1016-combat-vfx.css','js/client/m1017-stage-intel.js','css/m1017-stage-intel.css'])check(fs.existsSync(path.join(root,filename)),filename+' retained');
+console.log(`M10-18 REGRESSION PASS: ${checks} assertions`);

@@ -19,7 +19,7 @@ function fresh(ids=[]){const a=economy.makeInitial();a.augmentIds=[...ids];a.inf
  a=fresh(['G019']);a.exp=4;a.level=1;a.credits=10;economy.action(a,'invest');eq(a.level,2,'level promoted');eq(a.credits,10,'G019 first level bonus');
  a=fresh(['G037']);start=a.credits;economy.roundIncome(a,2);ok(a.credits>=start+7,'G037 no-spend gain');
  a=fresh(['G002']);a.credits=5;economy.roundIncome(a,2);eq(a.credits,11,'G002 preparation end award');
- a=fresh(['G014']);a.credits=2;economy.roundIncome(a,2);eq(a.credits,9,'G014 last pennies award');
+ a=fresh(['G002']);a.credits=2;economy.roundIncome(a,2);eq(a.credits,8,'G002 low credit award without removed G014');
  a=fresh(['G054']);a.credits=12;economy.roundIncome(a,2);a.credits=12;economy.roundIncome(a,3);ok(a.credits>=19,'G054 two savings rounds reward');
  a=fresh(['G015']);grayE.spend(a,10);economy.roundIncome(a,2);ok(grayE.data(a).freeRerolls>=1,'G015 next prep free reroll');
  a=fresh(['G004']);grayE.settlePvP(a,{round:1,lost:true});eq(grayE.data(a).freeRerolls,1,'G004 defeat free reroll');
@@ -79,5 +79,5 @@ const d=(f,att=f.a,target=f.b,kind='basic',opt={})=>f.r.modifyDamage(att,target,
 const A=[{characterId:'hyunwoo',star:1,x:1,y:1,items:[]}],B=[{characterId:'katja',star:1,x:1,y:1,items:[]}];
 for(const inf of CARDS.gray){const result=new CombatEngine({teamA:A,teamB:B,seed:42003,masteryA:2,masteryB:2,infusions:{A:[inf.id],B:[]}}).run();ok(result.battleOver&&Number.isFinite(result.time)&&result.grayReport&&result.grayReport.A.kills>=0,inf.id+' full combat simulation')}
 for(const inf of CARDS.gray){const result=new CombatEngine({teamA:A,teamB:B,seed:42004,masteryA:2,masteryB:2,infusions:{A:[],B:[inf.id]}}).run();ok(result.battleOver&&Number.isFinite(result.time)&&result.grayReport&&result.grayReport.B.kills>=0,inf.id+' opponent-side simulation')}
-eq(CARDS.gray.length,54,'all gray cards registered');ok(CARDS.gray.every(c=>c.implemented),'all cards status implemented');
-console.log(`M10-04 GRAY REGRESSION PASS: ${checks} assertions (economy, combat triggers and 54 per-card battles)`);
+eq(CARDS.gray.length,53,'all gray cards registered');ok(CARDS.gray.every(c=>c.implemented),'all cards status implemented');
+console.log(`M10-04 GRAY REGRESSION PASS: ${checks} assertions (economy, combat triggers and 53 per-card battles)`);

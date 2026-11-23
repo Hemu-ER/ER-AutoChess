@@ -31,7 +31,7 @@ ok(css.includes('shop-portrait')&&css.includes('bench-portrait')&&ui.includes('c
 ok(css.includes('.m907-purple-vfx{display:none'),'infusion effect notifications suppressed');
 ok(css.includes('m909PanelEnter')&&css.includes('liveAuctionPanel')&&css.includes('liveMarketPanel'),'panel entrance animations');
 const stageCount={gray:aug.CARDS.gray.length,blue:aug.CARDS.blue.length,purple:aug.CARDS.purple.length};
-ok(stageCount.gray===54&&stageCount.blue===31&&stageCount.purple===46,'real infusion 54/31/46 counts');
+ok(stageCount.gray===53&&stageCount.blue===31&&stageCount.purple===46,'real infusion 53/31/46 counts');
 const vm=require('node:vm');const catalogWindow={};vm.runInNewContext(catalog,{window:catalogWindow});
 for(const tier of ['gray','blue','purple'])ok(catalogWindow.LIVEInfusionCatalog.filter(c=>c.tier===tier).length===stageCount[tier],'catalog '+tier);
 const fakeWindow={};vm.runInNewContext(descriptions,{globalThis:fakeWindow});
