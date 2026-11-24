@@ -20,13 +20,13 @@ function scaling(round){if(![7,9,11,13,15].includes(round))throw Error('보스 �
 function publicInfo(b,round){const hpRatio=b.id==='boss_omega'&&round===7?.85:b.id==='boss_wickeline'&&round===9?.75:1;
  const atkRatio=b.id==='boss_omega'&&round===7?.90:b.id==='boss_wickeline'&&round===9?.90:1;
  return {id:b.id,name:b.name,tier:b.tier,pattern:b.pattern,health:Math.round(b.health*scaling(round)*hpRatio),attack:Math.round(b.attack*(1+Math.max(0,round-7)*.065)*atkRatio),defense:Math.round(b.defense+(round-7)*2),interval:b.interval,reward:b.reward,buff:b.buff,buffText:Object.keys(b.buff).map(k=>buffNames[k]).join(' · '),round};}
-function configFor(p,b,round,seed){const info=publicInfo(b,round);return {teamA:p.team||[],teamB:[{characterId:b.id,star:1,x:2,y:1,items:[]}],masteryA:p.mastery||1,masteryB:1,seed,moveInterval:.5,arenaRegion:'lab',boss:{id:b.id,stats:{hp:info.health,atk:info.attack,def:info.defense},interval:b.interval},infusions:{A:p.augments||[],B:[]},persistent:{A:{...(p.progress||{}),blueErebosSales:p.assets?.blueErebosSales||0},B:{}}};}
+function configFor(p,b,round,seed){const info=publicInfo(b,round);return {teamA:p.team||[],teamB:[{characterId:b.id,star:1,x:2,y:1,items:[]}],masteryA:p.mastery||1,masteryB:1,seed,moveInterval:.5,arenaRegion:'lab',boss:{id:b.id,stats:{hp:info.health,atk:info.attack,def:info.defense},interval:b.interval},infusions:{A:p.augments||[],B:[]},augmentsA:p.augments||[],augmentsB:[],round,purpleChoices:{A:economy.purpleChoices(p),B:{}},reservesA:economy.reserveTeam(p.assets),purpleCredits:{A:p.assets?.credits||0,B:0},persistent:{A:{...(p.progress||{}),blueErebosSales:p.assets?.blueErebosSales||0},B:{}}};}
 function fight(p,b,round,seed){
  if(!p.team?.length)return {seed,time:0,won:false,bossHp:publicInfo(b,round).health,teamHp:0,empty:true};
  const result=new CombatEngine(configFor(p,b,round,seed)).run();
  const enemy=result.units.find(u=>u.characterId===b.id&&u.team==='B');
  const own=result.units.filter(u=>u.team==='A'&&!u.dead);
- return {seed,time:result.time,won:Boolean(enemy&&enemy.dead),bossHp:Math.round(Math.max(0,enemy?.hp||0)),teamHp:Math.round(own.reduce((s,u)=>s+Math.max(0,u.hp),0)),outcome:result.outcome};
+ return {seed,time:result.time,augmentEvents:result.augmentEvents||[],won:Boolean(enemy&&enemy.dead),bossHp:Math.round(Math.max(0,enemy?.hp||0)),teamHp:Math.round(own.reduce((s,u)=>s+Math.max(0,u.hp),0)),outcome:result.outcome};
 }
 function open(round,players,b=choose(crypto.randomInt(100),round)){
  const results={};const info=publicInfo(b,round);

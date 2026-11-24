@@ -40,7 +40,7 @@ function create(ctx){
    if(has(t,'G032')&&d.next40Team===t){r*=1.12;d.next40Team=null}
    if(has(t,'G060')&&kind==='basic'&&s.nextKillBasic){r*=1.15;s.nextKillBasic=false}
    if(has(t,'G064')&&kind==='basic'&&s.nextHealBasic){r*=1.10;s.nextHealBasic=false}
-   if(has(t,'G061')&&dst.hp<=dst.maxHp*.25&&!s.lowHpTarget?.[dst.id]){(s.lowHpTarget??={})[dst.id]=true;s.lowHpAsUntil=ts+3}
+   if(has(t,'G061')&&dst.hp<=dst.maxHp*.25&&!s.lowHpUsed){s.lowHpUsed=true;s.lowHpAsUntil=ts+3}
    if(has(t,'G071')&&kind==='skill'&&!s.firstSkillDamage&&new Set((src.equipment||[]).filter(n=>ctx.isComplete(n))).size>=2)r*=1.08
    if(has(t,'G023')&&d.markFirstHit?.[t])r*=1.05;
    if(has(t,'G024')&&d.markFirstKill?.[t])r*=1.08;
@@ -56,18 +56,20 @@ function create(ctx){
    return d;
  }
  function afterDamage(src,dst,eff,kind,opt={}){
-   if(!src||!dst||eff<=0||!isCore(kind,opt))return;
-   const ts=now(),t=src.team,s=st(src),d=st(dst);s.lastKind=kind;if(has(t,'G045'))s.firstDamage=true;if(has(t,'G071')&&kind==='skill'&&new Set((src.equipment||[]).filter(n=>ctx.isComplete(n))).size>=2)s.firstSkillDamage=true;
+   if(!src||!dst||!isCore(kind,opt))return;
+   const d=st(dst);
+   if(has(dst.team,'G063')&&dst.hp>0&&d.shieldBefore>0&&dst.skill.shield<=0&&!d.shieldBrokenOnce){d.shieldBrokenOnce=true;heal(dst,dst.maxHp*.05,dst)}
+   if(eff<=0)return;
+   const ts=now(),t=src.team,s=st(src);s.lastKind=kind;if(has(t,'G045'))s.firstDamage=true;if(has(t,'G071')&&kind==='skill'&&new Set((src.equipment||[]).filter(n=>ctx.isComplete(n))).size>=2)s.firstSkillDamage=true;
    if(!team[t].firstHit&&has(t,'G009')){team[t].firstHit=true;s.firstHitAsUntil=ts+4;log(t,'G009',`${src.name} 선봉대 발동`)}
    if(has(dst.team,'G023')&&!team[dst.team].firstHitEnemy){team[dst.team].firstHitEnemy=true;(s.markFirstHit??={})[dst.team]=true}
-   if(has(dst.team,'G028')&&dst.hp<=dst.maxHp*.30&&!d.emergency){d.emergency=true;heal(dst,dst.maxHp*.10,dst)}
+   if(has(dst.team,'G028')&&dst.hp>0&&dst.hp<=dst.maxHp*.30&&!d.emergency){d.emergency=true;heal(dst,dst.maxHp*.10,dst)}
    if(has(t,'G032')&&d.preHitHp>dst.maxHp*.4&&dst.hp>0&&dst.hp<=dst.maxHp*.4&&!d.crossed40?.[t]){(d.crossed40??={})[t]=true;d.next40Team=t}
    if(has(dst.team,'G040')){const key=src.id,prev=d.focusSrc===key?d.focusCount||0:0;d.focusSrc=key;d.focusCount=prev+1;if(d.focusCount>=3&&!d.focusUsed){d.focusUsed=true;d.focusDefenseUntil=ts+3}}
-   if(has(t,'G050')&&kind==='basic'){d.armorHits=(d.armorHits||0)+1;if(d.armorHits>=5&&!d.armorUntil){dst.def=Math.max(0,dst.def-5);d.armorUntil=ts+3;d.armorDebuff=5;d.armorHits=0}}
+   if(has(t,'G050')&&kind==='basic'&&!d.armorUntil){d.armorHits=(d.armorHits||0)+1;if(d.armorHits>=5){d.armorDebuff=Math.min(5,Math.max(0,dst.def));dst.def-=d.armorDebuff;d.armorUntil=ts+3;d.armorHits=0}}
    if(has(t,'G062')&&kind==='skill')d.healWeakenUntil=ts+5;
    if(has(t,'G065')&&kind==='basic'&&src.role.startsWith('원거리')){s.rangedHits=s.rangedTarget===dst.id?(s.rangedHits||0)+1:1;s.rangedTarget=dst.id;if(s.rangedHits>=3){s.rangedHits=0;d.weakBasicUntil=ts+10}}
    if(has(t,'G072')&&opt.critical&&!s.critBuffUsed){s.critBuffUsed=true;s.critAsUntil=ts+3}
-   if(has(dst.team,'G063')&&d.shieldBefore>0&&dst.skill.shield<=0&&!d.shieldBrokenOnce){d.shieldBrokenOnce=true;heal(dst,dst.maxHp*.05,dst)}
    if(has(t,'G023')&&s.markFirstHit?.[dst.team]){} // target-side mark is owned by attacker, no global side effects.
  }
  function onDeath(src,dst){
@@ -75,8 +77,8 @@ function create(ctx){
    if(dst.role!=='소환수'&&dst.role!=='야생동물')team[t].killCount++;
    if(has(t,'G060')&&s.lastKind==='basic')s.nextKillBasic=true;
    if(has(t,'G025'))src.nextAttack=Math.min(src.nextAttack||ts+1,ts+Math.max(.05,(src.nextAttack-ts)*.5));
-   if(has(other,'G024')&&!team[other].firstDeathMarker){team[other].firstDeathMarker=true;(s.markFirstKill??={})[other]=true}
-   if(has(other,'G027')&&!team[other].firstAllyDeath){team[other].firstAllyDeath=true;for(const u of allies(other))heal(u,u.maxHp*.05,u)}
+   if(dst.role!=='소환수'&&has(other,'G024')&&!team[other].firstDeathMarker){team[other].firstDeathMarker=true;(s.markFirstKill??={})[other]=true}
+   if(dst.role!=='소환수'&&has(other,'G027')&&!team[other].firstAllyDeath){team[other].firstAllyDeath=true;for(const u of allies(other))heal(u,u.maxHp*.05,u)}
    const survivors=allies(other);
    if(survivors.length===1){const u=survivors[0],d=st(u);
      if(has(other,'G010')&&!team[other].lastStand){team[other].lastStand=true;shield(u,.12,0)}

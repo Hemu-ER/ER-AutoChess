@@ -3,7 +3,7 @@
   "version": "0.4.3",
   "private": true,
   "scripts": {
-    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs",
+    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs && node tests/m10-20-regression.cjs",
     "test:refactor": "node tests/refactor-smoke.cjs",
     "start": "node js/server/server.cjs",
     "test:m7": "node tests/m7-regression.cjs",
@@ -20,6 +20,7 @@
     "test:m9-08": "npm run test:m9-07 && node tests/m9-04.cjs && node tests/m9-05-ui.cjs && node tests/m9-08-restoration.cjs",
     "test:m9-09": "npm run test:m9-08 && node tests/m9-09-ux-regression.cjs",
     "test:m9-10": "npm run test:m9-09 && node tests/m9-10-regression.cjs",
-    "test:bots": "node tests/m10-19-bots.cjs && node tests/m10-19-bots-flow.cjs"
+    "test:bots": "node tests/m10-19-bots.cjs && node tests/m10-19-bots-flow.cjs",
+    "test:m10-20": "node tests/m10-20-regression.cjs"
   }
 }

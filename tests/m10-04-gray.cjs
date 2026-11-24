@@ -22,7 +22,7 @@ function fresh(ids=[]){const a=economy.makeInitial();a.augmentIds=[...ids];a.inf
  a=fresh(['G002']);a.credits=2;economy.roundIncome(a,2);eq(a.credits,8,'G002 low credit award without removed G014');
  a=fresh(['G054']);a.credits=12;economy.roundIncome(a,2);a.credits=12;economy.roundIncome(a,3);ok(a.credits>=19,'G054 two savings rounds reward');
  a=fresh(['G015']);grayE.spend(a,10);economy.roundIncome(a,2);ok(grayE.data(a).freeRerolls>=1,'G015 next prep free reroll');
- a=fresh(['G004']);grayE.settlePvP(a,{round:1,lost:true});eq(grayE.data(a).freeRerolls,1,'G004 defeat free reroll');
+ a=fresh(['G004']);grayE.settlePvP(a,{round:1,lost:true});eq(grayE.data(a).freeRerolls,0,'G004 not usable until next prep');economy.roundIncome(a,2);eq(grayE.data(a).freeRerolls,1,'G004 defeat free reroll');economy.roundIncome(a,3);eq(grayE.data(a).freeRerolls,0,'G004 expires after prep');
  a=fresh(['G034']);start=a.exp;grayE.settlePvP(a,{round:2,lost:true});eq(a.exp,start+2,'G034 defeat EXP');
  a=fresh(['G018']);start=a.exp;grayE.settlePvP(a,{round:2,kills:1});eq(a.exp,start+1,'G018 kill EXP');
  a=fresh(['G059']);grayE.data(a).trainingQueued=true;start=a.exp;grayE.settlePvP(a,{round:2,kills:1});eq(a.exp,start+1,'G059 invested next pvp kill');

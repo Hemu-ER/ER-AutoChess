@@ -1,48 +1,48 @@
 /* M10-17: optional, read-only information drawer during special phases. */
-#m1017StageIntel{position:fixed;right:12px;bottom:12px;z-index:14030;width:min(372px,calc(100vw - 24px));font:12px/1.45 system-ui,'Noto Sans KR',sans-serif;color:#e0eceb;box-sizing:border-box;pointer-events:none}
+#m1017StageIntel{position:fixed;right:12px;bottom:12px;z-index:14030;width:min(372px,calc(100vw - 24px));font:calc(12px + 2pt)/1.45 system-ui,'Noto Sans KR',sans-serif;color:#e0eceb;box-sizing:border-box;pointer-events:none}
 #m1017StageIntel *{box-sizing:border-box}
 #m1017StageIntel .m1017-toggle{pointer-events:auto;display:flex;gap:12px;justify-content:space-between;align-items:center;width:100%;min-height:48px;padding:9px 13px;text-align:left;background:#182831f7;border:1px solid #75918b;color:#e1f5f0;border-radius:7px;cursor:pointer;box-shadow:0 6px 16px #0007;font:inherit}
 #m1017StageIntel .m1017-toggle>span:first-child{display:flex;flex-direction:column;gap:2px}
-#m1017StageIntel .m1017-toggle b{font-size:12px;letter-spacing:.025em}
-#m1017StageIntel .m1017-toggle small{color:#acc8c3;font-size:10px}
+#m1017StageIntel .m1017-toggle b{font-size:calc(12px + 2pt);letter-spacing:.025em}
+#m1017StageIntel .m1017-toggle small{color:#acc8c3;font-size:calc(10px + 2pt)}
 #m1017StageIntel .m1017-toggle:hover,#m1017StageIntel .m1017-toggle:focus-visible{background:#263c45;border-color:#b0d2c5;outline-offset:2px}
 #m1017StageIntel .m1017-drawer{pointer-events:auto;margin-top:6px;border:1px solid #537077;border-radius:7px;background:#101b24f9;box-shadow:0 12px 42px #000c;overflow:hidden;max-height:min(62dvh,510px);display:flex;flex-direction:column}
 #m1017StageIntel .m1017-drawer[hidden]{display:none!important}
 #m1017StageIntel header{padding:14px 15px 9px;border-bottom:1px solid #43575f88;display:grid;gap:2px}
-#m1017StageIntel header>span{font-size:9px;letter-spacing:.13em;color:#a0c0b6}
-#m1017StageIntel header strong{font-size:16px}
-#m1017StageIntel header p{margin:3px 0 0;font-size:10px;line-height:1.55;color:#a7bfc2}
+#m1017StageIntel header>span{font-size:calc(9px + 2pt);letter-spacing:.13em;color:#a0c0b6}
+#m1017StageIntel header strong{font-size:calc(16px + 2pt)}
+#m1017StageIntel header p{margin:3px 0 0;font-size:calc(10px + 2pt);line-height:1.55;color:#a7bfc2}
 #m1017StageIntel .m1017-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:7px;gap:4px;border-bottom:1px solid #43575f88}
-#m1017StageIntel .m1017-tabs button{cursor:pointer;padding:8px 2px;background:#1a2a34;border:1px solid #354e57;border-radius:4px;color:#b7cecf;font:600 11px system-ui,sans-serif}
+#m1017StageIntel .m1017-tabs button{cursor:pointer;padding:8px 2px;background:#1a2a34;border:1px solid #354e57;border-radius:4px;color:#b7cecf;font:600 calc(11px + 2pt) system-ui,sans-serif}
 #m1017StageIntel .m1017-tabs button[aria-pressed="true"]{background:#274b4c;border-color:#92c7b6;color:#f0fff8}
 #m1017StageIntel .m1017-content{overflow-y:auto;overscroll-behavior:contain;padding:10px 13px 14px;min-height:0;scrollbar-width:thin;scrollbar-color:#658783 #14242b}
-#m1017StageIntel h4{font:700 11px/1.4 system-ui,sans-serif;margin:13px 0 7px;padding:0 0 5px;border-bottom:1px solid #50636b66;color:#d1e1df}
+#m1017StageIntel h4{font:700 calc(11px + 2pt)/1.4 system-ui,sans-serif;margin:13px 0 7px;padding:0 0 5px;border-bottom:1px solid #50636b66;color:#d1e1df}
 #m1017StageIntel h4:first-child{margin-top:4px}
-#m1017StageIntel h4 small{font-size:9px;font-weight:400;color:#8da6a6}
+#m1017StageIntel h4 small{font-size:calc(9px + 2pt);font-weight:400;color:#8da6a6}
 #m1017StageIntel .m1017-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 #m1017StageIntel .m1017-metrics>div{display:grid;gap:3px;min-width:0;background:#1d3039;border:1px solid #344e55;border-radius:5px;padding:10px}
-#m1017StageIntel .m1017-metrics small{font-size:10px;color:#a3bec0}
-#m1017StageIntel .m1017-metrics strong{font-size:17px;font-weight:760;color:#d6eadf;line-height:1.2}
-#m1017StageIntel .m1017-metrics span{font-size:9px;color:#93b8b4}
+#m1017StageIntel .m1017-metrics small{font-size:calc(10px + 2pt);color:#a3bec0}
+#m1017StageIntel .m1017-metrics strong{font-size:calc(17px + 2pt);font-weight:760;color:#d6eadf;line-height:1.2}
+#m1017StageIntel .m1017-metrics span{font-size:calc(9px + 2pt);color:#93b8b4}
 #m1017StageIntel .m1017-shoplist{display:grid;gap:5px}
 #m1017StageIntel .m1017-shoprow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 7px;padding:8px;background:#1a2a34;border:1px solid #354950;border-radius:4px}
-#m1017StageIntel .m1017-shoprow .m1017-order{color:#7b9e9a;font:600 10px ui-monospace,monospace}
-#m1017StageIntel .m1017-shoprow b{font-size:11px}
-#m1017StageIntel .m1017-shoprow small{color:#a3b7ba;font-size:10px}
+#m1017StageIntel .m1017-shoprow .m1017-order{color:#7b9e9a;font:600 calc(10px + 2pt) ui-monospace,monospace}
+#m1017StageIntel .m1017-shoprow b{font-size:calc(11px + 2pt)}
+#m1017StageIntel .m1017-shoprow small{color:#a3b7ba;font-size:calc(10px + 2pt)}
 #m1017StageIntel .m1017-price{margin-left:auto;font-weight:700;color:#e5ce90}
 #m1017StageIntel .m1017-sold{opacity:.55}
 #m1017StageIntel .m1017-unit{padding:9px;border:1px solid #344e55;background:#1a2c34;border-radius:5px;margin-bottom:5px;display:grid;gap:5px}
 #m1017StageIntel .m1017-unit-name{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
-#m1017StageIntel .m1017-unit-name b{font-size:11px;color:#ebf3ed}
-#m1017StageIntel .m1017-unit-name small{font-size:10px;color:#9cb6b8}
+#m1017StageIntel .m1017-unit-name b{font-size:calc(11px + 2pt);color:#ebf3ed}
+#m1017StageIntel .m1017-unit-name small{font-size:calc(10px + 2pt);color:#9cb6b8}
 #m1017StageIntel .m1017-equips,#m1017StageIntel .m1017-itemlist,#m1017StageIntel .m1017-equipped>div{display:flex;flex-wrap:wrap;gap:5px}
-#m1017StageIntel .m1017-item{display:inline-flex;align-items:center;gap:5px;background:#223540;border:1px solid #47626d;border-radius:4px;padding:3px 6px;color:#d8e5e5;font-size:10px}
+#m1017StageIntel .m1017-item{display:inline-flex;align-items:center;gap:5px;background:#223540;border:1px solid #47626d;border-radius:4px;padding:3px 6px;color:#d8e5e5;font-size:calc(10px + 2pt)}
 #m1017StageIntel .m1017-item img{width:20px;height:20px;object-fit:contain}
 #m1017StageIntel .m1017-equipped{display:grid;gap:6px;margin:7px 0 10px}
-#m1017StageIntel .m1017-equipped b{font-size:11px}
-#m1017StageIntel .m1017-muted,#m1017StageIntel .m1017-empty{color:#9db5b9;font-size:11px}
+#m1017StageIntel .m1017-equipped b{font-size:calc(11px + 2pt)}
+#m1017StageIntel .m1017-muted,#m1017StageIntel .m1017-empty{color:#9db5b9;font-size:calc(11px + 2pt)}
 #m1017StageIntel .m1017-empty{margin:9px 0}
-#m1017StageIntel .m1017-waiting{margin-top:11px;color:#e7cd9c;font-size:10px}
+#m1017StageIntel .m1017-waiting{margin-top:11px;color:#e7cd9c;font-size:calc(10px + 2pt)}
 /* The old purple round transition was retired; don't revive it from legacy CSS. */
 .m907-round-transition{display:none!important}
 @media(max-width:700px){#m1017StageIntel{right:8px;bottom:max(8px,env(safe-area-inset-bottom));width:min(360px,calc(100vw - 16px))}#m1017StageIntel .m1017-drawer{max-height:min(60dvh,465px)}#m1017StageIntel .m1017-toggle{min-height:46px}}

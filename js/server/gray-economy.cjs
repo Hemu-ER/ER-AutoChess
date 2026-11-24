@@ -19,7 +19,7 @@ function afterBuy(a,uid,cost){const s=ensure(a);s.buys++;s.boughtUids.push(uid);
 function afterReroll(a,paid){const s=ensure(a);if(paid){s.paidRerolls++;spend(a,2);if(has(a,'G053')&&s.paidRerolls===3)a.credits+=1}}
 function takeFreeReroll(a){const s=ensure(a);if(s.freeRerolls>0){s.freeRerolls--;return true;}return false}
 function afterInvest(a,oldLevel){const s=ensure(a);spend(a,2);s.invested=true;s.trainingQueued=true;}
-function levelUp(a,oldLevel){const s=ensure(a);if(a.level>oldLevel&&has(a,'G019')&&s.levelRewardRound!==s.round){a.credits+=2;s.levelRewardRound=s.round;}}
+function levelUp(a,oldLevel){const s=ensure(a);if(a.level>oldLevel)s.noLevelRounds=0;if(a.level>oldLevel&&has(a,'G019')&&s.levelRewardRound!==s.round){a.credits+=2;s.levelRewardRound=s.round;}}
 function afterSell(a,u){const s=ensure(a);if(s.sells++===0&&has(a,'G055')&&!s.boughtUids.includes(u.uid))a.credits++}
 function afterCraft(a){const s=ensure(a);if(s.crafts++===0&&has(a,'G056'))a.credits+=2}
 function afterMerge(a,newStar){if(has(a,'G058'))a.credits+=newStar===2?2:newStar===3?3:0}
@@ -28,17 +28,17 @@ function beforeNextRound(a){const s=ensure(a),credits=a.credits;
  if(has(a,'G037')&&s.roundSpent===0)a.credits+=2;
  s.flatSavings=credits>=10?s.flatSavings+1:0;
  if(has(a,'G054')&&s.flatSavings>=2){a.credits+=2;s.flatSavings=0}
- if(has(a,'G015')&&s.roundSpent>=10)s.freeRerolls++;
+ s.freeRerolls=(s.pendingFreeRerolls||0)+(has(a,'G015')&&s.roundSpent>=10?1:0);s.pendingFreeRerolls=0;
  s.lockedShop=!!a.locked;
  s.noLevelRounds=(a.level>s.prepLevel)?0:s.noLevelRounds+1;
- if(has(a,'G020')&&s.noLevelRounds>=2){s.noLevelRounds=0;return 2}
+ if(has(a,'G020')&&s.noLevelRounds>=2)return 2;
  return 0;
 }
 function afterIncome(a,round,interest){const s=ensure(a);if(interest>0){s.interestCount++;if(has(a,'G016')&&s.interestCount%2===0)a.credits++}
  s.investedLast=s.invested;s.invested=false;s.round=round;s.roundSpent=0;s.paidRerolls=0;s.buys=0;s.sells=0;s.crafts=0;s.boughtUids=[];s.purchases=[];s.levelOnRound=0;s.prepLevel=a.level;}
 function settlePvP(a,{round,won=false,lost=false,kills=0}={}){
  const s=ensure(a),key=`pvp:${round}`;if(s.lastPvp===key)return;s.lastPvp=key;
- if(lost&&has(a,'G004'))s.freeRerolls++;
+ if(lost&&has(a,'G004'))s.pendingFreeRerolls=(s.pendingFreeRerolls||0)+1;
  if(lost&&has(a,'G034')){const addExp=require('./match-economy.cjs').addExp;addExp(a,2)}
  if(kills>0&&has(a,'G018'))require('./match-economy.cjs').addExp(a,1);
  if(kills>0&&has(a,'G059')&&s.trainingQueued)require('./match-economy.cjs').addExp(a,1);s.trainingQueued=false;

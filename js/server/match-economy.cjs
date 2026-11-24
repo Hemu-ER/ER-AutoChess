@@ -52,6 +52,7 @@ function oneShop(a){
 }
 function refreshShop(a,free=false){
  if(!free){if(a.credits<2)throw Error('리롤 크레딧 부족');a.credits-=2}
+ gray.ensure(a).lockedShop=false;
  a.shop=[];
  for(let i=0;i<5;i++)a.shop.push(oneShop(a));
  if(a.augmentIds?.includes('P14')&&!free){
@@ -163,7 +164,7 @@ function roundIncome(a,round){
  const extraExp=gray.beforeNextRound(a);
  const interest=Math.min(3,Math.floor(a.credits/10));
  gray.ensure(a).round=round;
- a.credits+=5+interest;addExp(a,4+extraExp);
+ a.credits+=5+interest;const oldLevel=a.level;addExp(a,4);if(extraExp&&a.level===oldLevel){gray.ensure(a).noLevelRounds=0;addExp(a,extraExp);}
  if(!a.locked)refreshShop(a,true);
  if(a.augmentIds?.includes('P09')){a.purpleShopRoundCount=(a.purpleShopRoundCount||0)+1;if(a.purpleShopRoundCount%2===0){const made=items.recipes[crypto.randomInt(items.recipes.length)]?.[0];if(made)giveItem(a,made);}}
  a.lastIncomeRound=round;gray.afterIncome(a,round,interest);acceptPending(a);
@@ -172,6 +173,9 @@ function roundIncome(a,round){
 function ownTeam(a){
  return a.owned.filter(o=>o.location==='board').map(o=>({ownedId:o.uid,characterId:o.characterId,star:o.star,x:o.x,y:o.y,items:o.items.slice()}))}
 function reserveTeam(a){return (a?.owned||[]).filter(o=>o.location==='bench').slice(0,8).map(o=>({ownedId:o.uid,characterId:o.characterId,star:o.star,items:[...o.items]}))} 
+// P10: equipment belongs to the empty tile's temporary soldier; reclaim only when the tile is occupied.
+function reconcileSoldierItems(a){for(const [key,name] of Object.entries(a.soldierItems||{})){if(!a.augmentIds?.includes('P10')||a.owned.some(o=>o.location==='board'&&`${o.x},${o.y}`===key)){delete a.soldierItems[key];giveItem(a,name)}}}
+function purpleChoices(p){return {...(p.purpleChoice||{}),soldierItems:{...(p.assets?.soldierItems||{})}}}
 function action(a,cmd,body={}){
  // Calls are serialized in the single-process HTTP server. Validate first, mutate once.
  const locate=()=>{const o=a.owned.find(x=>x.uid===Number(body.uid));if(!o)throw Error('보유하지 않은 실험체');return o};
@@ -234,6 +238,13 @@ function action(a,cmd,body={}){
   const made='초월:'+kind;
   for(const index of [i,j].sort((x,y)=>y-x))a.items.splice(index,1);
   giveItem(a,made);a.purpleForgeCount++;flushOverflow(a);
+ }else if(cmd==='equip-soldier'){
+  if(!a.augmentIds?.includes('P10'))throw Error('제왕의 군대 인퓨전이 필요합니다.');
+  const x=body.x,y=body.y,i=body.index,key=`${x},${y}`,name=a.items[i];
+  if(![x,y].every(v=>Number.isInteger(v)&&v>=0&&v<3)||!Number.isInteger(i)||!isValidItem(name)||items.bloodInfo?.(name))throw Error('병사 장비 또는 위치가 잘못되었습니다.');
+  if(a.owned.some(o=>o.location==='board'&&o.x===x&&o.y===y))throw Error('빈 칸에만 병사 장비를 지정할 수 있습니다.');
+  a.soldierItems??={};if(a.soldierItems[key])throw Error('병사 장비는 한 칸만 가능합니다.');
+  a.soldierItems[key]=name;a.items.splice(i,1);flushOverflow(a);
  }else if(cmd==='equip'){
   const u=locate(),i=Number(body.index),name=a.items[i];
   if(!Number.isInteger(i)||!isValidItem(name))throw Error('장비가 없어');
@@ -251,6 +262,6 @@ function action(a,cmd,body={}){
   }else{if(eq.length>=(a.augmentIds?.includes('P09')?4:3))throw Error('장비 슬롯 제한');eq.push(name)}
   a.items.splice(i,1);flushOverflow(a);
  }else throw Error('알 수 없는 경제 명령');
- return a;
+ reconcileSoldierItems(a);return a;
 }
-module.exports={makeInitial,action,roundIncome,grant,grantUnit,giveItem,ownTeam,reserveTeam,addExp,itemSellPrice,saleUnitValue,EXP_TO_NEXT};
+module.exports={makeInitial,action,roundIncome,grant,grantUnit,giveItem,ownTeam,reserveTeam,addExp,itemSellPrice,saleUnitValue,EXP_TO_NEXT,reconcileSoldierItems,purpleChoices};

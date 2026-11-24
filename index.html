@@ -50,7 +50,7 @@ html:not(.m611-qa):not(.m1017-gate-ready) #liveGate{visibility:hidden!important;
 window.addEventListener('load',()=>setTimeout(()=>{
  if(document.documentElement.classList.contains('m611-qa')||document.documentElement.classList.contains('m1017-gate-ready'))return;
  const notice=document.createElement('div');notice.id='m1016BootFailure';
- notice.style.cssText='position:fixed;z-index:100200;inset:0;display:grid;place-content:center;gap:14px;padding:24px;text-align:center;background:#030607;color:#d9e9e3;font:14px/1.6 system-ui,sans-serif';
+ notice.style.cssText='position:fixed;z-index:100200;inset:0;display:grid;place-content:center;gap:14px;padding:24px;text-align:center;background:#030607;color:#d9e9e3;font:calc(14px + 2pt)/1.6 system-ui,sans-serif';
  const message=document.createElement('strong');message.textContent='L.I.V.E. 초기화에 실패했습니다. 새로고침 후 다시 시도해 주세요.';
  const retry=document.createElement('button');retry.textContent='새로고침';retry.style.cssText='margin:auto;padding:10px 20px;background:#243d3b;color:#e6faf1;border:1px solid #71948a;border-radius:5px;cursor:pointer';
  retry.onclick=()=>location.reload();notice.append(message,retry);document.body.appendChild(notice);
@@ -73,21 +73,21 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
   background: radial-gradient(circle at 50% 35%,rgba(70,48,112,.32),transparent 62%),rgba(6,9,19,.94);
   border-radius: inherit; padding: 28px; text-align:center; color:#eaf0ff; }
 .m807-loading-content { width:min(420px,95%); display:grid; justify-items:center; gap:12px; }
-.m807-loading-mark { color:#ceb4ff; font-size:44px; text-shadow:0 0 25px #ae7dff77; }
-.m807-loading-content b { font-size:clamp(19px,3vw,26px); letter-spacing:.06em; }
-.m807-loading-content p { font-size:13px; line-height:1.6; color:#b9c1d5; margin:0; }
-.m807-loading-content small { font-size:11px; color:#9ba4b9; }
+.m807-loading-mark { color:#ceb4ff; font-size:calc(44px + 2pt); text-shadow:0 0 25px #ae7dff77; }
+.m807-loading-content b { font-size:calc(clamp(19px,3vw,26px) + 2pt); letter-spacing:.06em; }
+.m807-loading-content p { font-size:calc(13px + 2pt); line-height:1.6; color:#b9c1d5; margin:0; }
+.m807-loading-content small { font-size:calc(11px + 2pt); color:#9ba4b9; }
 .m807-loading-track { width:100%; height:4px; background:#30364d; border-radius:10px; overflow:hidden; }
 .m807-loading-track i { display:block; width:35%; height:100%; border-radius:10px; background:#b89bf4;
   animation:m807-sweep 1.5s ease-in-out infinite alternate; }
 @keyframes m807-sweep { from{transform:translateX(0)} to{transform:translateX(190%)} }
 .m807-damage-hud { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-left:auto;
-  color:#d6e1f9; font-size:12px; font-variant-numeric:tabular-nums; }
+  color:#d6e1f9; font-size:calc(12px + 2pt); font-variant-numeric:tabular-nums; }
 .m807-damage-hud span { padding:5px 8px; border:1px solid #7186a54d; background:#0e1726db; border-radius:8px; white-space:nowrap; }
-.m807-damage-hud strong { font-size:14px; color:#f3dd91; }
+.m807-damage-hud strong { font-size:calc(14px + 2pt); color:#f3dd91; }
 .board-shell { position:relative; }
 .m807-damage-layer { position:absolute; inset:0; pointer-events:none; z-index:55; overflow:hidden; }
-.m807-damage-number { position:absolute; font-size:clamp(13px,2vw,20px); font-weight:800; line-height:1;
+.m807-damage-number { position:absolute; font-size:calc(clamp(13px,2vw,20px) + 2pt); font-weight:800; line-height:1;
   font-variant-numeric:tabular-nums; text-shadow:0 2px 3px #02050c,0 0 8px #060910;
   transform:translate(-50%,-50%); animation:m807-float 1.15s ease-out forwards; }
 .m807-hit-enemy { color:#ffe39d; }
@@ -97,8 +97,8 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
   100%{opacity:0;transform:translate(calc(-50% + var(--offset)),-55px) scale(.94)} }
 @media (prefers-reduced-motion:reduce){ .m807-loading-track i {animation:none;width:100%}
  .m807-damage-number {animation:none;opacity:1;} }
-@media (max-width:850px){.m807-damage-hud{gap:4px;font-size:10px;margin-left:0}
- .m807-damage-hud span{padding:3px 5px}.m807-damage-hud strong{font-size:11px} }
+@media (max-width:850px){.m807-damage-hud{gap:4px;font-size:calc(10px + 2pt);margin-left:0}
+ .m807-damage-hud span{padding:3px 5px}.m807-damage-hud strong{font-size:calc(11px + 2pt)} }
 
 .m807-damage-hud [data-foe-loss][hidden]{display:none!important}
 
@@ -110,7 +110,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
     <div class="brand">
       <span class="eyebrow">AGLAIA // COMBAT LAB</span>
       <h1>ER AUTO CHESS</h1>
-      <span class="version">L.I.V.E. M10-18</span>
+      <span class="version">L.I.V.E. M10-20</span>
     </div>
     <div class="controls">
       <button id="start" class="primary">▶ 전투 시작</button>
@@ -148,7 +148,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
           <label>이동 간격 <input id="moveInterval" type="number" min="0.1" step="0.1" value="0.5"></label>
           <label class="check"><input id="fixedSeed" type="checkbox" checked> RNG seed 고정</label>
           <label>Seed <input id="seed" type="number" value="24004"></label>
-          <button id="batch">100회 자동전투</button><p><a href="qa-combat.html" style="color:inherit;text-decoration:underline;font-size:.83rem">전투 QA · 고급 편성/분석 ↗</a></p>
+          <button id="batch">100회 자동전투</button><p><a href="qa-combat.html" style="color:inherit;text-decoration:underline;font-size:calc(.83rem + 2pt)">전투 QA · 고급 편성/분석 ↗</a></p>
           <div id="batchResult" class="result">아직 실행 안 함</div>
         </div>
       </details>
@@ -236,7 +236,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  if(query.get('devqa')!=='1')return; // QA shortcut only when explicitly requested; never during normal gameplay.
  const a=document.createElement('a');a.href='qa-combat.html';a.textContent='⚒ 전투 QA 바로가기';
  a.setAttribute('aria-label','전투 QA 실험실 열기');
- a.style.cssText='position:fixed;right:16px;bottom:16px;z-index:100020;padding:11px 16px;border:1px solid #83d9e4;border-radius:9px;background:#0b1b26f2;color:#d7faff;font:700 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 3px 24px #000b';
+ a.style.cssText='position:fixed;right:16px;bottom:16px;z-index:100020;padding:11px 16px;border:1px solid #83d9e4;border-radius:9px;background:#0b1b26f2;color:#d7faff;font:700 calc(13px + 2pt) system-ui,sans-serif;text-decoration:none;box-shadow:0 3px 24px #000b';
  document.body.appendChild(a);
 })();
 </script>
