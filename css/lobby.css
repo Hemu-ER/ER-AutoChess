@@ -65,3 +65,19 @@
 @media(prefers-reduced-motion:reduce){#liveGate .m1009-field input,#liveGate .m1009-field select{transition:none}}
 
 #liveGate .m1009-password-card .m1009-dialog-error,#liveGate .m1009-dialog-error{font-size:12px;margin:0;color:#f1b5ae;border:1px solid #9c6665;background:#47272b7f;padding:9px 10px;border-radius:4px;line-height:1.5}
+
+/* M10-19: responsive mixed human/bot waiting-room slots. */
+#liveGate[data-screen="waiting"] .live-gate-card{width:min(700px,100%)}
+#liveGate .m1019-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:46dvh;overflow-y:auto;scrollbar-width:thin}
+#liveGate .m1019-slot{display:flex;align-items:center;gap:9px;padding:10px 9px;min-height:56px;border:1px solid #4f6669;border-radius:5px;background:#17272d;min-width:0;box-sizing:border-box}
+#liveGate .m1019-slot-bot{border-color:#6a7896;background:#1a2537}
+#liveGate .m1019-slot-empty{border-style:dashed;opacity:.7}
+#liveGate .m1019-slot-index{font-size:12px;color:#96b8ae;font-weight:700}
+#liveGate .m1019-slot-person{display:grid;gap:4px;min-width:0;flex:1}
+#liveGate .m1019-slot-person b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#liveGate .m1019-slot-person small{font-size:10px;color:#a7c2bc;line-height:1.3}
+#liveGate .m1019-slot button{font-size:11px;min-height:32px;padding:5px 8px}
+#liveGate .m1019-bot-tools{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#liveGate .m1019-bot-tools small{font-size:11px;color:#9db9b1}
+#liveGate .m1019-bot-tools button{background:#2a4855;border-color:#7796a5}
+@media(max-width:560px){#liveGate .m1019-slots{grid-template-columns:1fr;max-height:40dvh}}
