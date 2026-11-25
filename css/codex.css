@@ -17,7 +17,7 @@ body[data-app-mode="game"] :is(
  border-radius:5px!important;
  background-image:
   linear-gradient(166deg,#26374055 0%,#0a1014a8 41%,#1a242ba0 100%),
-  url('../assets/m10/ui/m1006-brushed-surface.svg')!important;
+  url("../assets/m10/ui/m1006-brushed-surface.svg")!important;
  background-size:100% 100%,256px 256px!important;
  background-repeat:no-repeat,repeat!important;
  background-color:#0c1219!important;
@@ -29,7 +29,7 @@ body[data-app-mode="game"] :is(
  #m809LiveHpStandings, #m809DamagePanel, #liveGameChat
 )::before {
  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
- background:url('../assets/m10/ui/m1006-module-corners.svg') center/100% 100% no-repeat!important;
+ background:url("../assets/m10/ui/m1006-module-corners.svg") center/100% 100% no-repeat!important;
 }
 /* Preserve all original card coordinates, fixed shop width and HTML click/drag handlers. */
 body[data-app-mode="game"] .game-bottom-dock .shop-card {
@@ -40,7 +40,7 @@ body[data-app-mode="game"] .game-bottom-dock .shop-card {
 }
 body[data-app-mode="game"] .game-bottom-dock .shop-card::after {
  content:"";position:absolute;inset:0;pointer-events:none;z-index:12;
- background:url('../assets/m10/ui/m1006-card-bezel.svg') center/100% 100% no-repeat!important;
+ background:url("../assets/m10/ui/m1006-card-bezel.svg") center/100% 100% no-repeat!important;
 }
 body[data-app-mode="game"] .game-bottom-dock .shop-card::before {
  content:"";position:absolute;inset:0 0 auto;height:12px;pointer-events:none;z-index:10;
@@ -111,7 +111,7 @@ body[data-app-mode="game"] :is(
  #liveItemsPanel .live-equipped button
 ) {
  border-color:#788b8f!important;border-radius:3px!important;
- background:url('../assets/m10/ui/m1006-button-inset.svg') center/100% 100% no-repeat!important;
+ background:url("../assets/m10/ui/m1006-button-inset.svg") center/100% 100% no-repeat!important;
  color:#e9ece7!important;text-shadow:0 1px 1px #030508!important;
  box-shadow:0 2px 0 #05080a,inset 0 1px 0 #d5e0d62e!important;
 }
@@ -139,12 +139,7 @@ body[data-app-mode="game"] .game-bottom-dock .mastery-track>i {
  box-shadow:inset 0 1px 0 #eff8e5a3!important;
 }
 /* 5 / Preparation board reticles: do not alter cell shape, region or input. */
-body[data-app-mode="game"] #board.formation-board .cell:not(:has(.unit)):not(:has(.field-unit))::after {
- content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
- background:url('../assets/m10/ui/m1006-slot-reticle.svg') center/80% 80% no-repeat;
- opacity:.22;
-}
-body[data-app-mode="game"] #board.formation-board .cell:is(.drag-target,:hover)::after {opacity:.72;}
+
 /* 6 / Clear interface states without neon bloom. */
 body[data-app-mode="game"] button:focus-visible {outline:2px solid #d1be94!important;outline-offset:2px!important;}
 @media(prefers-reduced-motion:reduce) {body[data-app-mode="game"] .game-bottom-dock .shop-card {transition:none!important;}}

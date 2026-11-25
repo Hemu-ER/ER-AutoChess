@@ -1,0 +1,34 @@
+/* M11-02 — single owner for the projected board. Existing HUD and combat rule CSS stays separate. */
+.board-shell{position:relative;isolation:isolate;min-width:0;overflow:visible;background:transparent;border:0;padding:0;}
+#board.live-perspective{display:block;position:relative;isolation:isolate;width:100%;height:clamp(300px,45vh,560px);min-width:0;margin:0;overflow:visible;background:transparent;}
+#board.live-perspective::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 60%,#273d4266,transparent 72%);}
+body[data-live-arena-visible="1"] #board.live-perspective.combat-board::before{background:linear-gradient(#09131b99,#09131bc9),var(--live-floor-url) center/cover no-repeat;filter:saturate(.55);opacity:.82;mask-image:radial-gradient(ellipse at center,#000 35%,transparent 76%);}
+#board .live-floor{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 15px 18px #000a);}
+.live-floor-left,.live-floor-right{fill:#14252e;stroke:#50666a;stroke-width:1;}
+.live-floor-front{fill:#25363c;stroke:#71817f;stroke-width:1;}
+.live-floor-top{fill:#24373b;stroke:#99b5ae;stroke-width:1.5;}
+#board.live-perspective .cell{position:absolute;overflow:visible;pointer-events:none;background:none;min-width:0;border:0;}
+#board.live-perspective .cell[hidden]{display:none!important;}
+#board .live-tile{position:absolute;inset:0;clip-path:var(--tile-poly);background:#91b3a908;pointer-events:auto;cursor:crosshair;}
+.live-floor-grid{fill:none;stroke:#78968e;stroke-width:1;opacity:.58;}
+.live-floor-divider{fill:none;stroke:#d9b08d;stroke-width:1.6;stroke-dasharray:5 4;}
+#board .cell.teamB .live-tile{background:#b0857817;}
+#board .cell .live-tile:hover,#board .cell.drag-target .live-tile,#board .cell.role-synergy-zone .live-tile{background:#8ed5ba65;}
+#board .cell .coord{display:none;}
+#board .cell.role-synergy-zone:before{clip-path:var(--tile-poly);inset:0;}
+#board .cell .m809-area-mark,#board .cell .m1020-soldier-slot{clip-path:var(--tile-poly);}
+#board.live-perspective .unit{position:absolute;inset:auto;left:calc(var(--foot-x) - var(--actor-w)/2);top:calc(var(--foot-y) - var(--actor-h));width:var(--actor-w);height:var(--actor-h);overflow:visible;pointer-events:auto;transform-origin:center bottom;z-index:5;}
+#board.live-perspective .sd-slot{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;overflow:visible;pointer-events:none;}
+#board.live-perspective .sd-image{display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 4px 4px #0009);}
+#board.live-perspective .ground-ring{left:calc(50% - var(--ring-w)/2);right:auto;bottom:calc(var(--ring-h)/-2);width:var(--ring-w);height:var(--ring-h);background:radial-gradient(ellipse,#0009,transparent 75%);border:1px solid currentColor;box-shadow:none;opacity:.6;}
+#board.live-perspective .unit-hud.compact-hud{left:calc(50% - var(--hud-w)/2);right:auto;width:var(--hud-w);top:var(--hud-top,-12px);bottom:auto;grid-template-columns:14px minmax(0,1fr);z-index:15;}
+#board.live-perspective .unit>.live-equip-slots{bottom:-16px!important;left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;}
+#board.live-perspective .unit:focus-visible{outline:1px solid #c5e9df;outline-offset:2px;}
+/* Do not let the rectangular cell outline or inset shadow leak outside its polygon. */
+#board.live-perspective .cell.drag-target{outline:none!important;box-shadow:none!important;}
+/* One central arena column; existing side HUDs are fixed, not grid children. */
+body[data-app-mode="game"] .game-board-row{display:grid;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;width:min(1120px,100%)!important;height:100%;min-height:0;margin:0 auto!important;align-items:stretch!important;justify-items:stretch!important;gap:0!important;}
+body[data-app-mode="game"] .game-board-row>.board-shell{width:100%;height:100%;min-height:0;min-width:0;align-self:stretch;justify-self:stretch;margin:0;}
+body[data-app-mode="game"] #board.live-perspective{height:100%;width:100%;}
+@media(min-width:851px){body[data-app-mode="game"] .game-board-row{width:min(1120px,calc(100vw - 390px))!important;}}
+@media(max-width:850px){body[data-app-mode="game"] .game-board-row{width:100%!important;}}

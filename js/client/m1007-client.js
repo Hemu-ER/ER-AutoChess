@@ -116,12 +116,10 @@
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
  // Low-overhead effects fed by the deterministic engine; never infer execution from generic death.
  let layer=null,previousFx=0;
- const cell=(x,y)=>document.querySelector(`#board .cell[data-x="${x}"][data-y="${y}"]`);
- const midpoint=el=>{if(!el)return null;const r=el.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2}};
  function emit(event){
   if(!event||!['attack','execute'].includes(event.type)||document.body.dataset.appMode!=='game')return;
   const t=performance.now();if(event.type==='attack'&&t-previousFx<35)return;previousFx=t;
-  const a=midpoint(cell(event.x,event.y)),b=midpoint(cell(event.toX,event.toY));const at=event.type==='execute'?a:b;
+  const a=boardView.center(event.x,event.y),b=boardView.center(event.toX,event.toY);const at=event.type==='execute'?a:b;
   if(!at||!a)return;
   if(!layer){layer=document.createElement('div');layer.id='m1007AttackLayer';document.body.appendChild(layer)}
   const node=document.createElement('span');node.className=event.type==='execute'?'m1007-execute':'m1007-shot'+(event.kind==='skill'?' skill':'');

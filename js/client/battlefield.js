@@ -19,7 +19,6 @@
   let lastKey = '';
   let curtainRequest = 0;
   let fixedPreviewRegion = null;
-  let appliedSize = "";
   const loading = new Map();
   const hash = value => {
     let n = 2166136261;
@@ -53,32 +52,8 @@
     if (selected === key) return;
     selected = key;
     board.style.setProperty('--live-floor-url', `url("${floorUrl(key)}")`);
-    board.style.removeProperty('--live-decor-url');
-    board.style.removeProperty('--live-decor-width');
     board.dataset.liveArenaRegion = key;
     preload(key);
-  }
-  function resizeBattlefield() {
-    if (!visible || document.body.dataset.appMode !== 'game' && document.body.dataset.appMode !== 'test') {
-      if (appliedSize) {
-        board.style.removeProperty('width');
-        board.style.removeProperty('height');
-        appliedSize = '';
-      }
-      return;
-    }
-    const rect = shell.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const r = 1916 / 821;
-    const limit = matchMedia('(max-width:850px)').matches ? rect.height :
-      Math.min(rect.height, matchMedia('(max-height:800px)').matches ? 390 : 450);
-    const width = Math.max(1, Math.floor(Math.min(rect.width, limit * r)));
-    const height = width / r;
-    const nextSize = `${width}x${height}`;
-    if (nextSize === appliedSize) return;
-    appliedSize = nextSize;
-    board.style.setProperty('width', `${width}px`, 'important');
-    board.style.setProperty('height', `${height}px`, 'important');
   }
   function soundCue() {
     try {
@@ -143,20 +118,12 @@
       visible = shouldShow;
       document.body.dataset.liveArenaVisible = shouldShow ? '1' : '0';
       board.dataset.liveArenaTest = mode === 'test' ? '1' : '0';
-      if (!shouldShow && appliedSize) {
-        board.style.removeProperty('width');
-        board.style.removeProperty('height');
-        appliedSize = '';
-      }
     }
-    if (shouldShow) resizeBattlefield();
+    boardView.layoutBoard();
     lastKey = currentKey;
     prevPhase = phase;
     prevMode = mode;
   }
-  // Resizing also runs after server-side phase changes to avoid CSS-layout races.
-  const observer = new ResizeObserver(() => { if (visible) resizeBattlefield(); });
-  observer.observe(shell);
   window.addEventListener('resize', refresh, {passive:true});
   window.setInterval(refresh, 180);
   // QA-only manual preview override, e.g. LIVEBattlefield.setRegion('hotel').

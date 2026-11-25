@@ -10,7 +10,8 @@ for(const zone of ['lab','alley','beach','cemetery','church','estate','forest','
  for(const folder of ['assets/battlefields/floor','assets/battlefields/pixi-floor'])assert(exists(`${folder}/${zone}.webp`),zone);
  assert(!exists(`assets/battlefields/floor/${zone}.png`));
 }
-assert(read('js/client/m6-pixi-adapter.js').includes('assets/battlefields/pixi-floor/'));
+assert(!exists('js/client/m6-pixi-adapter.js'),'retired renderer absent');
+assert(read('js/client/battlefield.js').includes('assets/battlefields/floor/'));
 assert(read('js/qa/qa-combat.js').includes("${$('region').value}.webp"));
 for(const folder of ['legacy','js/legacy','css/legacy','assets/m5','assets/battlefields/decor'])assert(!exists(folder)||fs.readdirSync(path.join(root,folder),{recursive:true}).every(p=>fs.statSync(path.join(root,folder,p)).isDirectory()),folder);
 const fonts=read('css/base.css').match(/@font-face\{font-family:'Freesentation';/g);assert.equal(fonts.length,9);

@@ -1,10 +1,7 @@
 /* ===== Original: m1007-graphics.css (cascade preserved) ===== */
 /* L.I.V.E. M10-07 — graphic-only enhancement, no board/card coordinate replacement. */
 :root{--m1007-metal:#1c242c;--m1007-edge:#788b84;--m1007-focus:#d5b777}
-body[data-app-mode="game"] .board-shell{position:relative;background-image:linear-gradient(180deg,#0d151c88,#0b141c66),url('../assets/m10/ui/m1007-board-engraving.svg')!important;background-size:cover,100% 100%!important;background-position:center!important;}
-body[data-app-mode="game"] #board .cell{position:relative;outline:1px solid rgba(146,159,148,.13);outline-offset:-5px;transition:box-shadow .12s ease,outline-color .12s ease;background-image:url('../assets/m10/ui/m1007-slot-mark.svg');background-position:center;background-repeat:no-repeat;background-size:84% 78%}
-body[data-app-mode="game"] #board .cell:hover{outline-color:#b8b4a080!important;box-shadow:inset 0 0 20px #d8c69b12}
-body[data-app-mode="game"] #board .cell.drag-target,body[data-app-mode="game"] #board .cell:has(.drag-target){outline:2px solid #b9c7ad!important;box-shadow:inset 0 0 18px #a9c7b330!important}
+
 /* Strategy panel must be selectable without the inventory stealing pointer events. */
 #m907PurpleStrategy:not([hidden]){position:fixed!important;z-index:100080!important;left:clamp(12px,calc(50vw - 470px),430px)!important;right:auto!important;top:clamp(90px,12vh,140px)!important;width:min(318px,calc(100vw - 24px))!important;max-height:calc(100dvh - 110px)!important;pointer-events:auto!important;isolation:isolate}
 #m907PurpleStrategy .m907-strategy-body{max-height:min(65dvh,570px)!important;overflow:auto;overscroll-behavior:contain;pointer-events:auto!important}
@@ -14,10 +11,10 @@ body[data-app-mode="game"] #board .cell.drag-target,body[data-app-mode="game"] #
 .game-bottom-dock .shop-card:not(:disabled):hover,.game-bottom-dock .shop-card:focus-visible{transform:none!important;filter:none!important;border-color:#bcb4a3!important;box-shadow:inset 0 0 0 1px #d8ccaa80,0 0 0 1px #5e6e66!important}
 .game-bottom-dock .shop-owned-count{position:absolute!important;top:5px!important;right:5px!important;left:auto!important;bottom:auto!important;z-index:35!important;font-size:calc(10px + 2pt)!important;border:1px solid #d7bf89!important;background:#1c2026ed!important;color:#f4e3b4!important;padding:2px 4px!important;line-height:1.25!important}
 .game-bottom-dock .shop-card:has(.m910-focus-mark){position:relative;box-shadow:inset 3px 0 #dcc28c,0 0 0 1px #bda77d!important}
-.game-bottom-dock .shop-card:has(.m910-focus-mark):after{content:'관심';position:absolute;left:6px;top:6px;z-index:32;pointer-events:none;font-size:calc(9px + 2pt);letter-spacing:.06em;color:#ffefc5;background:#4b3d27ed;border:1px solid #d0b575;padding:2px 5px;border-radius:3px}
+.game-bottom-dock .shop-card:has(.m910-focus-mark):after{content:"관심";position:absolute;left:6px;top:6px;z-index:32;pointer-events:none;font-size:calc(9px + 2pt);letter-spacing:.06em;color:#ffefc5;background:#4b3d27ed;border:1px solid #d0b575;padding:2px 5px;border-radius:3px}
 .game-bottom-dock .shop-card:has(.m910-focus-mark) .shop-name{color:#ffe3a5!important}
 .game-bottom-dock .bench-unit.m1007-focus{outline:2px solid #d4b777!important;outline-offset:-2px;box-shadow:inset 0 0 0 2px #161e27,0 0 0 1px #d4b777!important}
-.game-bottom-dock .bench-unit.m1007-focus:after{content:'✦';position:absolute;top:1px;right:2px;z-index:5;font-weight:900;color:#ffdc88;text-shadow:0 1px 3px #000}
+.game-bottom-dock .bench-unit.m1007-focus:after{content:"✦";position:absolute;top:1px;right:2px;z-index:5;font-weight:900;color:#ffdc88;text-shadow:0 1px 3px #000}
 #board .unit.m1007-focus .ground-ring{opacity:.82!important;box-shadow:0 0 11px #dab87688!important;border-color:#d3b06f!important}
 /* Only the supplied image source is used: no portrait sizing or cropping changes. */
 #m1007AuctionChoices{position:fixed;z-index:100090;left:50%;top:min(16vh,165px);transform:translateX(-50%);width:min(510px,calc(100vw - 30px));max-height:70dvh;overflow:auto;border:1px solid #ad9d7b;border-radius:7px;padding:16px;background:linear-gradient(180deg,#20272e,#131a21 85%);box-shadow:0 20px 70px #000d;color:#e5ebeb;font:calc(12px + 2pt)/1.5 system-ui,sans-serif}
@@ -28,7 +25,7 @@ body[data-app-mode="game"] #board .cell.drag-target,body[data-app-mode="game"] #
 .m1007-shot{position:absolute;width:52px;height:2px;background:linear-gradient(90deg,transparent,#cbb99c,#fff8dd);transform-origin:0 50%;animation:m1007-shot .23s ease-out both;box-shadow:0 0 4px #e5cba666}
 .m1007-shot.skill{height:3px;background:linear-gradient(90deg,transparent,#c1b2df,#f4ebff);box-shadow:0 0 8px #bda5fa55}
 .m1007-execute{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:2px solid #d4a77b;box-shadow:0 0 0 1px #332d2d,inset 0 0 15px #c98e6455;animation:m1007-execute .62s ease-out both}
-.m1007-execute:after{content:'✕';display:grid;place-items:center;font:700 calc(29px + 2pt)/58px system-ui;text-align:center;color:#e6bea1;text-shadow:0 0 5px #a8583e}
+.m1007-execute:after{content:"✕";display:grid;place-items:center;font:700 calc(29px + 2pt)/58px system-ui;text-align:center;color:#e6bea1;text-shadow:0 0 5px #a8583e}
 @keyframes m1007-shot{from{opacity:1;transform:translate(0,-50%) rotate(var(--angle)) scaleX(.18)}to{opacity:0;transform:translate(0,-50%) rotate(var(--angle)) scaleX(var(--length))}}
 @keyframes m1007-execute{from{opacity:.95;transform:scale(.35)}to{opacity:0;transform:scale(1.9)}}
 @media(prefers-reduced-motion:reduce){.m1007-shot,.m1007-execute{animation:none;opacity:.65}}
@@ -44,22 +41,14 @@ body[data-app-mode="game"] .unit .live-hit-spark{display:none!important}
 /* ===== Original: m1008-stage-split.css (cascade preserved) ===== */
 /* M10-08 — separate preparation, duel and farming presentation.
    No shop portrait, sprite crop, board hitbox or server rule is overridden. */
-body[data-app-mode="game"] #m6-field-label,
-body[data-app-mode="game"] .board-shell .field-mark:has(.m6-lab-label){display:none!important}
 
 /* Battle maps use the entire central frame: preparation's synergy column is gone. */
-body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .game-board-row{
- grid-template-columns:minmax(0,1fr)!important;
- width:min(1140px,100%)!important;
-}
+
 body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .current-synergy-panel{display:none!important}
 body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .app{
  padding-bottom:clamp(132px,17dvh,180px)!important;
 }
-body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .board-shell{
- box-shadow:0 0 0 1px #52656d55,0 12px 42px #0007!important;
- background-image:linear-gradient(180deg,#1a252e,#10191f)!important;
-}
+
 /* Keep each floor's existing graphics. Add readable team identification to its HUD. */
 body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #board .unit.A .hpbar{
  border-color:#85cfc0!important;box-shadow:0 0 0 1px #173b37bb,0 0 4px #83d7c060!important;
@@ -82,11 +71,11 @@ body[data-app-mode="game"] #liveBattleDeck{
  width:min(1080px,calc(100% - 18px));min-height:119px;
  display:grid;grid-template-columns:minmax(150px,195px) minmax(0,1fr);column-gap:18px;row-gap:7px;
  padding:12px 16px 10px;border:1px solid #617981;border-bottom:0;border-radius:7px 7px 0 0;
- color:#dce8e8;background:#0d171d url('../assets/m10/ui/m1006-brushed-surface.svg') center/256px 256px repeat;
+ color:#dce8e8;background:#0d171d url("../assets/m10/ui/m1006-brushed-surface.svg") center/256px 256px repeat;
  box-shadow:0 -8px 35px #000a,inset 0 1px #c7c6b52e;
 }
 body[data-app-mode="game"] #liveBattleDeck:before{
- content:"";position:absolute;inset:0;background:url('../assets/m10/ui/m1006-module-corners.svg') center/100% 100% no-repeat;pointer-events:none;
+ content:"";position:absolute;inset:0;background:url("../assets/m10/ui/m1006-module-corners.svg") center/100% 100% no-repeat;pointer-events:none;
 }
 #liveBattleDeck .m1008-battle-heading{display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;border-right:1px solid #556c7060;padding-right:14px}
 #liveBattleDeck .m1008-battle-heading small{font-size:calc(10px + 2pt);letter-spacing:.16em;color:#91aaa7}
@@ -186,26 +175,9 @@ body[data-app-mode="game"] :is(#liveAugmentPanel,#liveCodex .codex-window,#liveC
 /* M10-10: stage-specific compact visuals and stable motion. Loaded last. */
 /* Events have no synergy sidebar. The 180px ghost grid column used to shrink the
    entire formation field to the far-left corner when an overlay was folded. */
-body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
-  grid-template-columns:minmax(0,1fr)!important;
-  justify-items:center!important;
-  width:min(900px,calc(100vw - 28px))!important;
-}
-body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  width:100%!important;min-width:0!important;display:flex!important;justify-content:center!important;
-}
-body[data-app-mode="game"][data-live-scene="event"] #board.formation-board{
-  width:min(480px,66vw)!important;max-height:min(46vh,440px)!important;
-  aspect-ratio:1.14!important;height:auto!important;
-}
+
 /* Preparation is its own compact editing board, not a duplicate battle stage. */
-body[data-app-mode="game"][data-live-scene="formation"] #board.formation-board{
-  width:min(470px,52vw)!important;max-height:min(49vh,435px)!important;
-}
-@media(max-width:850px){
-  body[data-app-mode="game"][data-live-scene="event"] #board.formation-board,
-  body[data-app-mode="game"][data-live-scene="formation"] #board.formation-board{width:min(87vw,435px)!important;max-height:44dvh!important}
-}
+
 /* Strip excessive repeated ornaments without hiding information or its controls. */
 body[data-app-mode="game"] :is(#roundModePanel,#liveItemsPanel,#m809LiveHpStandings,#liveBattleDeck,.game-bottom-dock){
   backdrop-filter:none!important;box-shadow:0 5px 18px #0008!important;border-color:#61747b99!important;
@@ -299,42 +271,7 @@ body[data-app-mode="game"] #liveAugmentPanel.m910-collapsed::-webkit-scrollbar{d
 
 /* M10-10 scene geometry: the M6 desktop half-width rule must not make a
    collapsed selection phase look like a tiny displaced six-column battlefield. */
-@media (min-width:851px) {
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row {
-   width:min(940px,calc(100vw - 44px))!important;height:100%!important;
-   grid-template-columns:minmax(165px,200px) minmax(0,470px)!important;
-   justify-content:center!important;align-items:center!important;
-   grid-template-rows:minmax(0,1fr)!important;gap:20px!important;
- }
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row {
-   display:grid!important;grid-template-columns:minmax(0,1fr)!important;
-   justify-items:center!important;width:min(750px,calc(100vw - 44px))!important;
- }
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row>.board-shell {
-   box-sizing:border-box!important;width:min(470px,47dvh)!important;
-   min-width:270px!important;max-width:min(470px,54vw)!important;
-   height:auto!important;min-height:0!important;max-height:min(48dvh,470px)!important;
-   aspect-ratio:1 / 1!important;flex:none!important;
-   margin:0 auto!important;align-self:center!important;
- }
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board {
-   width:100%!important;height:100%!important;max-height:none!important;
-   margin:0!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
-   grid-template-rows:repeat(3,minmax(0,1fr))!important;
- }
-}
-@media (max-width:850px) {
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row {
-   grid-template-columns:minmax(0,1fr)!important;justify-items:center!important;align-content:center!important;
- }
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row>.board-shell {
-   box-sizing:border-box!important;width:min(84vw,46dvh,430px)!important;max-width:100%!important;
-   height:auto!important;max-height:min(46dvh,430px)!important;aspect-ratio:1!important;
- }
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board {
-   box-sizing:border-box!important;width:100%!important;height:100%!important;max-height:none!important;
- }
-}
+
 /* Read-only battle synergy summary: game actions remain in their own scene,
    but players should not lose the information needed to judge team synergies. */
 body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #currentSynergyPanel.m1010-battle-synergy {
@@ -421,7 +358,7 @@ body[data-app-mode="game"]{overflow-x:clip}
 }
 
 /* M10 stability: independent synergy HUD (no phantom board grid column). */
-body[data-app-mode="game"] .game-board-row{grid-template-columns:minmax(0,1fr)!important;justify-content:center!important;}
+
 body[data-app-mode="game"] #currentSynergyPanel.current-synergy-panel{
  position:fixed!important;display:block!important;
  left:max(12px,calc(50vw - 790px))!important;
@@ -441,11 +378,7 @@ body[data-app-mode="game"] #currentSynergyPanel.current-synergy-panel{
 }
 
 /* Higher-specificity scene overrides: older M10-10 selectors also used !important. */
-body[data-app-mode="game"][data-live-scene="formation"] .game-board-row,
-body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
- grid-template-columns:minmax(0,1fr)!important;
- justify-items:center!important;
-}
+
 body[data-app-mode="game"][data-live-scene] #currentSynergyPanel.current-synergy-panel.m1010-battle-synergy{
  top:var(--live-synergy-safe-top,150px)!important;
  left:max(12px,calc(50vw - 790px))!important;

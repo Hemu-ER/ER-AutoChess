@@ -22,7 +22,7 @@ const stage=read('js/client/m1017-stage-intel.js');
 check(!stage.includes('표시할 상점 상품이 없어.')&&!stage.includes('벤치가 비어 있어.'),'special stage no legacy informal phrases');
 check(stage.includes('선택에 필요한 정보만 확인할 수 있습니다.'),'special stage uses polite copy');
 const html=read('index.html');
-check(/L\.I\.V\.E\. (?:M10-(?:18|19|20)|M11-00)/.test(html),'version label updated');
+check(/L\.I\.V\.E\. (?:M10-(?:18|19|20)|M11-0[02])/.test(html),'version label updated');
 const css=read('css/base.css');
 check(css.includes('LIVE Kart Gothic')&&css.includes('KartriderKor-Medium.woff2')&&css.includes('KartriderKor-Bold.woff2')&&css.includes('KartriderKor-ExtraBold.woff2'),'three Nexon font weights referenced');
 check(css.includes("'LIVE Kart Gothic','Freesentation'"),'offline fallback retained');

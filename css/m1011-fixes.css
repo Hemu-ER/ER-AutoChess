@@ -4,61 +4,6 @@
 /* The 3x3 editing board must never inherit the 3x6 combat canvas dimensions.
    Both event (including collapsed infusion) and preparation use the same square
    source of truth. No state-dependent inline pixel calculations are required. */
-@media (min-width:851px){
- body[data-app-mode="game"][data-live-scene="formation"] .game-board-row{
-  display:grid!important;box-sizing:border-box!important;
-  width:min(880px,calc(100vw - 40px))!important;height:100%!important;
-  grid-template-columns:minmax(150px,190px) minmax(0,445px)!important;
-  grid-template-rows:minmax(0,1fr)!important;align-items:center!important;
-  justify-content:center!important;justify-items:stretch!important;gap:20px!important;
- }
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
-  display:grid!important;box-sizing:border-box!important;
-  width:min(780px,calc(100vw - 40px))!important;height:100%!important;
-  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;
-  align-items:center!important;justify-items:center!important;justify-content:center!important;
- }
- body[data-app-mode="game"][data-live-scene="formation"] .game-board-row>.board-shell,
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;
-  position:relative!important;width:min(425px,46dvh,44vw)!important;
-  min-width:0!important;max-width:100%!important;
-  height:auto!important;min-height:0!important;max-height:min(46dvh,425px)!important;
-  aspect-ratio:1 / 1!important;align-self:center!important;justify-self:center!important;
-  margin:0!important;overflow:hidden!important;
- }
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  width:min(340px,41dvh,38vw)!important;max-height:min(41dvh,340px)!important;
- }
-}
-@media (max-width:850px){
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row{
-  display:grid!important;box-sizing:border-box!important;width:100%!important;height:100%!important;
-  grid-template-columns:minmax(0,1fr)!important;grid-template-rows:minmax(0,1fr)!important;
-  align-items:center!important;justify-items:center!important;justify-content:center!important;
- }
- body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) .game-board-row>.board-shell{
-  box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;
-  width:min(86vw,43dvh,390px)!important;max-width:100%!important;
-  min-width:0!important;height:auto!important;min-height:0!important;
-  max-height:min(43dvh,390px)!important;aspect-ratio:1 / 1!important;
-  align-self:center!important;justify-self:center!important;overflow:hidden!important;
- }
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  width:min(78vw,35dvh,300px)!important;max-height:min(35dvh,300px)!important;
- }
-}
-body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board{
- box-sizing:border-box!important;position:relative!important;display:grid!important;
- width:100%!important;height:100%!important;min-height:0!important;
- min-width:0!important;max-width:100%!important;max-height:100%!important;
- margin:0!important;align-self:stretch!important;
- grid-template-columns:repeat(3,minmax(0,1fr))!important;
- grid-template-rows:repeat(3,minmax(0,1fr))!important;
-}
-body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board .cell.teamB{
- display:none!important;
-}
 
 /* UI scale applies to the HUD, NOT the battlefield grid / Pixi coordinate system. */
 body[data-app-mode="game"] :is(#roundModePanel,#gameBottomDock,#liveItemsPanel,#m809LiveHpStandings,#liveGameChat,#liveBattleDeck,#currentSynergyPanel){zoom:var(--live-ui-scale,1)}
@@ -68,7 +13,7 @@ body[data-app-mode="game"] #liveAugmentPanel .m901-augment-modal{zoom:var(--live
 #liveSettingsOverlay{
  position:fixed;inset:0;z-index:260000;display:flex;justify-content:center;align-items:center;
  box-sizing:border-box;padding:18px;background:rgba(2,6,9,.85);backdrop-filter:blur(8px);
- color:#e3f1ec;font:calc(13px + 2pt)/1.5 'LIVE Kart Gothic','Freesentation',system-ui,"Pretendard",sans-serif;
+ color:#e3f1ec;font:calc(13px + 2pt)/1.5 "LIVE Kart Gothic","Freesentation",system-ui,"Pretendard",sans-serif;
 }
 #liveSettingsOverlay .m1011-settings-card{
  box-sizing:border-box;width:min(500px,100%);max-height:calc(100dvh - 36px);
@@ -108,33 +53,6 @@ body[data-app-mode="game"] #liveAugmentPanel .m901-augment-modal{zoom:var(--live
 }
 
 /* M10-12: the synergy HUD no longer occupies a grid column. One centered 3x3 board. */
-@media(min-width:851px){
- body[data-app-mode="game"][data-live-scene="formation"] .game-board-row,
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row{
-  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
-  grid-template-rows:minmax(0,1fr)!important;justify-items:center!important;align-items:center!important;
-  width:min(1120px,calc(100vw - 30px))!important;gap:0!important;
- }
- body[data-app-mode="game"][data-live-scene="formation"] .game-board-row>.board-shell,
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  box-sizing:border-box!important;grid-column:1!important;grid-row:1!important;
-  width:min(450px,54dvh,72vw)!important;min-width:0!important;max-width:none!important;
-  max-height:none!important;height:auto!important;aspect-ratio:1!important;
-  justify-self:center!important;align-self:center!important;margin:auto!important;
- }
-}
-@media(max-width:850px){
- body[data-app-mode="game"][data-live-scene="formation"] .game-board-row>.board-shell,
- body[data-app-mode="game"][data-live-scene="event"] .game-board-row>.board-shell{
-  width:min(89vw,50dvh,430px)!important;max-width:none!important;max-height:none!important;
-  aspect-ratio:1!important;margin:auto!important;
- }
-}
-body[data-app-mode="game"]:is([data-live-scene="formation"],[data-live-scene="event"]) #board.formation-board{
- width:100%!important;height:100%!important;max-width:100%!important;max-height:none!important;
- grid-template-columns:repeat(3,minmax(0,1fr))!important;
- grid-template-rows:repeat(3,minmax(0,1fr))!important;
-}
 
 /* M10-13: restore the original centered three-card infusion installation screen.
    The server still runs shop, formation and infusion within one 60s preparation phase.
@@ -292,7 +210,6 @@ body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark)::a
  body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-card{transition:none!important}
 }
 
-
 /* M10-14 — Server-authoritative combat loading. Never fade to the board while
    game.phase is still intro; the server independently advances/fallbacks. */
 body[data-app-mode="game"] #liveRoundIntro{
@@ -305,7 +222,7 @@ body[data-app-mode="game"] #liveRoundIntro{
 }
 #liveRoundIntro .m1014-load-content{
  width:min(520px,100%);display:flex;flex-direction:column;align-items:center;
- gap:13px;text-align:center;font-family:'LIVE Kart Gothic','Freesentation',system-ui,'Pretendard',sans-serif;
+ gap:13px;text-align:center;font-family:"LIVE Kart Gothic","Freesentation",system-ui,"Pretendard",sans-serif;
 }
 #liveRoundIntro .m1014-load-caption{font-size:calc(10px + 2pt);letter-spacing:.28em;color:#789b9b}
 #liveRoundIntro .m1014-load-logo{font:800 clamp(40px,8vw,78px)/1.1 system-ui,sans-serif;letter-spacing:.16em;animation:m1014-logo-glow 3s ease-in-out infinite}

@@ -3,7 +3,7 @@
   "version": "0.4.3",
   "private": true,
   "scripts": {
-    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs && node tests/m10-20-regression.cjs && node tests/m10-20r-regression.cjs && npm run test:cleanup",
+    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs && node tests/m10-20-regression.cjs && node tests/m10-20r-regression.cjs && npm run test:cleanup && npm run test:board",
     "test:refactor": "node tests/refactor-smoke.cjs",
     "start": "node js/server/server.cjs",
     "test:bots": "node tests/m10-19-bots.cjs && node tests/m10-19-bots-flow.cjs",
@@ -11,6 +11,7 @@
     "test:m10-20r": "node tests/m10-20r-regression.cjs",
     "test:bots-full": "node tests/m10-20r-bots-full.cjs",
     "test:cleanup": "node tests/m11-00-cleanup.cjs",
-    "test:extended": "node tests/m9-01-augment.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs && node tests/m9-09-ux-regression.cjs"
+    "test:extended": "node tests/m9-01-augment.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs && node tests/m9-09-ux-regression.cjs",
+    "test:board": "node tests/m11-01-board-view.cjs"
   }
 }

@@ -20,24 +20,7 @@
   timers.add(timer);
  }
  function clear(){generation++;for(const t of timers)clearTimeout(t);timers.clear();groups.clear();skillLabels.clear();lastImpacts.clear();layer.replaceChildren();}
- function locationOf(event,atHead=true){
-  const units=board.querySelectorAll('.unit[data-id]');
-  let unit=null;
-  for(const node of units)if(node.dataset.id===String(event.unitId)){unit=node;break;}
-  let r=unit?.getBoundingClientRect();
-  if(!r?.width){
-   if(!Number.isInteger(event.x)||!Number.isInteger(event.y))return null;
-   const cell=board.querySelector(`.cell[data-x="${event.x}"][data-y="${event.y}"]`);
-   r=cell?.getBoundingClientRect();
-  }
-  if(!r?.width)return null;
-  const bounds=shell.getBoundingClientRect();
-  // An existing health bar is anchored to the Pixi sprite head by the M6 adapter.
-  const bar=unit?.querySelector('.unit-hud .hpbar')?.getBoundingClientRect();
-  const x=Math.max(16,Math.min(bounds.width-16,r.left-bounds.left+r.width*.5));
-  const y=Math.max(24,Math.min(bounds.height-12,(atHead?(bar?.top??r.top+r.height*.25):(r.top+r.height*.48))-bounds.top));
-  return {x,y};
- }
+ function locationOf(event,atHead=true){return boardView.eventAnchor(event,shell,atHead);}
  function makeNode(className,pos){
   const node=document.createElement('span');node.className=className;
   node.style.left=pos.x+'px';node.style.top=pos.y+'px';layer.appendChild(node);

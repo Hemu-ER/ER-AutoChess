@@ -2,6 +2,7 @@
 const {roster,byId}=ERRoster;
 const {CombatEngine,DT,coefficients:combatCoefficients={}}=ERCombat;
 const $=s=>document.querySelector(s),board=$("#board"),expandedMeters=new Set(),expandedSkillDetails=new Set();
+const boardView=LIVEBoardView.create(board);
 let teams={A:[],B:[]},battle=null,units=[],running=false,paused=false,time=0;
 let speed=1,last=0,accumulator=0,frame=null;
 let appMode=null; // null=start, "game"=실제 게임 화면, "test"=전투 테스트
@@ -366,7 +367,7 @@ function equippedSlots(o){const arr=o?.equipment||[];return `<span class="live-e
 // path might not run. Update only the board badges and preserve pointer/drag state.
 function syncSoldierSlots(){
  const enabled=appMode==='game'&&roundState.phase==='prep'&&(gameState.m1004InfusionIds||[]).includes('P10');
- for(const cell of board.querySelectorAll('.cell')){
+ for(const cell of boardView.cells()){
   const x=Number(cell.dataset.x),y=Number(cell.dataset.y),key=`${x},${y}`,show=enabled&&x>=0&&x<3&&!teams.A.some(u=>u.x===x&&u.y===y);
   let el=cell.querySelector('.m1020-soldier-slot');if(!show){el?.remove();continue}const gear=gameState.soldierItems?.[key];
   if(!el){el=document.createElement('span');el.className='m1020-soldier-slot';cell.appendChild(el)}
@@ -396,7 +397,7 @@ function moveItemCursorTip(x,y){const t=document.querySelector('#liveItemCursorT
 function hideItemCursorTip(){const t=document.querySelector('#liveItemCursorTip');if(t)t.hidden=true}
 function bindItemTooltips(root=document){root.querySelectorAll?.('[data-item-tooltip]').forEach(el=>{if(el.dataset.itemTipBound)return;el.dataset.itemTipBound='1';el.addEventListener('pointerenter',e=>{if(e.pointerType!=='touch'&&!itemPointerDrag?.started)showItemCursorTip(el.dataset.itemTooltip,e.clientX,e.clientY)});el.addEventListener('pointermove',e=>moveItemCursorTip(e.clientX,e.clientY));el.addEventListener('pointerleave',hideItemCursorTip);el.addEventListener('pointerdown',hideItemCursorTip)})}
 function ensureCraftPreview(){let p=document.querySelector('#liveCraftPreview');if(!p){p=document.createElement('div');p.id='liveCraftPreview';document.body.appendChild(p)}return p}
-function updateCraftPreview(d,x,y){const p=ensureCraftPreview();const hit=document.elementFromPoint(x,y);const slot=hit?.closest('[data-item-index]');const index=slot?+slot.dataset.itemIndex:-1;const name=index>=0&&index!==d.i?LIVEItems.craft(gameState.items[d.i],gameState.items[index]):null;p.hidden=!name;if(p._target!==slot){p._target?.classList.remove('craft-target');p._target=slot;if(name)slot.classList.add('craft-target')}if(name){if(p._name!==name){p._name=name;p.innerHTML=`<small>조합 결과</small><div>${itemIconMarkup(name)}<b>${esc(name)}</b></div><small>${esc(itemStatsText(name))}</small>`;}p.style.left=Math.max(8,Math.min(x+28,innerWidth-230))+'px';p.style.top=Math.max(8,Math.min(y-85,innerHeight-140))+'px'}return name}
+function updateCraftPreview(d,x,y){const p=ensureCraftPreview();const hit=boardView.hitAt(x,y);const slot=hit?.closest('[data-item-index]');const index=slot?+slot.dataset.itemIndex:-1;const name=index>=0&&index!==d.i?LIVEItems.craft(gameState.items[d.i],gameState.items[index]):null;p.hidden=!name;if(p._target!==slot){p._target?.classList.remove('craft-target');p._target=slot;if(name)slot.classList.add('craft-target')}if(name){if(p._name!==name){p._name=name;p.innerHTML=`<small>조합 결과</small><div>${itemIconMarkup(name)}<b>${esc(name)}</b></div><small>${esc(itemStatsText(name))}</small>`;}p.style.left=Math.max(8,Math.min(x+28,innerWidth-230))+'px';p.style.top=Math.max(8,Math.min(y-85,innerHeight-140))+'px'}return name}
 function closeCraftPreview(){const p=document.querySelector('#liveCraftPreview');if(p){p.hidden=true;p._target?.classList.remove('craft-target');p._target=null;p._name=null}}
 // 도감 인원 조건: 특수 1인 효과와 역할 배치 효과는 인원 단계가 아님.
 function codexSynergyStages(name){
@@ -467,11 +468,11 @@ function moveItemPointerDrag(ev){
  if(d.paintFrame)return;
  d.paintFrame=requestAnimationFrame(()=>{d.paintFrame=null;if(d!==itemPointerDrag||!d.ghost)return;
   const x=d.latestX,y=d.latestY;d.ghost.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-50%)`;
-  updateCraftPreview(d,x,y);const shop=document.elementFromPoint(x,y)?.closest('.dock-shop');document.body.classList.toggle('shop-sell-active',!!shop);
+  updateCraftPreview(d,x,y);const shop=boardView.hitAt(x,y)?.closest('.dock-shop');document.body.classList.toggle('shop-sell-active',!!shop);
   if(shop){const item=gameState.items[d.i];shop.dataset.sellHint=item?`판매 +${itemSalePrice(item)}C`:''}
  });
 }
-function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;if(d.paintFrame)cancelAnimationFrame(d.paintFrame);d.ghost?.remove();closeCraftPreview();document.body.classList.remove('shop-sell-active');if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=document.elementFromPoint(ev.clientX,ev.clientY);document.querySelector('#liveMarketDrop')?.classList.toggle('is-dragover',!!hit?.closest('#liveMarketDrop')&&liveMarketVisible());const targetItem=hit?.closest('[data-item-index]');if(hit?.closest('.dock-shop,[data-equip-uid],[data-owned-drag]')||targetItem)liveBeep('drop');document.body.classList.remove('shop-sell-active');if(liveMarketVisible()&&hit?.closest('#liveMarketDrop')){liveSetMarketDraft('item',d.i);return;}if(!canEditInventoryOnly())return;if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target&&roundState.phase==='prep'){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();requestAnimationFrame(()=>renderGameEconomy());return}const cell=hit?.closest('.cell');if(cell&&roundState.phase==='prep'&&isOnlineMatch()&&(gameState.m1004InfusionIds||[]).includes('P10')&&cell.querySelector('.m1020-soldier-slot')){onlineEconomyAction('equip-soldier',{x:Number(cell.dataset.x),y:Number(cell.dataset.y),index:d.i});return}const alt=hit?.closest('[data-equip-uid]');if(alt&&roundState.phase==='prep'){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();requestAnimationFrame(()=>renderGameEconomy());}}
+function endItemPointerDrag(ev){const d=itemPointerDrag;if(!d||d.id!==ev.pointerId)return;itemPointerDrag=null;if(d.paintFrame)cancelAnimationFrame(d.paintFrame);d.ghost?.remove();closeCraftPreview();document.body.classList.remove('shop-sell-active');if(!d.started)return;suppressItemClick=true;ev.preventDefault();ev.stopPropagation();const hit=boardView.hitAt(ev.clientX,ev.clientY);document.querySelector('#liveMarketDrop')?.classList.toggle('is-dragover',!!hit?.closest('#liveMarketDrop')&&liveMarketVisible());const targetItem=hit?.closest('[data-item-index]');if(hit?.closest('.dock-shop,[data-equip-uid],[data-owned-drag]')||targetItem)liveBeep('drop');document.body.classList.remove('shop-sell-active');if(liveMarketVisible()&&hit?.closest('#liveMarketDrop')){liveSetMarketDraft('item',d.i);return;}if(!canEditInventoryOnly())return;if(targetItem&&+targetItem.dataset.itemIndex!==d.i){if(inventoryCraft(d.i,+targetItem.dataset.itemIndex)){itemSelected=null;renderItemPanel()}return}if(hit?.closest('.dock-shop')){sellInventoryItem(d.i);return}const target=hit?.closest('[data-owned-drag]');if(target&&roundState.phase==='prep'){equipItem(+target.dataset.ownedDrag,d.i);itemSelected=null;renderItemPanel();requestAnimationFrame(()=>renderGameEconomy());return}const cell=boardView.cellFromHit(hit);if(cell&&roundState.phase==='prep'&&isOnlineMatch()&&(gameState.m1004InfusionIds||[]).includes('P10')&&cell.querySelector('.m1020-soldier-slot')){onlineEconomyAction('equip-soldier',{x:Number(cell.dataset.x),y:Number(cell.dataset.y),index:d.i});return}const alt=hit?.closest('[data-equip-uid]');if(alt&&roundState.phase==='prep'){equipItem(+alt.dataset.equipUid,d.i);itemSelected=null;renderItemPanel();requestAnimationFrame(()=>renderGameEconomy());}}
 function cancelItemPointerDrag(){if(itemPointerDrag?.paintFrame)cancelAnimationFrame(itemPointerDrag.paintFrame);itemPointerDrag?.ghost?.remove();itemPointerDrag=null;closeCraftPreview();document.body.classList.remove('shop-sell-active');document.querySelector('#liveMarketDrop')?.classList.remove('is-dragover')}
 function renderItemPanel(){
  let panel=$('#liveItemsPanel');if(appMode!=='game'){panel?.remove();return}
@@ -561,21 +562,6 @@ function ensureRoundUI(){
  .shop-sell-active .dock-shop{outline:2px solid rgba(255,95,95,.72);outline-offset:3px;border-radius:8px}.shop-sell-active .dock-shop::after{content:attr(data-sell-hint);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;padding:7px 12px;border-radius:999px;background:rgba(22,8,8,.92);border:1px solid rgba(255,110,110,.7);font-size:calc(.78rem + 2pt);font-weight:800;pointer-events:none}.dock-shop{position:relative}
  .drag-ghost{position:fixed;z-index:20000;width:58px;height:74px;pointer-events:none;opacity:.82;transform:translate(-50%,-55%);filter:drop-shadow(0 6px 8px #000b)}.drag-ghost img{width:100%;height:100%;object-fit:contain}.drag-target{outline:2px solid rgba(92,211,255,.65)!important;outline-offset:-2px}.dragging-owned{opacity:.35!important}
  .shop-lock-btn.locked{border-color:rgba(255,215,95,.7);background:rgba(255,215,95,.12)}
- /* Battlefield rendering: prep = own 3x3, combat/QA = full 3x6. */
- .board-shell{overflow:visible!important}
- #board{border:0!important;box-shadow:none!important;background:radial-gradient(ellipse at center,rgba(40,64,72,.10),transparent 67%)!important;overflow:visible!important;transition:width .16s ease}
- #board.formation-board{grid-template-columns:repeat(3,minmax(0,1fr))!important;width:50%;margin-inline:auto}
- #board.formation-board .cell[data-x="3"],#board.formation-board .cell[data-x="4"],#board.formation-board .cell[data-x="5"]{display:none!important}
- #board.combat-board{grid-template-columns:repeat(6,minmax(0,1fr))!important;width:100%;margin-inline:0}
- #board.combat-board .cell{display:block!important}
- body[data-app-mode="game"].formation-phase .field-b{display:none!important}
- body[data-app-mode="game"].formation-phase .field-a{left:50%!important;right:auto!important;transform:translateX(-50%)}
- .cell{overflow:visible!important;border:0!important;background:transparent!important}.cell.divider{border:0!important}.coord{opacity:.24!important;font-size:calc(7px + 2pt)!important}.ground-ring{opacity:.32;z-index:2}
- #board .unit{overflow:visible!important;z-index:10!important}
- #board .sd-slot{left:-8%!important;right:-8%!important;top:-38px!important;bottom:18px!important;overflow:visible!important;z-index:3!important;display:flex!important;align-items:flex-end!important;justify-content:center!important}
- #board.formation-board .sd-slot img.sd-image{opacity:1!important;visibility:visible!important}
- #board .sd-image{display:block!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:contain!important;object-position:center bottom!important;opacity:1!important;visibility:visible!important;image-rendering:auto;filter:drop-shadow(0 5px 6px #000b)}
- @media(max-width:850px){#board.formation-board{width:100%}#board .sd-slot{top:-24px!important}}
  .unit-hud.compact-hud{left:12%;right:12%;top:var(--hud-top,-42px);bottom:auto;z-index:80;display:grid;grid-template-columns:11px minmax(0,1fr);gap:3px;align-items:center;pointer-events:none}.compact-hud .hud-star{font-size:calc(9px + 2pt);line-height:1;text-align:center;text-shadow:0 1px 3px #000,0 0 4px #000}.compact-hud .hud-star.star-1{color:#69b9ff}.compact-hud .hud-star.star-2{color:#c58cff}.compact-hud .hud-star.star-3{color:#ffd75f}.compact-hud .hpbar{height:3px;margin:0;position:relative;z-index:81}.unit{z-index:10}.unit:hover,.unit:focus{z-index:20}.unit .unit-hud{z-index:80}
 
 
@@ -593,15 +579,15 @@ function ensureRoundUI(){
  body[data-app-mode="game"] main{display:block!important;width:100%;height:100%;min-height:0;margin:0!important;padding:0!important;overflow:hidden!important}
  body[data-app-mode="game"] .arena-card{width:100%;height:100%;min-height:0;margin:0!important;padding:0!important;border:0!important;background:transparent!important;overflow:hidden!important}
  body[data-app-mode="game"] .game-board-row{width:min(1240px,100%);height:100%;max-height:100%;min-height:0;margin:0 auto!important;align-items:stretch!important}
- body[data-app-mode="game"] .game-board-row>.board-shell{height:100%;min-height:0;display:flex;align-items:center;justify-content:center;padding:0!important;overflow:visible!important}
- body[data-app-mode="game"] #board{height:100%!important;min-height:0!important;max-height:450px;grid-template-rows:repeat(3,minmax(0,1fr))!important}
- body[data-app-mode="game"] #board.formation-board{width:min(58%,620px)!important}
+
+
+
  body[data-app-mode="game"] .current-synergy-panel{max-height:100%!important;overflow:auto!important;overscroll-behavior:contain;scrollbar-width:thin}
  #synergyCursorTip{position:fixed!important;max-height:calc(100dvh - 20px)!important;overflow:auto;overscroll-behavior:contain}
 
  @media(max-height:800px) and (min-width:851px){
   body[data-app-mode="game"] .app{padding-top:50px!important;padding-bottom:205px!important}
-  body[data-app-mode="game"] #board{max-height:390px}
+
   body[data-app-mode="game"] .shop-card{min-height:104px!important;grid-template-rows:60px auto auto!important}
   body[data-app-mode="game"] .shop-card.sold{min-height:104px!important}
   body[data-app-mode="game"] .bench-zone{min-height:62px!important}
@@ -613,9 +599,9 @@ function ensureRoundUI(){
   body[data-app-mode="game"] .app{padding:48px 5px min(45dvh,270px)!important}
   body[data-app-mode="game"] .game-board-row{height:100%;grid-template-rows:auto minmax(0,1fr);gap:4px!important}
   body[data-app-mode="game"] .current-synergy-panel{max-height:58px!important;overflow-x:auto!important;overflow-y:hidden!important}
-  body[data-app-mode="game"] .game-board-row>.board-shell{min-height:0}
-  body[data-app-mode="game"] #board{height:100%!important;min-height:0!important;max-height:none}
-  body[data-app-mode="game"] #board.formation-board{width:100%!important}
+
+
+
  }
 
  /* Cross-device polish: collapsible dock, readable controls, lighter typography. */
@@ -651,9 +637,8 @@ function syncBoardPresentation(){
  if(syncBoardPresentation._key===presentationKey)return;syncBoardPresentation._key=presentationKey;
  document.body.dataset.liveScene=liveSceneForRound();
  if(!board)return;
- const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special','augment','augment-sync'].includes(roundState.phase)||(roundState.phase==='result'&&liveSceneForRound()==='event'));window.M6PixiAdapter?.showDomIfFormation?.(prep);
- board.classList.toggle('formation-board',prep);
- board.classList.toggle('combat-board',!prep);
+ const prep=appMode==='game'&&roundState.active&&( ['prep','intro','supply','special','augment','augment-sync'].includes(roundState.phase)||(roundState.phase==='result'&&liveSceneForRound()==='event'));
+ boardView.setFormation(prep);
  document.body.classList.toggle('formation-phase',prep);
  const legend=document.querySelector('.arena-top .legend');if(legend)legend.style.display=prep?'none':'';
  const hint=document.querySelector('.arena-card .hint');if(hint)hint.textContent=prep?(roundState.round===1?'ROUND 1 파밍 준비 · 내 진영 3×3 편성 · 상점 구매 후 준비 완료':'내 진영 3×3 편성 · 드래그로 배치 / 교환 · 전투 시작 시 3×6으로 결합'):'양 팀 3×3 결합 전장 · 전투/QA는 3×6';
@@ -812,8 +797,8 @@ function positionUnitHud(img){
  if(!img.isConnected||!img.complete||!img.naturalWidth)return;
  const unit=img.closest('.unit'),slot=img.closest('.sd-slot'),b=alphaBounds(img);if(!unit||!slot||!b)return;
  const ir=img.getBoundingClientRect(),ur=unit.getBoundingClientRect();if(!ir.width||!ir.height)return;
- const scaleY=ir.height/img.naturalHeight,opaqueTop=ir.top-ur.top+b.minY*scaleY;
- const top=Math.max(-70,opaqueTop-8);unit.style.setProperty('--hud-top',`${Math.round(top)}px`);
+ const scaleY=Math.min(ir.width/img.naturalWidth,ir.height/img.naturalHeight),opaqueTop=ir.bottom-ur.top-img.naturalHeight*scaleY+b.minY*scaleY;
+ const top=Math.max(-18,opaqueTop-9);unit.style.setProperty('--hud-top',`${Math.round(top)}px`);
 }
 function normalizeVisuals(root=document){
  root.querySelectorAll?.('img[data-alpha-normalize]').forEach(img=>{const run=()=>normalizePortraitImage(img);img.complete?requestAnimationFrame(run):img.addEventListener('load',()=>requestAnimationFrame(run),{once:true})});
@@ -843,15 +828,15 @@ function showRolePlacementHints(role){
  const cols=rolePlacementColumns(role);if(!cols.length)return;
  document.body.classList.add('role-placement-preview');
  board?.setAttribute('data-role-preview',role);
- board?.querySelectorAll('.cell').forEach(cell=>{const x=+cell.dataset.x;if(x<=2&&cols.includes(x))cell.classList.add('role-synergy-zone')});
+ boardView.cells().forEach(cell=>{const x=+cell.dataset.x;if(x<=2&&cols.includes(x))cell.classList.add('role-synergy-zone')});
 }
 function clearRolePlacementHints(){
  document.body.classList.remove('role-placement-preview');
  board?.removeAttribute('data-role-preview');
  board?.querySelectorAll('.role-synergy-zone').forEach(cell=>cell.classList.remove('role-synergy-zone'));
 }
-function moveOwnedToCell(uid,cell){
- if(appMode!=='game'||roundState.phase!=='prep'||!cell)return false;const o=gameState.owned.find(x=>x.uid===uid);if(!o)return false;const gx=+cell.dataset.x,y=+cell.dataset.y;if(gx>2)return false;let entry=teams.A.find(e=>e.ownedId===uid),occupied=teams.A.find(e=>e!==entry&&e.x===gx&&e.y===y);
+function moveOwnedToPosition(uid,position){
+ if(appMode!=='game'||roundState.phase!=='prep'||!position)return false;const o=gameState.owned.find(x=>x.uid===uid);if(!o)return false;const local=LIVEBoardView.globalToLocal('A',position.x,position.y);if(!local)return false;const {x:gx,y}=local;let entry=teams.A.find(e=>e.ownedId===uid),occupied=teams.A.find(e=>e!==entry&&e.x===gx&&e.y===y);
  if(!entry&&teams.A.length>=m907TeamLimit('A')&&!occupied){gameState.message='전장에는 최대 3명까지 배치할 수 있어.';renderGameEconomy();return false}
  m1015CapturePlacementOrigins();
  if(!entry){entry={characterId:o.characterId,star:o.star,x:gx,y,ownedId:o.uid};if(occupied){const old=gameState.owned.find(x=>x.uid===occupied.ownedId);if(old)old.location='bench';teams.A.splice(teams.A.indexOf(occupied),1)}teams.A.push(entry);o.location='board'}else if(occupied){const ox=entry.x,oy=entry.y;entry.x=gx;entry.y=y;occupied.x=ox;occupied.y=oy}else{entry.x=gx;entry.y=y}reset();renderGameEconomy();return true
@@ -876,7 +861,7 @@ function moveOwnedPointerDrag(ev){
   d.paintFrame=null;if(ownedPointerDrag!==d||!d.ghost)return;
   const x=d.latestX,y=d.latestY;
   d.ghost.style.transform=`translate3d(${x}px,${y}px,0) translate(-50%,-55%)`;
-  const hit=document.elementFromPoint(x,y),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell'),market=hit?.closest('#liveMarketDrop');
+  const hit=boardView.hitAt(x,y),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=boardView.cellFromPoint(x,y,hit),market=hit?.closest('#liveMarketDrop');
   const target=market&&liveMarketVisible()?market:shop||bench||(+cell?.dataset?.x<=2?cell:null);
   if(d.hoverTarget!==target){d.hoverTarget?.classList.remove('drag-target');d.hoverTarget=target;if(target&&!market)target.classList.add('drag-target')}
   document.body.classList.toggle('shop-sell-active',!!shop&&!market);
@@ -885,7 +870,7 @@ function moveOwnedPointerDrag(ev){
  });
 }
 function endOwnedPointerDrag(ev){
- if(!ownedPointerDrag||ev.pointerId!==ownedPointerDrag.pointerId)return;const d=ownedPointerDrag;document.removeEventListener('pointermove',moveOwnedPointerDrag);if(!d.started){clearOwnedDrag();return}ev.preventDefault();const uid=d.uid,hit=document.elementFromPoint(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=hit?.closest('.cell');if(shop||bench||cell)liveBeep('drop');if(liveMarketVisible()&&hit?.closest('#liveMarketDrop'))liveSetMarketDraft('unit',uid);else if(roundState.phase==='prep'){if(shop)sellOwned(uid);else if(bench)benchOwned(uid);else if(cell)moveOwnedToCell(uid,cell)}clearOwnedDrag();
+ if(!ownedPointerDrag||ev.pointerId!==ownedPointerDrag.pointerId)return;const d=ownedPointerDrag;document.removeEventListener('pointermove',moveOwnedPointerDrag);if(!d.started){clearOwnedDrag();return}ev.preventDefault();const uid=d.uid,hit=boardView.hitAt(ev.clientX,ev.clientY),shop=hit?.closest('.dock-shop'),bench=hit?.closest('.bench-zone'),cell=boardView.cellFromPoint(ev.clientX,ev.clientY,hit);if(shop||bench||cell)liveBeep('drop');if(liveMarketVisible()&&hit?.closest('#liveMarketDrop'))liveSetMarketDraft('unit',uid);else if(roundState.phase==='prep'){if(shop)sellOwned(uid);else if(bench)benchOwned(uid);else if(cell)moveOwnedToPosition(uid,boardView.coord(cell))}clearOwnedDrag();
 }
 function cancelOwnedPointerDrag(){document.removeEventListener('pointermove',moveOwnedPointerDrag);clearOwnedDrag()}
 function bindOwnedPointerDrag(root){root?.querySelectorAll('[data-owned-drag]').forEach(el=>el.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,+el.dataset.ownedDrag,el)))}
@@ -1610,7 +1595,7 @@ window.LIVEApplyGame=function(net,slot,players){
   if(net.phase==='prep'){
    roundState.phase='prep';teams.B=[];syncBoardPresentation();
    // Reset battle damage/death state into fresh preparation units, even after some or all units died.
-   reset();window.M6PixiAdapter?.refresh?.();
+   reset();
    if(net.round>1&&liveCompletedRound!==net.round){liveCompletedRound=net.round;if(!me?.assets){if(!gameState.shopLocked)rollShop();addMasteryProgress(GAME_TEMP.masteryNaturalExp,'라운드 자연 성장');gameState.credits+=roundCreditIncome().total;}}
    $('#status').textContent=`ROUND ${net.round} · 온라인 준비`;renderGameEconomy();
   }else if(net.phase==='intro'){
@@ -1630,7 +1615,7 @@ window.LIVEApplyGame=function(net,slot,players){
   }else if(['augment','augment-sync'].includes(net.phase)){
     if(typeof liveClearAllDrags==='function')liveClearAllDrags();teams.B=[];roundState.phase=net.phase;syncBoardPresentation();reset();
     $('#status').textContent=`ROUND ${net.round} · 인퓨전 선택 중`;renderGameEconomy();
-  }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();window.M6PixiAdapter?.refresh?.();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='special'){teams.B=[];roundState.phase='special';reset();$('#status').textContent=net.kind==='boss'?`ROUND ${net.round} · ${net.boss?.info?.name||'보스'} 등장!`:`ROUND ${net.round} · ${liveRoundKind(net.round)} · 서버 연동 준비 중`;renderGameEconomy();}else if(net.phase==='result'){
+  }else if(net.phase==='supply'){teams.B=[];roundState.phase='supply';reset();$('#status').textContent='ROUND 5 · 보급 선택 중';renderGameEconomy();}else if(net.phase==='special'){teams.B=[];roundState.phase='special';reset();$('#status').textContent=net.kind==='boss'?`ROUND ${net.round} · ${net.boss?.info?.name||'보스'} 등장!`:`ROUND ${net.round} · ${liveRoundKind(net.round)} · 서버 연동 준비 중`;renderGameEconomy();}else if(net.phase==='result'){
    if(typeof liveClearAllDrags==='function')liveClearAllDrags();if(running||battle){if(frame!==null)cancelAnimationFrame(frame);frame=null;running=false;}
    if(net.kind==='farm'&&net.pve&&!me?.assets){const defeated=(units||[]).filter(u=>u.team==='B'&&u.dead&&(byId[u.characterId]?.pveOnly||u.role==='야생동물'));for(const animal of defeated){const count=1+(Math.random()<.05?1:0);for(let k=0;k<count;k++)pushItem(BASIC_ITEMS[Math.floor(Math.random()*BASIC_ITEMS.length)])}}
    roundState.phase='result';liveCombatActive=false;
@@ -1791,21 +1776,13 @@ function renderTeams(){
  for(const id of ["masteryA","masteryB","moveInterval","seed","fixedSeed","batch"])$("#"+id).disabled=running;
 }
 
-function buildBoard(){
- board.innerHTML="";
- for(let y=0;y<3;y++)for(let x=0;x<6;x++){
-  const c=document.createElement("div");
-  c.className="cell "+(x<3?"teamA":"teamB")+(x===3?" divider":"");
-  c.dataset.x=x;c.dataset.y=y;
-  c.innerHTML=`<span class="coord">${x<3?"A":"B"} ${["왼","중앙","오른"][y]} · ${["후열","중열","전열","전열","중열","후열"][x]}</span>`;
-  c.ondragover=e=>e.preventDefault();c.ondrop=e=>drop(e,c);board.appendChild(c);
- }
-}
-function drop(e,c){
+function buildBoard(){boardView.build(drop);}
+function drop(e,position){
  e.preventDefault();if(running||battle)return;
  const u=units.find(u=>u.id===e.dataTransfer.getData("text/plain"));if(!u||appMode==="game"&&u.team!=="A")return;
- const globalX=+c.dataset.x,y=+c.dataset.y;if((u.team==="A"&&globalX>2)||(u.team==="B"&&globalX<3))return;
- const x=u.team==="A"?globalX:5-globalX,entry=teams[u.team].find(e=>e.x===u.x&&e.y===u.y&&e.characterId===u.characterId)||teams[u.team].find(e=>e.characterId===u.characterId);
+ const local=LIVEBoardView.globalToLocal(u.team,position.x,position.y);if(!local)return;
+ const {x,y}=local,entry=teams[u.team].find(e=>e.x===u.x&&e.y===u.y&&e.characterId===u.characterId)||teams[u.team].find(e=>e.characterId===u.characterId);
+ if(!entry)return;
  const occupied=teams[u.team].find(e=>e!==entry&&e.x===x&&e.y===y);
  if(occupied){const ox=entry.x,oy=entry.y;Object.assign(entry,{x,y});Object.assign(occupied,{x:ox,y:oy});}
  else Object.assign(entry,{x,y});
@@ -1850,7 +1827,7 @@ let m809ShiftHeld=false;
 function m609ReconcileTooltip(){
  if(characterTipState.mobile)return;
  if(!document.hasFocus()||!m609Pointer.active){hideCharacterCursorTip();return}
- const target=document.elementFromPoint(m609Pointer.x,m609Pointer.y)?.closest?.('#board .unit');
+ const target=boardView.hitAt(m609Pointer.x,m609Pointer.y)?.closest?.('#board .unit');
  if(!target||!target.isConnected){hideCharacterCursorTip();return}
  const unit=units.find(u=>u.id===target.dataset.id);
  if(!unit){hideCharacterCursorTip();return}
@@ -1881,58 +1858,10 @@ function m7UnitStatus(u){const result=[],details=[];const add=(title,icon,desc)=
  if(u.prisonStacks>0)add(u.prisonStacks,'♜','감옥 중첩 '+u.prisonStacks+'/8');
  return result.length?`<div class="m7-unit-states">${result.slice(0,3).join('')}${result.length>3?`<span class="m7-state" title="${esc(details.slice(3).join(' · '))}">+${result.length-3}</span>`:''}</div>`:'';
 }
-function unitMarkup(u){
- const r=byId[u.characterId]||(u.characterId==='nina'?{name:'니나',role:'소환수',implemented:true,asset:{sd:'assets/characters/nina.webp'}}:{name:u.name,role:u.role,implemented:true,asset:{}}),hp=Math.max(0,u.hp/u.maxHp*100),low=hp<=30,shield=Math.max(0,(u.skill?.shield||0)+(u.blueShields||[]).reduce((a,b)=>a+Math.max(0,b.amount||0),0)),shieldPct=Math.min(Math.max(0,100-hp),shield/u.maxHp*100);
- const visual=r.asset?.sd
-  ? `<img class="sd-image" src="${esc(r.asset.sd)}" alt="${esc(u.name)}" decoding="async" draggable="false" onerror="this.parentElement.innerHTML='<div class=\\'sd-silhouette\\'><span>${esc(u.name.slice(0,1))}</span></div>'">`
-  : `<div class="sd-silhouette"><span>${esc(u.name.slice(0,1))}</span></div>`;
- return `<div class="ground-ring"></div>
-  <div class="sd-slot" data-asset="${esc(r.asset?.sd||"")}">${visual}</div>
-  <div class="target-marker"></div><div class="hit-vfx"></div><div class="skill-vfx"></div>
-  <div class="unit-hud compact-hud">
-   <span class="hud-star star-${u.star}" aria-label="${u.star}성">${m904StarBadge(u.star)}</span>
-   <div class="hpbar ${low?"low":""} ${(u.skill?.invulnUntil>time||u.skill?.immortalUntil>time)?"invincible-hp":""}" title="${shield>0?`체력 ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)} · 보호막 ${Math.ceil(shield)}`:`체력 ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}`}"><i style="width:${hp}%"></i>${shield>0?`<em class="shield-overlay" style="left:${hp}%;width:${shieldPct}%"></em>`:""}</div>
-  </div>${m7UnitStatus(u)}`;
-}
+// Presentation receives current state; it never owns or advances the match.
 function render(){
  syncBoardPresentation();
- const existing=new Map([...board.querySelectorAll('.unit[data-id]')].map(e=>[e.dataset.id,e]));
- const alive=new Set();
- for(const u of units){
-  if(u.dead||u.hp<=0)continue;
-  const cell=board.querySelector(`[data-x="${u.x}"][data-y="${u.y}"]`);if(!cell)continue;
-  const id=String(u.id);alive.add(id);
-  const placementUid=appMode==='game'&&u.team==='A'&&roundState.phase==='prep'
-   ? teams.A.find(t=>t.ownedId!=null&&String(t.ownedId)===id.slice(id.lastIndexOf(':')+1))?.ownedId : null;
-  let e=existing.get(id);
-  if(!e){
-   e=document.createElement('div');e.className=`unit ${u.team} star-${u.star}`;e.dataset.id=id;e.dataset.inspectCharacter=u.characterId;e.innerHTML=unitMarkup(u);
-   const ownedEntry=appMode==='game'&&u.team==='A'?teams.A.find(x=>x.x===(u.initialX??u.x)&&x.y===(u.initialY??u.y)&&x.characterId===u.characterId&&x.star===u.star):null;
-   if(u.purpleDummy||u.purpleGhost){e.classList.add('m1020-soldier-unit');e.setAttribute('aria-label',u.name);if(u.equipment?.length){e.insertAdjacentHTML('beforeend',`<span class="live-equip-slots"><span class="live-equip-slot" data-item-tooltip="${esc(u.equipment[0])}">${itemIconMarkup(u.equipment[0])}</span></span>`);bindItemTooltips(e)}}else if(appMode==='game'&&ownedEntry?.ownedId){const owned=gameState.owned.find(o=>o.uid===ownedEntry.ownedId);e.insertAdjacentHTML('beforeend',equippedSlots(owned));bindItemTooltips(e);e.draggable=false;e.dataset.ownedDrag=ownedEntry.ownedId;e.style.touchAction='none';e.addEventListener('pointerdown',ev=>beginOwnedPointerDrag(ev,ownedEntry.ownedId,e))}
-   else{if(appMode==='game'&&u.team==='B'&&roundState.phase==='combat'){const foe=teams.B.find(t=>t.characterId===u.characterId&&t.star===u.star&&t.x===5-(u.initialX??u.x)&&t.y===(u.initialY??u.y))||teams.B.find(t=>t.characterId===u.characterId&&t.star===u.star);if(foe?.items?.length){e.insertAdjacentHTML('beforeend',equippedSlots({equipment:foe.items}));bindItemTooltips(e)}}e.draggable=!running&&!battle;e.ondragstart=event=>event.dataTransfer.setData('text/plain',u.id)}
-   if(appMode!=='game'){e.onmouseenter=()=>showInspector(e._liveUnit);e.onfocus=()=>showInspector(e._liveUnit)}
-   e._liveUnit=u;bindCharacterTip(e,u);e.tabIndex=0;cell.appendChild(e);normalizeVisuals(e);
-  }else{
-   if(e.parentElement!==cell){
-    const prev=e.getBoundingClientRect();cell.appendChild(e);
-    if(!(placementUid!=null&&m1015PlacementOrigins?.has(String(placementUid)))&&!document.hidden&&typeof e.animate==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
-     const next=e.getBoundingClientRect(),dx=prev.left-next.left,dy=prev.top-next.top;
-     if(dx||dy)e.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration:190,easing:'ease-out'});
-    }
-   }
-   const bar=e.querySelector('.hpbar'),hp=Math.max(0,u.maxHp?u.hp/u.maxHp*100:0);
-   if(bar){bar.classList.toggle('low',hp<=30);bar.classList.toggle('invincible-hp',u.skill?.invulnUntil>time||u.skill?.immortalUntil>time);const shield=Math.max(0,(u.skill?.shield||0)+(u.blueShields||[]).reduce((v,b)=>v+Math.max(0,b.amount||0),0));bar.title=`체력 ${Math.ceil(u.hp)} / ${Math.ceil(u.maxHp)}${shield>0?' · 보호막 '+Math.ceil(shield):''}`;const fill=bar.querySelector('i');if(fill)fill.style.width=hp+'%';let overlay=bar.querySelector('.shield-overlay');if(shield>0){if(!overlay){overlay=document.createElement('em');overlay.className='shield-overlay';bar.appendChild(overlay)}overlay.style.left=hp+'%';overlay.style.width=Math.min(100-hp,shield/(u.maxHp||1)*100)+'%'}else overlay?.remove();}
-   e.classList.toggle('cc',u.ccUntil>time);
-   const states=m7UnitStatus(u),prev=e.querySelector('.m7-unit-states');if(states!==e._states){prev?.remove();if(states)e.insertAdjacentHTML('beforeend',states);e._states=states;}
-  }
-  e._liveUnit=u;
-  if(placementUid!=null)m1015AnimatePlacement(e,placementUid,'board');
-  if(characterTipState.unit?.id===u.id&&!characterTipState.mobile)characterTipState.unit=u;
-  if(e.dataset.ownedDrag){const equipped=gameState.owned.find(o=>String(o.uid)===e.dataset.ownedDrag);if(equipped){const signature=JSON.stringify(equipped.equipment||[]);if(e._equipmentSignature!==signature){const previous=e.querySelector('.live-equip-slots');if(previous)previous.outerHTML=equippedSlots(equipped);else e.insertAdjacentHTML('beforeend',equippedSlots(equipped));bindItemTooltips(e);e._equipmentSignature=signature}}}
-  if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');if(!e.querySelector('.live-hit-spark')){const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}}else{e.classList.remove('live-hit-flash');e.querySelector('.live-hit-spark')?.remove()}
-  e.classList.toggle('live-attack-flash',(liveAttackUntil.get(u.id)||0)>performance.now());
- }
- for(const [id,e] of existing)if(!alive.has(id))e.remove();
+ boardRenderer.render({units,teams,owned:gameState.owned,appMode,phase:roundState.phase,running,hasBattle:!!battle,time,placementOrigins:m1015PlacementOrigins,liveHitUntil,liveAttackUntil});
  syncSoldierSlots();
 }
 
@@ -1950,7 +1879,7 @@ function meters(){
  }
 }
 const m809AreaHits=new Map();
-function m809DrawAreaHits(){for(const [key,data] of m809AreaHits){if(data.until<performance.now()){m809AreaHits.delete(key);board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"] .m809-area-mark`)?.remove();continue}const cell=board.querySelector(`[data-x="${data.x}"][data-y="${data.y}"]`);if(cell&&!cell.querySelector('.m809-area-mark')){const v=document.createElement('span');v.className='m809-area-mark';v.setAttribute('aria-label',data.skill);cell.appendChild(v)}}}
+function m809DrawAreaHits(){for(const [key,data] of m809AreaHits){if(data.until<performance.now()){m809AreaHits.delete(key);boardView.cellAt(data.x,data.y)?.querySelector('.m809-area-mark')?.remove();continue}const cell=boardView.cellAt(data.x,data.y);if(cell&&!cell.querySelector('.m809-area-mark')){const v=document.createElement('span');v.className='m809-area-mark';v.setAttribute('aria-label',data.skill);cell.appendChild(v)}}}
 function sync(){
  const result=battle.getResult();units=result.units;time=result.time;
  const presentation=[];
@@ -1963,7 +1892,6 @@ function sync(){
   if(event.type==='area-hit'&&event.x>=0&&event.y>=0){const key=event.x+':'+event.y;m809AreaHits.set(key,{x:event.x,y:event.y,skill:event.skill,until:performance.now()+680})}
   if(!document.hidden&&event.type?.startsWith('vfx-')&&event.time>=minVisualTime&&presentation.length<48)presentation.push(event);
  }
- window.M6PixiAdapter?.combatSnapshot?.(units);
  $("#clock").textContent=time.toFixed(1)+"s";
  if(result.battleOver){if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='boss'&&roundState.phase==='combat')window.LIVEMultiplayer.reportBossDone?.(roundState.round);if(window.LIVEMultiplayer?.getRoom()?.game?.kind==='farm'&&roundState.phase==='combat'){const room=window.LIVEMultiplayer.getRoom();window.LIVEMultiplayer.reportFarmDone(room.game.round)}running=false;if(roundState.active&&roundState.phase==="combat")finishRound(result.outcome);else $("#status").textContent=result.outcome;renderTeams()}
  liveRenderHitEffects();render();window.LIVECombatVFX?.emitBatch?.(presentation);m809DrawAreaHits();const uiNow=performance.now();if(!sync._uiAt||uiNow-sync._uiAt>=220||result.battleOver){sync._uiAt=uiNow;meters();syncLiveBattleDeck();m809UpdateDamagePanel(roundState.phase==='combat'||roundState.phase==='result');}
@@ -1999,6 +1927,7 @@ $("#start").onclick=()=>{if(roundState.active){$("#status").textContent="라운�
 $("#step").onclick=()=>{if(!running&&!start())return;paused=true;$("#pause").textContent="▶ 재개";battle.step();battle.step();sync()};
 $("#reset").onclick=reset;$("#speed").onchange=e=>speed=+e.target.value;$("#batch").onclick=batch;
 for(const id of ["masteryA","masteryB","moveInterval","seed"])$("#"+id).onchange=reset;
+const boardRenderer=LIVEBoardRenderer.create(boardView,{byId,esc,m904StarBadge,m7UnitStatus,equippedSlots,itemIconMarkup,bindItemTooltips,beginOwnedPointerDrag,showInspector,bindCharacterTip,normalizeVisuals,m1015AnimatePlacement,updateTooltip:u=>{if(characterTipState.unit?.id===u.id&&!characterTipState.mobile)characterTipState.unit=u;}});
 buildBoard();ensureInspector();ensureRoundUI();reset();renderRoundUI();ensureAppShell();
 // Offline QA: bypass the online lobby and open the existing combat/round sandbox.
 if(new URLSearchParams(location.search).get("qa")==="combat")enterAppMode("test");

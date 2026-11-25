@@ -11,28 +11,6 @@
 
 
 <link rel="stylesheet" href="css/battle.css" />
-<style id="test-board-width-hotfix">
-/* QA/test mode must always use the full 3x6 battlefield.
-   Game PREP may use the centered 3x3 formation board. */
-body[data-app-mode="test"] #board,
-body[data-app-mode="test"] #board.formation-board,
-body[data-app-mode="test"] #board.combat-board {
-  width: 100% !important;
-  margin-inline: 0 !important;
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-}
-body[data-app-mode="test"] #board .cell {
-  display: block !important;
-}
-body[data-app-mode="test"] .field-a {
-  left: 25% !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
-}
-body[data-app-mode="test"] .field-b {
-  display: block !important;
-}
-</style>
 
 <style id="m1016-boot-guard">
 /* Don't paint the legacy combat laboratory until a match is really opened.
@@ -110,7 +88,7 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
     <div class="brand">
       <span class="eyebrow">AGLAIA // COMBAT LAB</span>
       <h1>ER AUTO CHESS</h1>
-      <span class="version">L.I.V.E. M11-00</span>
+      <span class="version">L.I.V.E. M11-02</span>
     </div>
     <div class="controls">
       <button id="start" class="primary">▶ 전투 시작</button>
@@ -133,7 +111,6 @@ body:not(.m611-intro-cleared):not([data-app-mode="test"]):not(.m611-no-intro)::b
         <div class="legend"><i class="a"></i>A TEAM <i class="b"></i>B TEAM</div>
       </div>
       <div class="board-shell">
-        <div class="field-mark field-a">A</div><div class="field-mark field-b">B</div>
         <div id="board" class="board"></div>
       </div>
       <p class="hint">팀별 3×3 배치 · 전투 시 3×6 결합 · 행 = same y / 열 = same x</p>
@@ -197,6 +174,8 @@ try {
 <script src="js/client/m910-system-language.js"></script>
 <link rel="stylesheet" href="css/codex.css" id="m1006VisualSkin" />
 <link rel="stylesheet" href="css/formation.css" />
+<script src="js/client/board-view.js"></script>
+<script src="js/client/board-renderer.js"></script>
 <script src="js/client/game.js"></script>
 <!-- M10-05 improved: user controlled static upscaled card imagery (review) -->
 
@@ -208,9 +187,8 @@ try {
 <script src="js/client/m1017-stage-intel.js"></script>
 <script src="js/client/m1011-settings.js"></script>
 <script src="js/client/battlefield.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/pixi.js@8.22.0/dist/pixi.min.js"></script>
-<script defer src="js/client/m6-pixi-adapter.js"></script>
 <link rel="stylesheet" href="css/m1016-combat-vfx.css" />
+<link rel="stylesheet" href="css/perspective-board.css" />
 <script defer src="js/client/m1016-combat-vfx.js"></script>
 <script>
 /* Restored M6-07 development QA shortcut; respects authentication for game mode. */
