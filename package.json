@@ -3,26 +3,14 @@
   "version": "0.4.3",
   "private": true,
   "scripts": {
-    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs && node tests/m10-20-regression.cjs && node tests/m10-20r-regression.cjs",
+    "test": "node tests/refactor-smoke.cjs && node tests/m10-04-gray.cjs && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m10-18-regression.cjs && node tests/m10-20-regression.cjs && node tests/m10-20r-regression.cjs && npm run test:cleanup",
     "test:refactor": "node tests/refactor-smoke.cjs",
     "start": "node js/server/server.cjs",
-    "test:m7": "node tests/m7-regression.cjs",
-    "test:m7-02": "node tests/m7-regression.cjs && node tests/m7-02-regression.cjs",
-    "test:m7-03": "npm run test:m7-02 && node tests/m7-03-regression.cjs",
-    "test:m8-01": "npm run test:m7-03 && node tests/m8-01-regression.cjs && node tests/m8-selection-qa.cjs",
-    "test:m8-02": "npm run test:m8-01 && node tests/m8-02-economy.cjs",
-    "test:m8-03": "npm run test:m8-02 && node tests/m8-03-market.cjs && node tests/m8-03-visual-regression.cjs",
-    "test:m8-04": "npm run test:m8-03 && node tests/m8-04-auction.cjs && node tests/m8-04-ui-regression.cjs",
-    "test:m8-05": "node tests/m8-05-boss.cjs && node tests/m8-05-balance.cjs && node tests/m8-05-ui-regression.cjs",
-    "test:m8-06": "npm run test:m8-04 && npm run test:m8-05 && node tests/m8-06-experiment.cjs && node tests/m8-06-buffs.cjs",
-    "test:m9-01": "node tests/m9-01-augment.cjs && node tests/m9-01-online.cjs",
-    "test:m9-07": "npm run test:m8-06 && npm run test:m9-01 && node tests/m9-07-purple-smoke.cjs && node tests/m9-07-purple-combos.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs",
-    "test:m9-08": "npm run test:m9-07 && node tests/m9-04.cjs && node tests/m9-05-ui.cjs && node tests/m9-08-restoration.cjs",
-    "test:m9-09": "npm run test:m9-08 && node tests/m9-09-ux-regression.cjs",
-    "test:m9-10": "npm run test:m9-09 && node tests/m9-10-regression.cjs",
     "test:bots": "node tests/m10-19-bots.cjs && node tests/m10-19-bots-flow.cjs",
     "test:m10-20": "node tests/m10-20-regression.cjs",
     "test:m10-20r": "node tests/m10-20r-regression.cjs",
-    "test:bots-full": "node tests/m10-20r-bots-full.cjs"
+    "test:bots-full": "node tests/m10-20r-bots-full.cjs",
+    "test:cleanup": "node tests/m11-00-cleanup.cjs",
+    "test:extended": "node tests/m9-01-augment.cjs && node tests/m9-07-purple-timing.cjs && node tests/m9-07-purple-effects.cjs && node tests/m9-09-ux-regression.cjs"
   }
 }

@@ -13,7 +13,7 @@
  const params=new URLSearchParams(location.search);
  const chosen=params.get('m6floor');
  let floorId=FLOORS.includes(chosen)?chosen:'lab';
- let floorPath=`assets/m5/floor/${floorId}.webp`;
+ let floorPath=`assets/battlefields/pixi-floor/${floorId}.webp`;
  let floorRequest=0;
  function desiredFloor(){
   const net=window.LIVEMultiplayer?.getRoom?.()?.game;
@@ -27,7 +27,7 @@
   const key=desired||'lab';
   if(floorId===key && activeFloor===(!!desired))return;
   const ticket=++floorRequest;
-  if(desired){try{const tex=await texture(`assets/m5/floor/${key}.webp`);if(ticket!==floorRequest||!ready)return;floorSprite.texture=tex;floorSprite.visible=true;floorId=key;activeFloor=true;}
+  if(desired){try{const tex=await texture(`assets/battlefields/pixi-floor/${key}.webp`);if(ticket!==floorRequest||!ready)return;floorSprite.texture=tex;floorSprite.visible=true;floorId=key;activeFloor=true;}
     catch(e){console.warn('[M6 Pixi] 지역 이미지 로드 실패',e);return;}}
   else{floorSprite.visible=false;floorId=key;activeFloor=false;}
   document.getElementById('m6-field-label')?.replaceChildren(document.createTextNode(desired?`전장 · ${desired.toUpperCase()}`:''));

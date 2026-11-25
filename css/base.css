@@ -98,9 +98,6 @@ footer{text-align:center;padding:14px;color:#425867;font-size:calc(8px + 2pt);le
 .live-item{cursor:grab}.live-item:active{cursor:grabbing}
 
 /* M2-06: refined codex, compact field inventory, Freesentation font hook */
-@font-face{font-family:'Freesentation';src:url('../assets/fonts/Freesentation-4Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
-@font-face{font-family:'Freesentation';src:url('../assets/fonts/Freesentation-6SemiBold.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap}
-@font-face{font-family:'Freesentation';src:url('../assets/fonts/Freesentation-7Bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
 body,button,input,select,textarea{font-family:'LIVE Kart Gothic','Freesentation',Pretendard,'Noto Sans KR',sans-serif}
 #liveItemsPanel{width:min(290px,calc(100vw - 20px));padding:9px;top:76px;max-height:min(72dvh,660px);font-size:calc(11px + 2pt)}
 #liveItemsPanel header{margin-bottom:5px}

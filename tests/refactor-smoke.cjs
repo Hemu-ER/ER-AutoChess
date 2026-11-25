@@ -38,7 +38,7 @@ const {CombatEngine}=require('../js/shared/combat-engine.js');
 ok(typeof CombatEngine==='function','combat engine commonjs');
 const p=path.join(root,'js/server/server.cjs');
 ok(fs.statSync(p).size>10000,'live server not blank');
-for(const page of ['index.html','qa.html','qa-combat.html','legacy/m5-preview.html']){
+for(const page of ['index.html','qa.html','qa-combat.html']){
  const s=text(page);
  for(const [,u] of s.matchAll(/<(?:script|link)[^>]+(?:src|href)="([^"]+)"/g)){
   if(/^(?:https?:|\/\/|data:)/.test(u))continue;

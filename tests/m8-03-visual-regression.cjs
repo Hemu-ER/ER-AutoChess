@@ -4,16 +4,16 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.join(__dirname,'..');
 const read=n=>fs.readFileSync(path.join(root,n),'utf8');
-const game=read('game.js'),pixi=read('m6-pixi-adapter.js'),floor=read('battlefield.js'),server=read('server.cjs');
+const game=read('js/client/game.js'),pixi=read('js/client/m6-pixi-adapter.js'),floor=read('js/client/battlefield.js'),server=read('js/server/server.cjs');
 const {roster}=require('../js/shared/roster.js');
 const playable=roster.filter(r=>r.asset?.sd);
 // Assets are part of this *same patch*, never rely on old PNGs for the new optimized URLs.
 for(const r of playable){assert.match(r.asset.sd,/\.webp$/);assert.ok(fs.statSync(path.join(root,r.asset.sd)).size>1000,'missing optimized sprite: '+r.asset.sd)}
 for(const region of ['lab','alley','beach','cemetery','church','estate','forest','hotel','police','temple']){
- for(const folder of ['assets/m5/floor','assets/battlefields/floor'])assert.ok(fs.statSync(path.join(root,folder,region+'.webp')).size>1000);
+ for(const folder of ['assets/battlefields/pixi-floor','assets/battlefields/floor'])assert.ok(fs.statSync(path.join(root,folder,region+'.webp')).size>1000);
 }
 assert.match(floor,/battlefields\/floor\/\$\{key\}\.webp/);
-assert.match(pixi,/m5\/floor\/\$\{floorId\}\.webp/);
+assert.match(pixi,/battlefields\/pixi-floor\/\$\{floorId\}\.webp/);
 assert.match(server,/file\.endsWith\('\.webp'\)\?'public, max-age=86400'/);
 // Only display sale amount during a dragging pointer inside the ordinary shop hitbox.
 assert.doesNotMatch(game,/name\)\} · 판매 \+\$\{itemSalePrice\(name\)\}C/);
