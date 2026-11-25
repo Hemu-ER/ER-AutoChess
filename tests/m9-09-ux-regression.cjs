@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.join(__dirname,'..');const read=name=>fs.readFileSync(path.join(root,name),'utf8');
 const aug=require('../js/server/match-augment.cjs'),ec=require('../js/server/match-economy.cjs');
 let checks=0;const ok=(x,msg)=>{assert.ok(x,msg);checks++};
-const client=read('multiplayer.js'),ui=read('game.js'),html=read('index.html'),css=read('m909-polish.css'),descriptions=read('m909-infusion-text.js'),catalog=read('infusion-catalog.js');
+const client=read('js/client/multiplayer.js'),ui=read('js/client/game.js'),html=read('index.html'),css=read('css/base.css'),descriptions=read('js/client/m909-infusion-text.js'),catalog=read('js/shared/infusion-catalog.js');
 ok(/augmentReroll:\(round,choice\)=>api\('augment-reroll',\{round,choice\}\)/.test(client),'client reroll passes choice');
 ok(ui.includes('augmentReroll(net.round,choice)'),'game rerolls selected slot');
 ok(ui.includes('data-augment-reroll="${i}"'),'card index preserved');
@@ -22,7 +22,7 @@ ok(ui.includes('if(isOnlineMatch()){')&&ui.includes('if(me?.assets)applyLiveEcon
 ok(ui.includes('const changed=JSON.stringify(teams.A)!==JSON.stringify(authoritative)')&&ui.includes("if(phase!=='combat')"),'online board mirrors authoritative state at every noncombat phase');
 ok(!/class="m904-qa-link"/.test(ui),'no QA lab inside inventory');
 ok(ui.includes("p.slot===slot?'div':'button type=\"button\""),'self standings row is not clickable button');
-ok(html.includes('m909-polish.css')&&html.includes('m909-infusion-text.js'),'new visuals and descriptions loaded');
+ok(html.includes('css/base.css')&&css.includes('Original: m909-polish.css')&&html.includes('m909-infusion-text.js'),'new visuals and descriptions loaded');
 for(const key of ['m909-opening','m902-infusion-card','m902-download','m904-selected','m904StarBadge','m905-codex-detail'])ok(ui.includes(key),'legacy animations preserved '+key);
 ok(ui.includes('data-codex-stages')&&ui.includes('data-stage="gray"')&&ui.includes('data-stage="blue"')&&ui.includes('data-stage="purple"'),'codex separated by stage');
 ok(ui.includes('LIVEInfusionText.explain(c)')&&ui.includes('LIVEInfusionText.stage(c.tier)'),'infusion codex has complete sentence descriptions and stage labels');

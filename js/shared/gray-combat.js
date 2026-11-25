@@ -16,7 +16,7 @@ function create(ctx){
  function start(){
    for(const t of ['A','B']){
      const units=allies(t),g=team[t];g.rows=[0,1,2].every(y=>units.some(u=>u.initialY===y));g.flanks=units.some(u=>logicalX(u)===0)&&units.some(u=>logicalX(u)===2);
-     g.crit=units.reduce((n,u)=>n+(u.critChance||0),0)>=.9;
+     g.crit=units.reduce((n,u)=>n+(u.critChance||0),0)>=.9-1e-9;
      if(has(t,'G031')&&g.crit)for(const u of units)u.critDamage+=.10;
      if(has(t,'G052'))for(const u of units)if(new Set((u.equipment||[]).filter(n=>ctx.isComplete(n))).size>=3)shield(u,.06,5);
      if(has(t,'G068'))for(const y of [0,1,2]){const row=units.filter(u=>u.initialY===y);if(row.length===3&&[0,1,2].every(x=>row.some(u=>logicalX(u)===x)))for(const u of row.filter(u=>logicalX(u)!==1))shield(u,.08,4)}
@@ -44,7 +44,7 @@ function create(ctx){
    if(has(t,'G071')&&kind==='skill'&&!s.firstSkillDamage&&new Set((src.equipment||[]).filter(n=>ctx.isComplete(n))).size>=2)r*=1.08
    if(has(t,'G023')&&d.markFirstHit?.[t])r*=1.05;
    if(has(t,'G024')&&d.markFirstKill?.[t])r*=1.08;
-   if(kind==='basic'&&s.weakBasicUntil>ts){r*=.80;s.weakBasicUntil=0}
+   if(kind==='basic'&&s.weakBasicPending){r*=.80;s.weakBasicPending=false}
    return r;
  }
  function beforeTake(src,dst,d,kind,opt={}){
@@ -68,7 +68,7 @@ function create(ctx){
    if(has(dst.team,'G040')){const key=src.id,prev=d.focusSrc===key?d.focusCount||0:0;d.focusSrc=key;d.focusCount=prev+1;if(d.focusCount>=3&&!d.focusUsed){d.focusUsed=true;d.focusDefenseUntil=ts+3}}
    if(has(t,'G050')&&kind==='basic'&&!d.armorUntil){d.armorHits=(d.armorHits||0)+1;if(d.armorHits>=5){d.armorDebuff=Math.min(5,Math.max(0,dst.def));dst.def-=d.armorDebuff;d.armorUntil=ts+3;d.armorHits=0}}
    if(has(t,'G062')&&kind==='skill')d.healWeakenUntil=ts+5;
-   if(has(t,'G065')&&kind==='basic'&&src.role.startsWith('원거리')){s.rangedHits=s.rangedTarget===dst.id?(s.rangedHits||0)+1:1;s.rangedTarget=dst.id;if(s.rangedHits>=3){s.rangedHits=0;d.weakBasicUntil=ts+10}}
+   if(has(t,'G065')&&kind==='basic'&&src.role.startsWith('원거리')){s.rangedHits=s.rangedTarget===dst.id?(s.rangedHits||0)+1:1;s.rangedTarget=dst.id;if(s.rangedHits>=3){s.rangedHits=0;d.weakBasicPending=true}}
    if(has(t,'G072')&&opt.critical&&!s.critBuffUsed){s.critBuffUsed=true;s.critAsUntil=ts+3}
    if(has(t,'G023')&&s.markFirstHit?.[dst.team]){} // target-side mark is owned by attacker, no global side effects.
  }

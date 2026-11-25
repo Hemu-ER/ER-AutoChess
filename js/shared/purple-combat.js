@@ -54,7 +54,7 @@ function create(ctx){
    if(!a.length)continue;
    for(const u of a){mark(u,'start').hp=u.hp;}
    if(has(t,'P01')&&a.length>=4){const u=a[3];for(const k of ['hp','atk','amp'])stat(u,k,.8);icon(t,'P01','추가 출전 실험체 약화 보정',u)}
-   if(has(t,'P02')){const u=a.find(x=>matchOwned(x,chosen(t,'transcendId',null)))||a[0];if(u){mark(u,'star').start=u.star;u.star=Math.min(4,u.star+1);const starUp=u.star===4?1.5:u.star===3?1.28:1.25;stat(u,'hp',starUp);stat(u,u.main==='atk'?'atk':'amp',starUp);mark(u,'transcend').active=true;icon(t,'P02',u.name+' 초월',u)}}
+   if(has(t,'P02')){const u=a.find(x=>matchOwned(x,chosen(t,'transcendId',null)))||a[0];if(u){mark(u,'star').start=u.star;ctx.promoteCombatStar(u);mark(u,'transcend').active=true;icon(t,'P02',u.name+' 초월',u)}}
    if(has(t,'P39')){const keys=['maxHp','atk','amp','def','as','range'];const highest=Object.fromEntries(keys.map(k=>[k,Math.max(...a.map(u=>u[k]||0))]));for(const u of a){for(const k of keys){const original=u[k];let wanted=highest[k];if(k==='range')wanted=Math.min(original+2,wanted);else wanted=Math.min(original*1.75,wanted);if(k==='maxHp'){u.hp+=Math.max(0,wanted-original)}u[k]=Math.max(original,wanted)}}icon(t,'P39','최고 능력치 공유')}
    if(has(t,'P35')){const round=config.round||1,r=round>=16?2:round>=6?1.8:1.6;for(const u of a)if(!(u.equipment||[]).some(i=>itemDB.all?.[i]&&!itemDB.all[i].basic)){for(const k of ['hp','atk','amp'])stat(u,k,r)}icon(t,'P35',`맨손 강화 ×${r}`)}
    if(has(t,'P03')){const items=a.flatMap(u=>(u.equipment||[]).filter(i=>itemDB.all?.[i]&&!itemDB.all[i].basic&&!i.startsWith('초월:')).map(i=>({u,item:i})));const pick=items.find(x=>x.item===chosen(t,'item',null))||items[0];if(pick&&!pick.item.startsWith('초월:')){for(const u of a.filter(u=>u!==pick.u)){applyItemStats(u,pick.item,.75);u.itemEffects??={};u.itemEffects[pick.item]??={count:0,until:0,next:1,readyAt:0,delayed:[],targets:{},bonusApplied:false};}st[t].copiedItem=pick.item;icon(t,'P03',`${pick.item} 능력치 75% · 고유효과 복제`)}}
@@ -65,7 +65,7 @@ function create(ctx){
   stat(u,'atk',1+.20*ranged);stat(u,'amp',1+.25*caster+.20*melee+.05*roleFactor('서포터'));
   u.as*=1+.10*warrior+.10*tank+.20*ranged+.10*caster+.15*melee+.05*roleFactor('서포터');mark(u,'allRoles').assassin=roleFactor('암살자');
  }icon(t,'P04','7역할 시너지 · 위치 무시 적용')}
-   if(has(t,'P11')&&!has(t,'P24')&&a.length>=2){const trio=a.slice(0,3),max=trio.reduce((s,u)=>s+u.maxHp,0)*1.5;st[t].heart={ids:trio.map(u=>u.id),max,hp:max};for(const u of trio)mark(u,'heart').active=true;icon(t,'P11','공유 HP '+Math.round(max))}
+   if(has(t,'P11')&&!has(t,'P24')&&a.length>=2){const trio=a.slice(0,3),max=trio.reduce((s,u)=>s+u.maxHp,0)*1.5;st[t].heart={ids:trio.map(u=>u.id),shares:Object.fromEntries(trio.map(u=>[u.id,u.maxHp*1.5])),max,hp:max};for(const u of trio)mark(u,'heart').active=true;icon(t,'P11','공유 HP '+Math.round(max))}
    if(has(t,'P24')&&a.length>=3){const lead=a[0],rest=a.slice(1,3);const old=lead.maxHp;lead.maxHp=a.slice(0,3).reduce((s,u)=>s+u.maxHp,0)*1.25;lead.hp=lead.maxHp;lead.atk=a.slice(0,3).reduce((s,u)=>s+u.atk,0)*.85;lead.amp=a.slice(0,3).reduce((s,u)=>s+u.amp,0)*.85;lead.purpleFusion={parts:a.slice(0,3).map(u=>u.characterId),cool:3};for(const u of rest){u.purpleMerged=true;u.dead=true;u.hp=0}icon(t,'P24',lead.name+' 키메라 융합',lead)}
    if(has(t,'P33')&&!has(t,'P24')&&st[t].p33){const three=st[t].p33,lead=three[0];lead.maxHp=Math.max(lead.maxHp,three.length===1?(ctx.byId?.[lead.characterId]?.baseStats?.hp||lead.maxHp)*3:three.reduce((s,u)=>s+u.maxHp,0));lead.hp=lead.maxHp;lead.atk=Math.max(...three.map(u=>u.atk))*1.6;lead.amp=Math.max(...three.map(u=>u.amp))*1.6;for(const u of three.slice(1)){u.dead=true;u.purpleMerged=true;u.hp=0}lead.purpleSynergyCopies=3;icon(t,'P33','특수 합성: 시너지 3인 취급',lead)}
    if(has(t,'P20')){for(const u of a)u.range=5;icon(t,'P20','전원 사거리 5 · 후열 우선')}
@@ -81,8 +81,8 @@ function create(ctx){
    if(has(t,'P43')){const wanted=String(chosen(t,'baitId',''));const selected=a.find(u=>matchOwned(u,wanted))||a[0];mark(selected,'bait').until=10;icon(t,'P43',selected.name+' 10초 피해 경감',selected)}
    if(has(t,'P49')){const items=enemy.flatMap(e=>(e.equipment||[]).map(name=>({e,name})));if(items.length){const target=items[Math.floor(rng()*items.length)];const star=Math.max(...a.map(u=>u.star)),receiver=a.filter(u=>u.star===star)[Math.floor(rng()*a.filter(u=>u.star===star).length)];applyItemStats(receiver,target.name,1);receiver.itemEffects??={};receiver.itemEffects[target.name]??={count:0,until:0,next:1,readyAt:0,delayed:[],targets:{},bonusApplied:false};
     // The victim temporarily loses the item's stats and active effects; no ownership transfer.
-    applyItemStats(target.e,target.name,-1);if(target.e.itemEffects)delete target.e.itemEffects[target.name];
-    mark(target.e,'confiscated').item=target.name;icon(t,'P49',`${target.name} 능력치·고유효과 압수`,receiver)}else {a[0].purpleUnarmedBonusUntil=6;icon(t,'P49','대체 강화 +20%')}}
+    applyItemStats(target.e,target.name,-1);const gearIndex=target.e.equipment.indexOf(target.name);if(gearIndex>=0)target.e.equipment.splice(gearIndex,1);receiver.equipment.push(target.name);if(target.e.itemEffects&&!target.e.equipment.includes(target.name))delete target.e.itemEffects[target.name];
+    mark(target.e,'confiscated').item=target.name;icon(t,'P49',`${target.name} 능력치·고유효과 압수`,receiver)}}
    if(has(t,'P10')){const strongest=[...a].sort((u,v)=>v.atk-u.atk)[0];for(let x=t==='A'?0:3;x<=(t==='A'?2:5);x++)for(let y=0;y<3;y++){if(units().some(u=>!u.dead&&u.x===x&&u.y===y))continue;const dummy=makeUnit(strongest.characterId,1,t,1,{x,y},`dummy:${x}:${y}`);dummy.role='소환수';dummy.name='황제의 병사';dummy.aff=[];dummy.maxHp=Math.max(1,strongest.maxHp*.2);dummy.hp=dummy.maxHp;dummy.atk=Math.max(1,strongest.atk*.2);dummy.amp=dummy.atk;dummy.as=.65;dummy.range=1;dummy.equipment=[];dummy.purpleDummy=true;const gear=chosen(t,'soldierItems',{})[[depth(dummy),y].join(',')];if(gear&&itemDB.all?.[gear]&&!itemDB.bloodInfo?.(gear)){dummy.equipment=[gear];ctx.applyEquipment(dummy);}units().push(dummy)}icon(t,'P10','빈칸 병사 소환')}
    if(has(t,'P07'))cd[t].dice=1.5;
    if(has(t,'P12')&&enemy.length){st[t].infected=new Set([enemy[0].id]);mark(enemy[0],'infected').active=true;st[t].infectionNext=6;icon(t,'P12',enemy[0].name+' 최초 감염')}
@@ -100,11 +100,12 @@ function create(ctx){
    if(has(t,'P21'))icon(t,'P21','연쇄 타격 준비');
   }
  }
+ function isInvulnerable(dst){return has(dst.team,'P25')&&st[dst.team].tileSet?.has(tile(dst))&&now()<2}
  function modify(src,dst,raw,kind,opt={}){
   const t=src?.team;if(!t||raw<=0)return raw;
   // Defensive modifiers also apply to follow-up damage.
   if(has(dst.team,'P23'))raw*=.9;
-  if(has(dst.team,'P25')&&st[dst.team].tileSet?.has(tile(dst))&&now()<2)return 0;
+  if(isInvulnerable(dst))return 0;
   raw*=buffs(dst).mitigation;
   if(opt.purpleBonus)return raw;
   const boost=buffs(src);raw*=boost.attackMult;if(kind==='skill')raw*=1+boost.spellMult;
@@ -127,28 +128,30 @@ function create(ctx){
  function sharedDamageCap(dst){const h=st[dst?.team]?.heart;return dst?.purple?.heart?.active&&h?h.hp:null}
  function heartOf(u){const h=st[u?.team]?.heart;return u?.purple?.heart?.active&&h?h:null}
  function syncHeart(u,h){for(const m of allies(u.team,false).filter(x=>h.ids.includes(x.id)&&!x.dead))m.hp=h.hp>0?Math.min(m.maxHp,m.maxHp*h.hp/h.max):0}
- function debitHeart(src,dst,eff){const h=heartOf(dst);if(!h)return false;h.hp=Math.max(0,h.hp-eff);syncHeart(dst,h);if(h.hp<=0){const members=allies(dst.team,false).filter(u=>h.ids.includes(u.id)&&!u.dead);icon(dst.team,'P11','공유 생명력 소진');for(const u of members)ctx.finishDeath(src,u,{sourceName:'하나의 심장'});if(members.some(u=>!u.dead)){h.hp=h.max*.25;syncHeart(dst,h)}return 'depleted'}return true}
+ // Execution removes only its target's share, not every member's remaining life.
+ function detachHeart(u){const h=heartOf(u);if(!h)return;const share=Math.min(h.max,h.shares?.[u.id]??u.maxHp*1.5),ratio=h.max>0?h.hp/h.max:0;h.ids=h.ids.filter(id=>id!==u.id);h.max=Math.max(0,h.max-share);h.hp=h.max*ratio;u.purple.heart.active=false;syncHeart(u,h)}
+ function debitHeart(src,dst,eff){const h=heartOf(dst);if(!h)return false;h.hp=Math.max(0,h.hp-eff);syncHeart(dst,h);if(h.hp<=0){const members=allies(dst.team,false).filter(u=>h.ids.includes(u.id)&&!u.dead);icon(dst.team,'P11','공유 생명력 소진');for(const u of members){u.purple.heart.active=false;u.pendingLethal=true}h.ids=[];h.max=0;for(const u of members){if(!u.dead&&u.hp<=0)ctx.resolveLethal(src,u,{sourceName:'하나의 심장',sharedDepletion:true});u.pendingLethal=false}return 'depleted'}return true}
  function clearInfection(u){for(const t of ['A','B'])st[t].infected?.delete(u.id)}
  function healHeart(u,amount){const h=heartOf(u);if(!h)return null;if(h.hp<=0)return 0;const before=h.hp;h.hp=Math.min(h.max,h.hp+amount);syncHeart(u,h);return Math.max(0,h.hp-before)}
  function afterDamage(src,dst,eff,kind,opt={}){
   if(eff<=0||opt.purpleBonus||dst.dead)return;
   const t=src?.team,other=dst.team;
   if(t&&has(t,'P22')&&(kind==='basic'||kind==='skill')&&!opt.itemDamage){const v=st[t].explosion;if(v)v.records[dst.id]=(v.records[dst.id]||0)+eff}
-  if(t&&has(t,'P21')&&(kind==='basic'||kind==='skill')&&!opt.itemDamage){for(const e of foes(t).filter(u=>u!==dst))extra(src,e,eff*.3,false,'연쇄 판결')}
+  if(t&&has(t,'P21')&&(kind==='basic'||kind==='skill')&&!opt.itemDamage){for(const e of foes(t).filter(u=>u!==dst))extra(src,e,eff*.3,true,'연쇄 판결')}
   if(has(other,'P26')&&dst.role!=='소환수'){const v=st[other].retaliation;if(v)v.pool+=eff}
   if(t&&has(t,'P19')&&kind==='basic'&&src.equipment?.includes('초월:공격')){const v=mark(src,'forgeAtk');v.count=(v.count||0)+1;if(v.count>=3){v.count=0;extra(src,dst,src.atk*.9,false,'초월:공격');icon(t,'P19','초월 공격 추가타',src)}}
   if(t&&has(t,'P28')&&kind==='basic'&&src.role!=='소환수'&&!opt.itemDamage){st[t].attacks=(st[t].attacks||0)+1;if(st[t].attacks>=8){st[t].attacks=0;const sum=allies(t).reduce((s,u)=>s+u.atk*Math.max(.1,u.as),0);extra(src,dst,sum*.8,false,'동시의 박자');icon(t,'P28','8회 적중 연계 타격',src)}}
   if(t&&has(t,'P12')&&st[t].infected?.has(dst.id)&&(kind==='basic'||kind==='skill'))recover(src,eff*.25);
-  if(t&&has(t,'P29')&&kind==='basic'&&dst.hp>0&&dst.hp/dst.maxHp<.15&&dst.role!=='보스'){extra(src,dst,dst.hp+1,true,'집행자의 명령');src.purpleExecutorUntil=now()+4;icon(t,'P29',dst.name+' 처형',src)}
+  if(t&&has(t,'P29')&&kind==='basic'&&!dst.dead&&dst.hp>0&&dst.hp/dst.maxHp<.15&&dst.role!=='보스'&&ctx.executeTarget(src,dst,'집행자의 명령')){src.purpleExecutorUntil=now()+4;icon(t,'P29',dst.name+' 처형',src)}
 
  }
  function onDeath(src,dst){const t=src?.team,other=dst.team;
-  if(t&&has(t,'P32')&&dst.role!=='소환수'&&dst.role!=='보스'&&st[t].summons!==3){const allSummons=all(t).filter(u=>u.purpleGhost&&!u.dead);if(allSummons.length<3){const occupied=new Set(units().filter(u=>!u.dead).map(u=>`${u.x},${u.y}`));let cells=[];for(let x=t==='A'?0:3;x<=(t==='A'?2:5);x++)for(let y=0;y<3;y++)if(!occupied.has(`${x},${y}`))cells.push({x,y,dist:Math.abs(dst.x-x)+Math.abs(dst.y-y)});cells.sort((a,b)=>a.dist-b.dist);if(cells.length){const loc=cells[0],g=makeUnit(dst.characterId,Math.min(3,dst.star),t,1,loc,'ghost:'+dst.id);g.role='소환수';g.aff=[];g.name='징집 망령';g.maxHp=Math.max(1,dst.maxHp*.55);g.hp=g.maxHp;g.atk=dst.atk*.55;g.amp=0;g.range=dst.range;g.purpleGhost=true;g.equipment=[];g.nextAttack=now()+1/Math.max(.1,g.as);units().push(g);icon(t,'P32',dst.name+' 망령 징집',g)}}}
+  if(t&&has(t,'P32')&&dst.role!=='소환수'&&dst.role!=='보스'&&st[t].summons!==3){const allSummons=all(t).filter(u=>u.purpleGhost&&!u.dead);if(allSummons.length<3){const occupied=new Set(units().filter(u=>!u.dead).map(u=>`${u.x},${u.y}`));let cells=[];for(let x=0;x<6;x++)for(let y=0;y<3;y++)if(!occupied.has(`${x},${y}`))cells.push({x,y,dist:Math.abs(dst.x-x)+Math.abs(dst.y-y)});cells.sort((a,b)=>a.dist-b.dist);if(cells.length){const loc=cells[0],g=makeUnit(dst.characterId,Math.min(3,dst.star),t,1,loc,'ghost:'+dst.id);g.role='소환수';g.aff=[];g.name='징집 망령';g.maxHp=Math.max(1,dst.maxHp*.55);g.hp=g.maxHp;g.atk=dst.atk*.55;g.amp=0;g.range=dst.range;g.purpleGhost=true;g.equipment=[];g.nextAttack=now()+1/Math.max(.1,g.as);units().push(g);icon(t,'P32',dst.name+' 망령 징집',g)}}}
   if(has(other,'P05')&&!st[other].revived&&allies(other,false).every(u=>u.dead)){st[other].revived=true;for(const u of allies(other,false)){if(u.purpleMerged)continue;u.dead=false;u.hp=Math.max(1,u.maxHp*.25);u.ccUntil=now()}icon(other,'P05','전원 부활')}
  }
  function onSkill(u){const t=u.team;if(has(t,'P19')&&u.equipment?.includes('초월:주문')){const v=mark(u,'forgeSpell');v.count=(v.count||0)+1;if(v.count>=2){v.count=0;for(const e of foes(t))extra(u,e,u.amp*.8,false,'초월:주문');icon(t,'P19','초월 주문 광역효과',u)}}
  if(!has(t,'P02')&&!has(t,'P24')&&!has(t==='A'?'B':'A','P15'))return;
-  if(has(t,'P02')&&u.purple?.transcend?.active&&ready(t,'transcend:'+u.id,3)){for(const e of foes(t).slice(0,3))extra(u,e,(u.main==='atk'?u.atk:u.amp)*.5,false,'초월자');icon(t,'P02','초월 스킬 여파',u)}
+  if(has(t,'P02')&&u.purple?.transcend?.active&&u.star===4){for(const e of foes(t).slice(0,3))extra(u,e,(u.main==='atk'?u.atk:u.amp)*.5,false,'초월자');icon(t,'P02','초월 스킬 여파',u)}
 
  }
  function cancelSkill(u){const other=u.team==='A'?'B':'A';if(!has(other,'P15')||(st[other].censors||0)>=2)return false;st[other].censors=(st[other].censors||0)+1;for(const a of allies(other)){protect(a,a.maxHp*.1);ctx.reduceSkillCooldown(a,1.5)}icon(other,'P15',u.name+' 스킬 검열',u);return true}
@@ -162,7 +165,7 @@ function create(ctx){
   if(has(t,'P12')&&ready(t,'infectionDot',1)){for(const e of es.filter(x=>st[t].infected?.has(x.id)))extra(a[0],e,e.maxHp*.05,false,'붉은 전염')}if(has(t,'P12')&&st[t].infectionNext<=now()){const candidates=es.filter(u=>!st[t].infected.has(u.id));if(candidates.length){st[t].infected.add(candidates[0].id);mark(candidates[0],'infected').active=true;icon(t,'P12',candidates[0].name+' 감염 확산')}st[t].infectionNext=now()+6}
   if(has(t,'P13')&&ready(t,'reserve',1000,3.5)){const reserves=[...(config['reserves'+t]||[])];for(const u of a.slice(0,3)){const reserve=reserves.shift?.();if(!reserve||!ctx.byId?.[reserve.characterId])continue;const pos={x:u.x,y:u.y};const r=makeUnit(reserve.characterId,reserve.star||1,t,config['mastery'+t]||1,pos,'reserve:'+u.id);r.equipment=[...(reserve.items||[])];r.nextAttack=now()+1/Math.max(.1,r.as);u.dead=true;u.purpleMerged=true;u.hp=0;units().push(r)}icon(t,'P13','예비대 차원 교대')}
   if(has(t,'P17')&&ready(t,'bell',1000,3)){hitTeam(t,e=>e.maxHp*.12,true,'황혼의 종');es.forEach(e=>applyCC(e,.8,a[0]));icon(t,'P17','황혼의 종 발동')}
-  if(has(t,'P18')&&ready(t,'bench',3,1.5)){const ben=(config['reserves'+t]||[]).slice(0,3);for(const [i,o] of ben.entries()){const r=ctx.byId?.[o.characterId];if(!r)continue;const victim=es[i%es.length],source=a[i%a.length];extra(source,victim,((r.baseStats?.atk||source.atk)*1.1),false,'관중석의 영웅들')}icon(t,'P18','벤치 지원 사격')}
+  if(has(t,'P18')&&ready(t,'bench',3,1.5)){const ben=(config['reserves'+t]||[]).slice(0,3);for(const [i,o] of ben.entries()){const r=ctx.byId?.[o.characterId];if(!r)continue;const victim=es[i%es.length],source=a[i%a.length];const reserve=makeUnit(o.characterId,o.star||1,t,config['mastery'+t]||1,{x:source.x,y:source.y},'bench-support');reserve.equipment=[...(o.items||[])];ctx.applyEquipment(reserve);extra(source,victim,reserve.atk*1.1,false,'관중석의 영웅들')}icon(t,'P18','벤치 지원 사격')}
   if(has(t,'P22')&&st[t].explosion&&st[t].explosion.next<=now()){const x=st[t].explosion;for(const e of es){const n=x.records[e.id]||0;if(n>0)extra(a[0],e,n*.4,true,'시간차 폭발')}x.records={};x.next=now()+3;icon(t,'P22','시간차 폭발')}
   if(has(t,'P26')&&st[t].retaliation&&st[t].retaliation.next<=now()){const x=st[t].retaliation;if(x.pool>0){for(const e of es)extra(a[0],e,x.pool*.5/es.length,false,'반격 공식');icon(t,'P26','저장 피해 반격')}x.pool=0;x.next=now()+3}
   if(has(t,'P40')&&ready(t,'corrosion',1)){for(const e of es.filter(u=>u.y===st[t].corrosionRow))extra(a[0],e,e.maxHp*.03,false,'침식 지대')}
@@ -175,7 +178,7 @@ function create(ctx){
  }}
  function buffs(u){const t=u.team;return {attackMult:(st[t].diceDamageUntil>now()?1.35:1)*(1+(u.purple?.long?.stacks||0)*.08),spellMult:u.purpleSpellBoost||0,mitigation:u.purple?.swap?.until>now()?.55:1}}
  function result(){return {A:{ids:[...ids.A],...st.A},B:{ids:[...ids.B],...st.B}}}
- return {has,ids,st,beforeSynergies,start,startFinal,modify,sharedDamageCap,debitHeart,healHeart,clearInfection,afterDamage,onDeath,onSkill,cancelSkill,beforeCC,beforeTarget,tick,buffs,result,icon};
+ return {has,ids,st,beforeSynergies,start,startFinal,modify,isInvulnerable,detachHeart,sharedDamageCap,debitHeart,healHeart,clearInfection,afterDamage,onDeath,onSkill,cancelSkill,beforeCC,beforeTarget,tick,buffs,result,icon};
 }
 const api={create};if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.LIVEPurpleCombat=api;
 })(globalThis);

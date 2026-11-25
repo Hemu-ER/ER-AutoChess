@@ -20,7 +20,7 @@ function afterReroll(a,paid){const s=ensure(a);if(paid){s.paidRerolls++;spend(a,
 function takeFreeReroll(a){const s=ensure(a);if(s.freeRerolls>0){s.freeRerolls--;return true;}return false}
 function afterInvest(a,oldLevel){const s=ensure(a);spend(a,2);s.invested=true;s.trainingQueued=true;}
 function levelUp(a,oldLevel){const s=ensure(a);if(a.level>oldLevel)s.noLevelRounds=0;if(a.level>oldLevel&&has(a,'G019')&&s.levelRewardRound!==s.round){a.credits+=2;s.levelRewardRound=s.round;}}
-function afterSell(a,u){const s=ensure(a);if(s.sells++===0&&has(a,'G055')&&!s.boughtUids.includes(u.uid))a.credits++}
+function afterSell(a,u){const s=ensure(a);s.sells++;if(!s.firstSale&&has(a,'G055')&&!s.boughtUids.includes(u.uid)){s.firstSale=1;a.credits++}}
 function afterCraft(a){const s=ensure(a);if(s.crafts++===0&&has(a,'G056'))a.credits+=2}
 function afterMerge(a,newStar){if(has(a,'G058'))a.credits+=newStar===2?2:newStar===3?3:0}
 function beforeNextRound(a){const s=ensure(a),credits=a.credits;
@@ -35,7 +35,7 @@ function beforeNextRound(a){const s=ensure(a),credits=a.credits;
  return 0;
 }
 function afterIncome(a,round,interest){const s=ensure(a);if(interest>0){s.interestCount++;if(has(a,'G016')&&s.interestCount%2===0)a.credits++}
- s.investedLast=s.invested;s.invested=false;s.round=round;s.roundSpent=0;s.paidRerolls=0;s.buys=0;s.sells=0;s.crafts=0;s.boughtUids=[];s.purchases=[];s.levelOnRound=0;s.prepLevel=a.level;}
+ s.investedLast=s.invested;s.invested=false;s.round=round;s.roundSpent=0;s.paidRerolls=0;s.buys=0;s.sells=0;s.firstSale=0;s.crafts=0;s.boughtUids=[];s.purchases=[];s.levelOnRound=0;s.prepLevel=a.level;}
 function settlePvP(a,{round,won=false,lost=false,kills=0}={}){
  const s=ensure(a),key=`pvp:${round}`;if(s.lastPvp===key)return;s.lastPvp=key;
  if(lost&&has(a,'G004'))s.pendingFreeRerolls=(s.pendingFreeRerolls||0)+1;
