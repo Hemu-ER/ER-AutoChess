@@ -6,7 +6,7 @@
    source of truth. No state-dependent inline pixel calculations are required. */
 
 /* UI scale applies to the HUD, NOT the battlefield grid / Pixi coordinate system. */
-body[data-app-mode="game"] :is(#roundModePanel,#gameBottomDock,#liveItemsPanel,#m809LiveHpStandings,#liveGameChat,#liveBattleDeck,#currentSynergyPanel){zoom:var(--live-ui-scale,1)}
+/* M11: HUD sizing is native CSS layout, not magnified compositing. */
 body[data-app-mode="game"] #liveAugmentPanel .m901-augment-modal{zoom:var(--live-ui-scale,1)}
 
 #liveSettingsOverlay[hidden],#liveSettingsOverlay [hidden]{display:none!important}
@@ -159,37 +159,37 @@ body[data-app-mode="game"] :is(
 )::before{
  content:none!important;display:none!important;background-image:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-card{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card{
  background:#15212b!important;border:1px solid #516773!important;
  border-radius:5px!important;box-shadow:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-card::before,
-body[data-app-mode="game"] .game-bottom-dock .shop-card::after{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card::before,
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card::after{
  content:none!important;display:none!important;background-image:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-portrait{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-portrait{
  border-bottom:1px solid #415760!important;
  background:#14202a!important;box-shadow:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-portrait::after{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-portrait::after{
  content:none!important;display:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-name{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-name{
  background:#1d2d37!important;color:#f0f6f6!important;
  border-left:0!important;text-shadow:none!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-meta{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-meta{
  background:#14212a!important;border-top:1px solid #31444f!important;
  color:#d2dfdf!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled){
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled){
  border-color:#98c6c2!important;box-shadow:0 0 0 1px #98c6c2!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark){
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:has(.m910-focus-mark){
  border-color:#c5ae78!important;box-shadow:inset 2px 0 #c5ae78!important;
 }
 /* Interest remains visible as a single star beside the unit name, not a second badge. */
-body[data-app-mode="game"] .game-bottom-dock .shop-card:has(.m910-focus-mark)::after{content:none!important;display:none!important}
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:has(.m910-focus-mark)::after{content:none!important;display:none!important}
 
 @media(max-width:790px){
  body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m901-augment-cards{
@@ -261,24 +261,24 @@ body[data-app-mode="game"] #liveAugmentPanel.m1012-integrated .m902-infusion-car
 /* M10-15R: restrained shop hover. Animate only the artwork INSIDE its clip;
    never lift the whole card, which clips owned-count tags in the scroll tray. */
 @media (hover:hover) and (pointer:fine){
- body[data-app-mode="game"] .game-bottom-dock .shop-card:not(:disabled){
+ body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:not(:disabled){
   transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease!important;
  }
- body[data-app-mode="game"] .game-bottom-dock .shop-card:not(:disabled) .shop-portrait>img.m1004-card-portrait{
+ body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:not(:disabled) .shop-portrait>img.m1004-card-portrait{
   transition:transform .19s cubic-bezier(.2,.7,.3,1),filter .19s ease!important;
   transform:translate3d(0,0,0)!important;
  }
- body[data-app-mode="game"] .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled) .shop-portrait>img.m1004-card-portrait{
+ body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:is(:hover,:focus-visible):not(:disabled) .shop-portrait>img.m1004-card-portrait{
   transform:translate3d(0,-2px,0) scale(1.025)!important;
   filter:brightness(1.085);
  }
- body[data-app-mode="game"] .game-bottom-dock .shop-card:active:not(:disabled) .shop-portrait>img.m1004-card-portrait{
+ body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card:active:not(:disabled) .shop-portrait>img.m1004-card-portrait{
   transform:translate3d(0,0,0) scale(.992)!important;
   filter:brightness(.98);
  }
 }
 @media (prefers-reduced-motion:reduce){
- body[data-app-mode="game"] .game-bottom-dock .shop-card .shop-portrait>img.m1004-card-portrait{transition:none!important;transform:none!important;filter:none!important}
+ body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .shop-card .shop-portrait>img.m1004-card-portrait{transition:none!important;transform:none!important;filter:none!important}
 }
 
 /* M10-20: major infusion events, non-blocking and readable on narrow screens. */

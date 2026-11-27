@@ -1,4 +1,4 @@
-/* L.I.V.E. M4-16 — floor-only region rendering, centered and masked, opaque curtain.
+/* L.I.V.E. M11 — independent rear environment. No region-specific board artwork.
    Visual-only; no combat, inventory, or account state mutations. */
 (() => {
   'use strict';
@@ -14,12 +14,12 @@
   let prevPhase = null;
   let prevMode = null;
   let selected = null;
+  let backdrop = null;
   let visible = false;
   let curtain = null;
   let lastKey = '';
   let curtainRequest = 0;
   let fixedPreviewRegion = null;
-  const loading = new Map();
   const hash = value => {
     let n = 2166136261;
     for (const ch of String(value)) {
@@ -28,14 +28,6 @@
     }
     return n >>> 0;
   };
-  function floorUrl(key) { return `assets/battlefields/floor/${key}.webp`; }
-  function preload(key) {
-    if (loading.has(key)) return;
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = floorUrl(key);
-    loading.set(key, img);
-  }
   function roomSnapshot() {
     try { return window.LIVEMultiplayer?.getRoom?.() || null; }
     catch { return null; }
@@ -49,11 +41,12 @@
     return window.ERCombat?.pickArenaRegion?.(roomCode||'local',round)||zones[hash(`${roomCode || 'local'}:${round}`) % zones.length][0];
   }
   function setArtwork(key) {
-    if (selected === key) return;
-    selected = key;
-    board.style.setProperty('--live-floor-url', `url("${floorUrl(key)}")`);
-    board.dataset.liveArenaRegion = key;
-    preload(key);
+    if (!backdrop) {
+      backdrop=document.createElement('div');backdrop.id='liveRegionBackdrop';
+      backdrop.setAttribute('aria-hidden','true');backdrop.innerHTML='<div class="lab-environment"></div>';
+      document.querySelector('.app')?.prepend(backdrop);
+    }
+    selected=key;
   }
   function soundCue() {
     try {
@@ -99,21 +92,19 @@
     const local = localState();
     const phase = game?.phase || local?.phase || (mode === 'test' ? 'combat' : 'idle');
     const round = Number(game?.round || local?.round || 1);
-    const key = selectedRegion(round, room?.code);
-    // Preload during preparation so there is no image flash on phase change.
-    if (mode === 'game' && phase === 'prep') preload(key);
-    const shouldShow = mode === 'test' || (mode === 'game' && (phase === 'combat' || phase === 'result'));
+    const key = (game?.kind==='boss'?'lab':game?.region)||selectedRegion(round, room?.code);
+    const shouldShow = mode === 'test' || (mode === 'game' && ['prep','intro','combat','result'].includes(phase));
     const currentKey = `${room?.code || 'local'}:${round}:${phase}`;
     const enteredStage = mode === 'game' && prevPhase === 'prep' &&
       (phase === 'combat' || phase === 'supply') && lastKey !== currentKey;
-    // The curtain is immediately opaque. Arm it BEFORE swapping the floor,
-    // so not even one transparent frame exposes the next arena prematurely.
+    // Keep the stage transition independent of the common background.
     if (enteredStage) {
       const kind = phase === 'supply' ? '보급' :
-        (game?.pve || (!game && (round === 1 || round === 3)) ? '파밍' : '결투');
+        (game?.pve || (!game && ([1,3,10].includes(round))) ? '파밍' : '결투');
       showCurtain(round, kind, key);
     }
     if (shouldShow) setArtwork(key);
+    if(backdrop)backdrop.hidden=!shouldShow;
     if (shouldShow !== visible || mode !== prevMode) {
       visible = shouldShow;
       document.body.dataset.liveArenaVisible = shouldShow ? '1' : '0';

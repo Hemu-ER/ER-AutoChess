@@ -176,9 +176,38 @@ function reserveTeam(a){return (a?.owned||[]).filter(o=>o.location==='bench').sl
 // P10: equipment belongs to the empty tile's temporary soldier; reclaim only when the tile is occupied.
 function reconcileSoldierItems(a){for(const [key,name] of Object.entries(a.soldierItems||{})){if(!a.augmentIds?.includes('P10')||a.owned.some(o=>o.location==='board'&&`${o.x},${o.y}`===key)){delete a.soldierItems[key];giveItem(a,name)}}}
 function purpleChoices(p){return {...(p.purpleChoice||{}),soldierItems:{...(p.assets?.soldierItems||{})}}}
+// Atomic direct shop placement. A purchase that merges keeps the normal survivor
+// and its location; a non-merge purchase can replace an occupied tile if bench has room.
+function buyToBoard(a,body){
+ const draft=structuredClone(a),i=body.index,{x,y}=body;
+ if(!Number.isInteger(i)||i<0||i>=draft.shop.length||!Number.isInteger(x)||x<0||x>2||!Number.isInteger(y)||y<0||y>2)throw Error('상점 또는 배치 위치 오류');
+ const id=draft.shop[i],base=costOf(id);
+ if(!id||!base||id!==body.characterId)throw Error('상점 상품이 변경되었어.');
+ const cost=gray.buyCost(draft,id,i,base);
+ if(draft.credits<cost)throw Error('크레딧 부족');
+ const merge=draft.owned.filter(o=>o.characterId===id&&o.star===1).length>=2;
+ if(merge){
+  action(draft,'buy',{index:i});
+ }else{
+  const occupied=draft.owned.find(o=>o.location==='board'&&o.x===x&&o.y===y);
+  if(occupied&&benchCount(draft)>=8)throw Error('벤치 부족');
+  if(!occupied&&draft.owned.filter(o=>o.location==='board').length>=(draft.augmentIds?.includes('P01')?4:3))throw Error('출전 인원 제한');
+  if(occupied)Object.assign(occupied,{location:'bench',x:null,y:null});
+  const uid=draft.nextUid++;
+  draft.owned.push({uid,characterId:id,star:1,location:'board',x,y,items:[]});
+  const fourth=draft.augmentIds?.includes('P01')?draft.owned.filter(o=>o.location==='board')[3]:null;
+  if(fourth?.items.length)throw Error('네 번째 실험체는 장비를 착용할 수 없어.');
+  draft.credits-=cost;draft.shop[i]=null;gray.afterBuy(draft,uid,cost);
+  tryMerge(draft);acceptPending(draft);
+ }
+ reconcileSoldierItems(draft);
+ // Commit only after every check/hook succeeds; keep the outer assets object stable.
+ Object.assign(a,draft);return a;
+}
 function action(a,cmd,body={}){
  // Calls are serialized in the single-process HTTP server. Validate first, mutate once.
  const locate=()=>{const o=a.owned.find(x=>x.uid===Number(body.uid));if(!o)throw Error('보유하지 않은 실험체');return o};
+ if(cmd==='buy-board')return buyToBoard(a,body);
  if(cmd==='buy'){
   const i=Number(body.index);if(!Number.isInteger(i)||i<0||i>=a.shop.length)throw Error('상점 위치 오류');
   const id=a.shop[i],baseCost=costOf(id),cost=gray.buyCost(a,id,i,baseCost);if(!id||!baseCost)throw Error('이미 팔린 상품');

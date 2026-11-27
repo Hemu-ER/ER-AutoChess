@@ -344,7 +344,7 @@ if(url.pathname==='/api/economy'){
   if(!r.game||r.game.hp[p.slot]<=0||!p.assets)return reply(res,409,{error:'경제 동작을 할 수 없어.'});
   const inventoryCombat=r.game.phase==='combat'&&r.game.kind==='pvp'&&!r.game.pve;
   if(r.game.phase!=='prep'&&!(inventoryCombat&&['craft','sell-item'].includes(body.cmd)))return reply(res,409,{error:'결투 중에는 인벤토리 아이템 합성·판매만 가능해.'});
-  const allowed=['buy','reroll','lock','invest','sell-unit','sell-item','craft','forge','equip','equip-soldier','deploy','recall','swap'];
+  const allowed=['buy','buy-board','reroll','lock','invest','sell-unit','sell-item','craft','forge','equip','equip-soldier','deploy','recall','swap'];
   if(!allowed.includes(body.cmd))return reply(res,400,{error:'경제 명령이 올바르지 않아.'});
   try{p.assets.infusionIds=p.augments||[];economy.action(p.assets,body.cmd,body);p.progress.blueErebosSales=p.assets.blueErebosSales||0;p.team=economy.ownTeam(p.assets);p.mastery=p.assets.level;p.roundReady=false;refreshEarlyFinish(r);}catch(e){return reply(res,409,{error:e.message})}
   broadcast(r);return reply(res,200,{ok:true});
@@ -607,5 +607,5 @@ const server=http.createServer(async(req,res)=>{const u=new URL(req.url,'http://
 if(u.pathname==='/health')return reply(res,200,{ok:true,durableAccounts:durable});
 if(u.pathname.startsWith('/api/')){if(req.method!=='POST')return reply(res,405,{error:'POST 요청 필요'});try{return await handleAction(req,res,await readBody(req))}catch(e){if(!res.destroyed)reply(res,400,{error:e.message})}return}
 if(req.method!=='GET'&&req.method!=='HEAD')return reply(res,405,{error:'Method not allowed'});let pathname;try{pathname=decodeURIComponent(u.pathname)}catch{return res.writeHead(400).end()};if(pathname==='/'||pathname==='')pathname='/index.html';const file=path.resolve(root,'.'+pathname);if(pathname.includes('/.') || !(file===root||file.startsWith(root+path.sep))||file.endsWith('.cjs')||file.endsWith('.md')||file.endsWith('.json')||file.includes('/tests/')||file.includes('node_modules'))return res.writeHead(403).end();fs.stat(file,(err,stat)=>{if(err||!stat.isFile())return res.writeHead(404).end();res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':file.endsWith('.webp')?'public, max-age=86400':'no-cache','content-length':stat.size});if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)})});
-loadAccounts().then(()=>server.listen(PORT,'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
+loadAccounts().then(()=>server.listen(PORT,process.env.LIVE_BIND_HOST||'0.0.0.0',()=>console.log(`L.I.V.E. 멀티 서버: http://localhost:${PORT}`))).catch(e=>{console.error('Persistent account load failed, refusing startup:',e);process.exitCode=1});
 module.exports={server,rooms,drawSupplyReward,drawSupplyChoices,SUPPLY_ODDS,advanceRoom,playerView};

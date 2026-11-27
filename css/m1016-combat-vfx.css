@@ -16,4 +16,14 @@
 @keyframes m1016-number-rise{0%{opacity:0;transform:translate(-50%,-50%) translateY(5px) scale(.96)}12%{opacity:1}65%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) translateY(-36px) scale(1.03)}}
 @keyframes m1016-skill-name{0%{opacity:0;transform:translate(-50%,-100%) translateY(6px)}15%{opacity:1}68%{opacity:1}100%{opacity:0;transform:translate(-50%,-100%) translateY(-12px)}}
 @keyframes m1016-impact{0%{opacity:.1;scale:.65}22%{opacity:.9}100%{opacity:0;scale:1.26}}
-@media(prefers-reduced-motion:reduce){.m1016-vfx-number,.m1016-vfx-skill-label,.m1016-vfx-impact{animation:none!important;opacity:1;will-change:auto}.m1016-vfx-number{transform:translate(-50%,-65%)}.m1016-vfx-skill-label{transform:translate(-50%,-100%)}.m1016-vfx-impact{display:none}}
+body[data-live-motion=reduce] :is(.m1016-vfx-number,.m1016-vfx-skill-label,.m1016-vfx-impact){animation:none!important;opacity:1;will-change:auto}
+body[data-live-motion=reduce] .m1016-vfx-number{transform:translate(-50%,-65%)}
+body[data-live-motion=reduce] .m1016-vfx-skill-label{transform:translate(-50%,-100%)}
+body[data-live-motion=reduce] .m1016-vfx-impact{display:none}
+#m11BattleMotionLayer{position:fixed;inset:0;pointer-events:none;z-index:15000;overflow:hidden;}
+#m11BattleMotionLayer i{position:absolute;display:block;pointer-events:none;transform-origin:center;}
+.m11-projectile{width:30px;height:4px;margin:-2px -15px;background:linear-gradient(90deg,transparent,#e9b974,#fff7d7);box-shadow:0 0 9px #f8d390;}
+.m11-projectile.skill{height:7px;width:40px;background:linear-gradient(90deg,transparent,#8baadf,#e3f9ff);box-shadow:0 0 12px #90d8ff;}
+.m11-slash,.m11-execute{width:48px;height:48px;margin:-24px;}
+.m11-slash:before,.m11-slash:after,.m11-execute:before,.m11-execute:after{content:'';position:absolute;top:50%;left:0;width:100%;height:3px;background:linear-gradient(90deg,transparent,#fff2cd,transparent);transform:rotate(45deg);}
+.m11-slash:after,.m11-execute:after{transform:rotate(-45deg);}

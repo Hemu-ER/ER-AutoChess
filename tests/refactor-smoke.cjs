@@ -19,7 +19,7 @@ for(const p of required)ok(html.includes(`src="${p}"`),`classic script ${p}`);
 for(const f of ['index.html','js/client/game.js','js/server/server.cjs','css/base.css','css/battle.css','css/overlay.css','css/codex.css','css/formation.css','css/lobby.css'])ok(fs.existsSync(path.join(root,f)),`exists ${f}`);
 ok(!fs.existsSync(path.join(root,'game.js')),'no root game.js duplicate');
 ok(!fs.existsSync(path.join(root,'m1010-refinement.css')),'no root milestone css duplicate');
-ok(text('js/client/game.js').includes("script.src='js/client/m1007-client.js'"),'M10-07 runtime loaded');
+ok(html.includes('src="js/client/m1007-client.js"'),'M10-07 runtime loaded');
 ok(text('js/client/m1007-client.js').includes("const scriptName = 'js/client/m1006-ui-language.js'"),'M10-06 dynamic script path');
 ok(text('js/client/multiplayer.js').includes('m1009TabBrowse'),'password-aware room browser kept');
 ok(text('js/client/game.js').includes('m1010-battle-synergy'),'combat synergies kept');

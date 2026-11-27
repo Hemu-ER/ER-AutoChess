@@ -21,14 +21,6 @@
 #m1007AuctionChoices[hidden]{display:none!important}#m1007AuctionChoices h3{font-size:calc(17px + 2pt);margin:2px 0 6px}#m1007AuctionChoices p{color:#b1c3c3;margin:0 0 12px}#m1007AuctionChoices .m1007-choice-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-height:32dvh;overflow-y:auto}#m1007AuctionChoices .m1007-choice-list button{border:1px solid #586e70;padding:8px;text-align:left;background:#263239;color:#e7eded;border-radius:3px;cursor:pointer}#m1007AuctionChoices .m1007-choice-list button:hover,#m1007AuctionChoices .m1007-choice-list button:focus-visible{border-color:#dec28d;background:#37413e}#m1007AuctionChoices footer{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}#m1007AuctionChoices footer button{padding:5px 9px;background:#2d3940;color:#fff;border:1px solid #67787a;cursor:pointer}
 #m1007ChoiceResume{position:fixed;left:12px;bottom:17px;z-index:100040;border:1px solid #d2b17d;border-radius:6px;background:#312b23;color:#f6e5c2;padding:8px 11px;cursor:pointer}#m1007ChoiceResume[hidden]{display:none}
 .m1007-auction-choice-icon{display:grid;place-items:center;font-size:calc(42px + 2pt);color:#ddc69c;min-height:60px}
-#m1007AttackLayer{position:fixed;inset:0;z-index:15000;pointer-events:none;overflow:hidden}
-.m1007-shot{position:absolute;width:52px;height:2px;background:linear-gradient(90deg,transparent,#cbb99c,#fff8dd);transform-origin:0 50%;animation:m1007-shot .23s ease-out both;box-shadow:0 0 4px #e5cba666}
-.m1007-shot.skill{height:3px;background:linear-gradient(90deg,transparent,#c1b2df,#f4ebff);box-shadow:0 0 8px #bda5fa55}
-.m1007-execute{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;border:2px solid #d4a77b;box-shadow:0 0 0 1px #332d2d,inset 0 0 15px #c98e6455;animation:m1007-execute .62s ease-out both}
-.m1007-execute:after{content:"✕";display:grid;place-items:center;font:700 calc(29px + 2pt)/58px system-ui;text-align:center;color:#e6bea1;text-shadow:0 0 5px #a8583e}
-@keyframes m1007-shot{from{opacity:1;transform:translate(0,-50%) rotate(var(--angle)) scaleX(.18)}to{opacity:0;transform:translate(0,-50%) rotate(var(--angle)) scaleX(var(--length))}}
-@keyframes m1007-execute{from{opacity:.95;transform:scale(.35)}to{opacity:0;transform:scale(1.9)}}
-@media(prefers-reduced-motion:reduce){.m1007-shot,.m1007-execute{animation:none;opacity:.65}}
 
 /* Replace opaque generic impact flashes; visually convey the attack origin instead. */
 body[data-app-mode="game"] .unit.hit .hit-vfx{display:none!important}
@@ -44,10 +36,8 @@ body[data-app-mode="game"] .unit .live-hit-spark{display:none!important}
 
 /* Battle maps use the entire central frame: preparation's synergy column is gone. */
 
-body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .current-synergy-panel{display:none!important}
-body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .app{
- padding-bottom:clamp(132px,17dvh,180px)!important;
-}
+
+
 
 /* Keep each floor's existing graphics. Add readable team identification to its HUD. */
 body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #board .unit.A .hpbar{
@@ -135,7 +125,7 @@ body[data-live-scene="formation"] .mastery-track>i::before,
 body[data-live-scene="formation"] .mastery-track>i::after{animation:none!important;background-image:none!important;display:none!important}
 
 @media(max-width:850px){
- body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) .app{padding-bottom:190px!important}
+ 
  body[data-app-mode="game"] #liveBattleDeck{grid-template-columns:1fr;gap:5px;padding:8px 9px;width:calc(100% - 8px);max-height:min(30dvh,220px);overflow-y:auto}
  #liveBattleDeck .m1008-battle-heading{flex-direction:row;align-items:baseline;justify-content:space-between;border-right:0;border-bottom:1px solid #586e7255;padding:0 0 5px;gap:8px}
  #liveBattleDeck .m1008-battle-heading strong{font-size:calc(13px + 2pt)}
@@ -210,21 +200,21 @@ body[data-app-mode="game"] #roundModePanel.m809-top-collapsed{
 #roundModePanel.m809-top-collapsed .m809-top-content{opacity:0;pointer-events:none}
 #roundModePanel.m809-top-collapsed .round-actions{position:static!important;transform:none!important}
 /* Shop slides down in one continuous motion; do not reconstruct markup on click. */
-body[data-app-mode="game"] .game-bottom-dock{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock{
   transition:transform .42s cubic-bezier(.22,.8,.24,1)!important;will-change:transform;
 }
-body[data-app-mode="game"] .game-bottom-dock.collapsed{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock.collapsed{
   transform:translate(-50%,calc(100% + 2px))!important;
 }
-body[data-app-mode="game"] .game-bottom-dock .dock-toggle{pointer-events:auto;min-height:32px}
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .dock-toggle{pointer-events:auto;min-height:32px}
 /* A true animated mastery fill: no animated stripes, no instant jumps. */
-body[data-app-mode="game"] .game-bottom-dock .mastery-track>i{
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .mastery-track>i{
   transition:width .45s cubic-bezier(.2,.85,.26,1)!important;
   background-image:linear-gradient(90deg,#60988d,#abc9b4)!important;
   animation:none!important;will-change:width;
 }
-body[data-app-mode="game"] .game-bottom-dock .mastery-track>i::before,
-body[data-app-mode="game"] .game-bottom-dock .mastery-track>i::after{display:none!important;animation:none!important}
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .mastery-track>i::before,
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .mastery-track>i::after{display:none!important;animation:none!important}
 /* Selection windows fold to a genuine zero-height layer, with one floating tab.
    Fullscreen overlay must not retain scrollbars or capture the board pointer. */
 #liveAugmentPanel.m910-collapsed,
@@ -265,8 +255,8 @@ body[data-app-mode="game"] #liveAugmentPanel.m910-collapsed::-webkit-scrollbar{d
 #board .unit .hpbar>i{transition:width .13s linear!important}
 @media(prefers-reduced-motion:reduce){
   body[data-app-mode="game"] #roundModePanel,
-  body[data-app-mode="game"] .game-bottom-dock,
-  body[data-app-mode="game"] .game-bottom-dock .mastery-track>i{transition:none!important}
+  body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock,
+  body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock .mastery-track>i{transition:none!important}
 }
 
 /* M10-10 scene geometry: the M6 desktop half-width rule must not make a
@@ -274,23 +264,11 @@ body[data-app-mode="game"] #liveAugmentPanel.m910-collapsed::-webkit-scrollbar{d
 
 /* Read-only battle synergy summary: game actions remain in their own scene,
    but players should not lose the information needed to judge team synergies. */
-body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #currentSynergyPanel.m1010-battle-synergy {
- display:block!important;position:fixed!important;z-index:8200!important;
- top:clamp(155px,20dvh,240px)!important;left:12px!important;
- width:clamp(155px,15vw,218px)!important;max-height:min(48dvh,390px)!important;
- padding:10px!important;border:1px solid #516f71!important;
- background:#101d25ed!important;overflow:auto!important;pointer-events:auto!important;
- box-shadow:0 5px 20px #0007!important;
-}
-body[data-app-mode="game"] #currentSynergyPanel.m1010-battle-synergy .current-synergy-title {
- display:block!important;font-size:calc(11px + 2pt)!important;letter-spacing:.03em!important;color:#b8d8d1!important;
-}
+
+
 @media(max-width:850px){
- body[data-app-mode="game"]:is([data-live-scene="duel"],[data-live-scene="farm"],[data-live-scene="boss"]) #currentSynergyPanel.m1010-battle-synergy {
-   width:calc(100% - 20px)!important;top:auto!important;bottom:clamp(125px,23dvh,225px)!important;
-   left:10px!important;max-height:72px!important;overflow-x:auto!important;overflow-y:hidden!important;
- }
- #currentSynergyPanel.m1010-battle-synergy .synergy-strip{flex-direction:row!important;flex-wrap:nowrap!important}
+ 
+ 
 }
 /* Combat information uses compact, live numbers rather than decorative filler. */
 #liveBattleDeck .m1010-battle-live {
@@ -323,7 +301,7 @@ body[data-app-mode="game"] #currentSynergyPanel.m1010-battle-synergy .current-sy
 body[data-app-mode="game"] #roundModePanel.m809-top-collapsed {
  transform:translate(-50%,calc(-100% + 35px))!important;
 }
-body[data-app-mode="game"] .game-bottom-dock.collapsed {
+body[data-app-mode="game"]:not([data-live-scene="formation"]) .game-bottom-dock.collapsed {
  transform:translate(-50%,calc(100% + 1px))!important;
 }
 /* Collapse state must never create an invisible full-screen scroll container. */
@@ -379,15 +357,7 @@ body[data-app-mode="game"] #currentSynergyPanel.current-synergy-panel{
 
 /* Higher-specificity scene overrides: older M10-10 selectors also used !important. */
 
-body[data-app-mode="game"][data-live-scene] #currentSynergyPanel.current-synergy-panel.m1010-battle-synergy{
- top:var(--live-synergy-safe-top,150px)!important;
- left:max(12px,calc(50vw - 790px))!important;
- width:clamp(170px,15vw,218px)!important;
- max-height:max(100px,calc(100dvh - var(--live-synergy-safe-top,150px) - 24px))!important;
-}
+
 @media(max-width:850px){
- body[data-app-mode="game"][data-live-scene] #currentSynergyPanel.current-synergy-panel.m1010-battle-synergy{
-  top:auto!important;left:10px!important;bottom:clamp(120px,22dvh,210px)!important;
-  width:calc(100vw - 20px)!important;max-height:65px!important;
- }
+ 
 }

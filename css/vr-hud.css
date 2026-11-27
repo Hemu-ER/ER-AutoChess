@@ -1,0 +1,243 @@
+/* M11-04 — presentation-only VR HUD; existing legacy special/QA scenes remain unchanged. */
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){border:0!important;border-radius:0!important;background:linear-gradient(110deg,#112732de,#101d28a0 72%,transparent)!important;box-shadow:none!important;}
+
+
+/* Compact desktop-height experiment: retain all controls, reduce decorative space. */
+
+/* M11-04 HUD: stable geometry, independent visual motion. Existing action IDs retained. */
+body[data-app-mode=game] #m11Identity{position:fixed;top:16px;left:18px;z-index:8250;pointer-events:none;color:#e5f0e5;line-height:1.05;text-shadow:0 2px 6px #000;}
+#m11Identity b{font-size:25px;letter-spacing:.18em;display:block;}
+#m11Identity small{font-size:11px;color:#b6cbc2;letter-spacing:.09em;}
+body[data-app-mode=game] #m11Wallet{position:fixed;top:15px;right:18px;z-index:8250;display:flex;gap:14px;text-align:center;align-items:center;pointer-events:none;font-variant-numeric:tabular-nums;text-shadow:0 2px 5px #000;}
+#m11Wallet b{display:block;font-size:23px;line-height:1.1;color:#e0ebe1;}#m11Wallet>span:first-child b{color:#f1d097;}
+#m11Wallet small{display:block;font-size:11px;color:#b8c8c0;margin-top:3px;}
+
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel{max-height:162px!important;overflow-y:auto!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;min-height:0;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item-row:has(.m11-empty-items){display:block!important;}
+.m11-empty-items{display:block;white-space:normal;padding:5px 0;color:#b5c9bd;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item{min-height:38px!important;padding:2px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item img{width:27px!important;height:27px!important;object-fit:contain;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item>span{display:none;}
+body[data-app-mode=game] #liveItemsPanel.m11-inventory-collapsed .live-item-row,body[data-app-mode=game] #liveItemsPanel.m11-inventory-collapsed header>small{display:none!important;}
+#m11InventoryToggle{padding:2px 5px;min-width:26px;font-size:12px;background:#152c27;border:1px solid #71988a;color:#d5e7de;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings{max-height:calc(100vh - 340px);overflow-y:auto;}
+/* Use translate (individual transform) so perspective transforms stay intact. */
+@keyframes liveHudIn{from{opacity:0;}to{opacity:1;}}
+@keyframes liveHudScan{0%{opacity:.55;filter:brightness(1.45);}100%{opacity:1;filter:brightness(1);}}
+
+body[data-app-mode=game] :is(#roundModePanel,#gameBottomDock,#liveItemsPanel,#currentSynergyPanel,#m809LiveHpStandings) button:not(:disabled){transition:filter 100ms ease,scale 80ms ease,border-color 100ms ease;}
+body[data-app-mode=game] :is(#roundModePanel,#gameBottomDock,#liveItemsPanel,#currentSynergyPanel,#m809LiveHpStandings) button:not(:disabled):hover{filter:brightness(1.15);}
+body[data-app-mode=game] :is(#roundModePanel,#gameBottomDock,#liveItemsPanel,#currentSynergyPanel,#m809LiveHpStandings) button:not(:disabled):active{scale:.98;}
+
+/* Keep the infusion entry below the fixed wallet rather than covering it. */
+@media(min-width:851px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveAugmentPanel>.m910-augment-collapse{top:72px!important;right:18px!important;padding:5px 9px!important;border-radius:1px!important;}}
+
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .m11-bench-name{position:absolute;bottom:0;left:0;right:0;text-align:center;line-height:13px;font-size:10px;color:#d5e6dd;background:#0c1b19df;pointer-events:none;}
+
+
+/* M11-04R: one native-pixel formation layout. The shop is no longer a center column squeezed between economy panels. */
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]){--hud-font:calc(14px * var(--live-ui-scale,1));--hud-side:clamp(120px,12.8vw,390px);--hud-edge:clamp(8px,2.1vw,80px);--shop-art:clamp(74px,13vh,280px);}
+
+body[data-app-mode=game] :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#liveGameChat,#liveBattleDeck,#gameBottomDock,#roundModePanel){font-size:var(--hud-font,14px);}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){width:var(--hud-side)!important;padding:9px!important;backdrop-filter:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel{left:var(--hud-edge)!important;top:clamp(100px,13vh,280px)!important;transform:perspective(950px) rotateY(23deg);}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#liveItemsPanel,#m809LiveHpStandings){right:var(--hud-edge)!important;transform:perspective(950px) rotateY(-23deg);}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel{top:clamp(100px,13vh,280px)!important;max-height:22vh!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings{top:37vh!important;max-height:37vh!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock{position:fixed;left:50%;bottom:8px!important;width:min(62vw,calc(100vw - 2 * var(--hud-side) - 2 * var(--hud-edge)))!important;max-width:calc(100vw - 16px)!important;min-height:0!important;max-height:none!important;transform:translateX(-50%)!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,24%)!important;grid-template-rows:auto;gap:clamp(8px,1vw,34px)!important;padding:0!important;overflow:visible!important;border:0!important;background:none!important;box-shadow:none!important;backdrop-filter:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-center{grid-column:1!important;grid-row:1;min-width:0;gap:6px;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-side,body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-mastery{min-width:0!important;display:flex!important;align-items:stretch;gap:5px!important;padding:0!important;position:relative;flex-direction:column;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-mastery{justify-content:flex-end;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-side>.dock-label,body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-credit{display:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-actions{display:flex;flex-wrap:wrap;gap:4px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.econ-btn,.dock-toggle,#m910ShopFocusToggle){min-height:30px!important;padding:5px 9px!important;font-size:calc(12px * var(--live-ui-scale,1))!important;border:0!important;border-bottom:1px solid #81b5c7!important;border-radius:0!important;color:#e1f3eb!important;background:#142b39c9!important;box-shadow:none!important;line-height:1.15;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-toggle{top:-34px!important;right:auto!important;left:50%!important;transform:translateX(-50%);height:28px!important;min-height:28px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-shop{position:relative;display:grid!important;grid-template-columns:repeat(var(--m910-shop-columns,5),minmax(0,1fr))!important;gap:9px!important;min-width:0;padding:0!important;background:none!important;border:0!important;box-shadow:none;overflow:visible!important;transform:none!important;transform-origin:center bottom;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card{min-width:0!important;max-width:none!important;width:100%;height:auto!important;min-height:0!important;display:grid!important;grid-template-rows:var(--shop-art) auto minmax(39px,auto)!important;align-content:stretch;background:linear-gradient(180deg,#1d3948b8,#0d202ce8)!important;color:#eff9f4!important;border:0!important;border-bottom:2px solid #79adbf!important;border-radius:0!important;padding:0!important;overflow:hidden!important;touch-action:none;user-select:none;box-shadow:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-portrait{height:100%!important;min-height:0!important;position:relative;overflow:hidden!important;background:radial-gradient(ellipse at 50% 65%,#557d9855,transparent 80%)!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-portrait img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center 31%!important;image-rendering:auto!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-name{font-size:calc(14px * var(--live-ui-scale,1))!important;line-height:1.2!important;min-height:0!important;white-space:normal!important;padding:5px 6px!important;color:#eff7f2!important;background:transparent!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-meta{display:flex!important;align-items:flex-start!important;gap:4px!important;min-width:0;min-height:0!important;padding:4px 5px 6px!important;background:transparent!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-meta-label{display:flex!important;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;flex:1;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-meta-label>small{font-size:calc(11px * var(--live-ui-scale,1))!important;white-space:normal!important;overflow:visible!important;line-height:1.2;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-synergies{display:flex!important;flex-wrap:wrap!important;gap:2px!important;max-height:none!important;overflow:visible!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.synergy-tip-chip,.shop-aff-chip,.shop-synergy-chip){font-size:calc(10px * var(--live-ui-scale,1))!important;padding:1px 3px!important;line-height:1.15!important;min-height:0!important;white-space:normal!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .credit-price{font-size:13px!important;gap:2px;flex:none;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .credit-price img{width:15px;height:13px;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card.sold{display:grid!important;place-content:center;grid-template-rows:1fr!important;min-height:calc(var(--shop-art) + 62px)!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-zone{min-height:0!important;padding:4px 5px!important;gap:3px!important;background:none!important;border:0!important;border-radius:0!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-row{display:grid!important;grid-template-columns:repeat(8,minmax(0,1fr))!important;min-height:clamp(52px,8.4vh,180px)!important;gap:4px!important;overflow:visible!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.bench-unit,.bench-empty-slot){height:clamp(52px,8.4vh,180px)!important;min-height:0!important;min-width:0!important;border-radius:1px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-empty-slot{border:0!important;border-bottom:1px solid #79adbf!important;background:linear-gradient(180deg,#18344150,#37617a55)!important;box-shadow:inset 0 0 0 1px #7395a43d;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-unit{overflow:hidden;background:#1a3546aa!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-portrait{height:100%!important;min-height:0!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-portrait img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center 40%!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-unit .live-equip-slots{display:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-head{font-size:12px!important;line-height:1.1;opacity:1!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock.collapsed{pointer-events:auto!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock.collapsed :is(.dock-shop,.dock-side,.dock-mastery){display:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock.collapsed .dock-center{grid-row:1;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .m11-bench-name{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;line-height:15px;color:#d5e6dd;background:#0c1b19df;pointer-events:none;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card:not(:disabled):hover{border-color:#c1e3cc!important;filter:brightness(1.15)!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card:has(.m910-focus-mark){border-color:#dfc388!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveGameChat{background:linear-gradient(90deg,#0a1825ca,transparent)!important;border:0!important;box-shadow:none!important;}
+@media(max-width:1120px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){transform:none!important;} }
+@media(max-height:780px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]){--shop-art:clamp(48px,10vh,78px);}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.bench-unit,.bench-empty-slot){height:clamp(48px,8vh,62px)!important;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .bench-row{min-height:clamp(48px,8vh,62px)!important;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-name{padding:3px 5px!important;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-meta{padding:2px 4px 4px!important;} }
+@media(max-width:760px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock{width:calc(100vw - 12px)!important;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-shop{grid-template-columns:repeat(var(--m910-shop-columns,5),minmax(98px,1fr))!important;overflow-x:auto!important;overscroll-behavior:contain;scrollbar-width:thin;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-side,body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-mastery{gap:3px!important;}body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){width:126px!important;font-size:12px;}#m11Identity,#m11Wallet{display:none!important;}#m11UnitStrip{bottom:40vh;max-width:125px;} }
+/* Movement stays in individual translate/scale, not the layout or projection transform. */
+@keyframes liveEnvironmentBreath{0%,100%{opacity:.25;}50%{opacity:.62;}}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) .app::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 50% 50%,#82d6c812,transparent 60%);animation:liveEnvironmentBreath 5s ease-in-out infinite;}
+body[data-live-motion=reduce] :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#gameBottomDock .dock-shop,#board .unit .sd-image,#board .unit .ground-ring){animation:none!important;}
+body[data-live-motion=reduce] .app::after{animation:none!important;}
+body[data-live-motion=reduce] :is(#gameBottomDock,#liveItemsPanel,#roundModePanel) button{transition:none!important;}
+
+/* Windowed layout: keep side HUDs out of the bottom command dock. */
+@media(max-width:1120px){
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel.current-synergy-panel{top:clamp(100px,13vh,280px)!important;bottom:auto!important;left:8px!important;width:136px!important;max-height:max(100px,calc(100dvh - 480px))!important;overflow-y:auto!important;overflow-x:hidden!important;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .synergy-strip{flex-direction:column!important;white-space:normal!important;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel{width:148px!important;right:8px!important;max-height:160px!important;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-items-heading{display:grid;grid-template-columns:1fr auto auto;gap:3px;align-items:center;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-items-heading>b{font-size:11px!important;white-space:nowrap;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-items-heading button{padding:3px!important;font-size:10px!important;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings{top:283px!important;right:8px!important;width:148px!important;max-height:max(68px,calc(100dvh - 520px))!important;overflow:auto!important;}
+}
+@media(max-height:650px){
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.econ-btn,#m910ShopFocusToggle){min-height:25px!important;padding:3px 5px!important;}
+ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .dock-toggle{top:-28px!important;min-height:24px!important;height:24px!important;}
+}
+/* M11 shared rear projection + open HUD surfaces. Logical controls retain their IDs. */
+body[data-app-mode=game] .app{padding:0!important;background:radial-gradient(ellipse at 50% 60%,#193340 0,#0a1722 58%,#050d16 100%)!important;isolation:isolate;}
+#liveRegionBackdrop{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+#liveRegionBackdrop[hidden]{display:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){translate:0 var(--live-hud-y,0px)!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){border-inline-start:2px solid #78c1d6!important;padding:9px 12px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#liveItemsPanel,#m809LiveHpStandings){border-inline-start:0!important;border-inline-end:2px solid #78c1d6!important;background:linear-gradient(250deg,#142a3bde,#101d28a0 72%,transparent)!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .synergy-strip .synergy-tip-chip{border:0!important;border-bottom:1px solid #6795ab35!important;background:none!important;padding:7px 2px!important;display:flex;align-items:center;gap:7px;white-space:normal!important;font-size:13px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .synergy-tip-chip::before{content:'◇';color:#a3d8e5;font:16px/1 system-ui,sans-serif;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .synergy-on::before{content:'◆';color:#9edbe2;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .synergy-off{opacity:.65!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #currentSynergyPanel .current-synergy-title,body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings .m809-panel-title{font-size:15px!important;font-weight:700;letter-spacing:.06em;color:#e0f2fa;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings .m808-hp-player{border:0!important;border-bottom:1px solid #78b7cc29!important;background:none!important;box-shadow:none!important;padding:7px 0!important;border-radius:0!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item{border:0!important;border-bottom:1px solid #80b4c7!important;background:linear-gradient(180deg,transparent,#355c724f)!important;border-radius:0!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel header>small{display:none!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){border:0!important;background:none!important;padding:1px 0!important;color:#b4d4e4!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-synergies{column-gap:6px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card{clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%);}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card:not(:disabled):hover{background:linear-gradient(180deg,#315b70df,#152e40f5)!important;}
+/* Shared translation is sampled once per frame, never eased independently by legacy transitions. */
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) :is(#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings){transition-property:opacity,background-color,border-color,color,box-shadow!important;}
+
+/* M11-05R3: viewport owns the stage. HUD is an independent projected surface. */
+
+body[data-app-mode=game] .game-board-row{position:fixed!important;left:13vw!important;top:12dvh!important;bottom:34dvh!important;height:auto!important;width:74vw!important;max-width:none!important;transform:none!important;z-index:2;pointer-events:none;}
+body[data-app-mode=game]:is([data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss]) .game-board-row{bottom:19dvh!important;}
+body[data-app-mode=game] .game-board-row .board-shell{pointer-events:none;overflow:visible!important;}
+body[data-app-mode=game] #board.live-perspective{pointer-events:none;overflow:visible!important;}
+body[data-app-mode=game] #board .live-tile,body[data-app-mode=game] #board .unit{pointer-events:auto;}
+body[data-app-mode=game] #currentSynergyPanel.current-synergy-panel{position:fixed!important;display:block!important;left:var(--hud-edge)!important;top:clamp(90px,14vh,300px)!important;bottom:auto!important;width:var(--hud-side)!important;max-height:44vh!important;overflow:auto!important;pointer-events:auto!important;transform:perspective(950px) rotateY(23deg)!important;z-index:8200!important;}
+body[data-app-mode=game] #currentSynergyPanel .synergy-strip{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;}
+/* Fixed child panels must not inherit the stage transform. The controller reparents synergy to body. */
+body[data-app-mode=game] #liveBattleDeck{width:62vw!important;max-width:none!important;bottom:2vh!important;min-height:0!important;padding:clamp(8px,1.1vh,23px) clamp(12px,1.3vw,42px)!important;border:0!important;border-top:1px solid #79adbf!important;border-radius:0!important;box-shadow:none!important;background:linear-gradient(180deg,#142c3cba,#081722d9)!important;translate:0 var(--live-hud-y,0px)!important;}
+body[data-app-mode=game] #liveBattleDeck:before{content:none!important;}
+body[data-app-mode=game] #liveBattleDeck .m1008-unit-chip{border:0!important;border-bottom:1px solid #598fa5!important;background:transparent!important;}
+body[data-app-mode=game] #gameBottomDock .m910-focus{position:relative!important;display:block!important;}
+body[data-app-mode=game] #gameBottomDock .m910-focus-options{position:absolute!important;bottom:calc(100% + 8px)!important;left:0!important;width:min(330px,80vw)!important;max-height:38vh!important;overflow:auto!important;background:#122a39f7!important;padding:12px!important;z-index:100!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+body[data-app-mode=game] #gameBottomDock .m910-focus>small{display:none!important;}
+body[data-app-mode=game] #gameBottomDock .dock-side{z-index:40;}
+body[data-app-mode=game] #gameBottomDock .dock-shop{gap:clamp(6px,.6vw,24px)!important;}
+body[data-app-mode=game] #gameBottomDock .shop-name{font-size:clamp(13px,1.02vw,31px)!important;}
+body[data-app-mode=game] #gameBottomDock .shop-meta-label>small,body[data-app-mode=game] #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){font-size:clamp(10px,.75vw,24px)!important;}
+body[data-app-mode=game] #gameBottomDock :is(.bench-unit,.bench-empty-slot){height:clamp(51px,8.6vh,184px)!important;}
+body[data-app-mode=game] #gameBottomDock .bench-row{min-height:clamp(51px,8.6vh,184px)!important;}
+body[data-app-mode=game] #liveItemsPanel .live-item img{width:clamp(23px,2.1vw,66px)!important;height:clamp(23px,2.1vw,66px)!important;}
+body[data-app-mode=game] #liveItemsPanel .live-item{min-height:clamp(32px,3vw,80px)!important;}
+body[data-app-mode=game] #currentSynergyPanel .synergy-strip .synergy-tip-chip{font-size:clamp(12px,.9vw,27px)!important;}
+body[data-app-mode=game] #m11Identity b,body[data-app-mode=game] #m11Wallet b{font-size:clamp(23px,1.7vw,64px)!important;}
+@media(max-width:1120px){body[data-app-mode=game] .game-board-row{left:12vw!important;width:76vw!important;top:13dvh!important;bottom:35dvh!important;}body[data-app-mode=game] #gameBottomDock{width:74vw!important;}body[data-app-mode=game] #currentSynergyPanel.current-synergy-panel{transform:none!important;width:120px!important;left:6px!important;}body[data-app-mode=game] #liveBattleDeck{width:74vw!important;}}
+@media(max-width:760px){body[data-app-mode=game] .game-board-row{left:1vw!important;width:98vw!important;top:20dvh!important;bottom:37dvh!important;}body[data-app-mode=game] #gameBottomDock{width:calc(100vw - 12px)!important;}body[data-app-mode=game] #currentSynergyPanel.current-synergy-panel{max-height:18vh!important;top:10vh!important;width:110px!important;}body[data-app-mode=game] #liveBattleDeck{width:96vw!important;}}
+
+body[data-app-mode=game] #m809DamagePanel:not([hidden]){position:fixed!important;right:var(--hud-edge)!important;top:65vh!important;width:var(--hud-side)!important;max-height:22vh!important;border:0!important;border-right:2px solid #78c1d6!important;border-radius:0!important;background:linear-gradient(250deg,#142a3bde,#101d28a0 72%,transparent)!important;box-shadow:none!important;transform:perspective(950px) rotateY(-23deg)!important;translate:0 var(--live-hud-y,0px)!important;transition-property:opacity,background-color!important;overflow:auto!important;}
+body[data-app-mode=game] #m809DamagePanel .m809-panel-title{background:transparent!important;border:0!important;}
+
+body[data-app-mode=game] #liveBattleDeck{transition-property:opacity,background-color,border-color,color!important;}
+/* R4: independent controls and background, shared stage. */
+#roundReadyNotice{color:#ffc99a;font-size:12px;text-align:center;max-width:100%;}#roundReadyNotice:empty{display:none;}
+body[data-app-mode=game] #gameBottomDock .dock-economy{grid-column:2;grid-row:1;display:grid;align-content:center;gap:8px;padding:8px 10px;border-left:1px solid #81b5c780;background:linear-gradient(90deg,#132938b8,transparent);min-width:0;}
+body[data-app-mode=game] #gameBottomDock .dock-economy :is(.dock-side,.dock-mastery){translate:none!important;}
+body[data-app-mode=game] #gameBottomDock .dock-economy .dock-credit{display:flex!important;font-size:clamp(19px,2.5vh,48px)!important;color:#f5d39b;}
+body[data-app-mode=game] #gameBottomDock .dock-economy .dock-label{display:block!important;}
+body[data-app-mode=game] #gameBottomDock .dock-economy .dock-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));}
+body[data-app-mode=game] #gameBottomDock.collapsed .dock-economy{display:none!important;}
+body[data-app-mode=game] #gameBottomDock.collapsed .dock-center{grid-column:1/-1!important;}
+body[data-app-mode=game][data-live-scene=formation] #m11Wallet>span:first-child,body[data-app-mode=game][data-live-scene=formation] #m11Wallet>span:last-child{display:none;}
+body[data-app-mode=game] #liveGameChat{position:fixed!important;left:var(--hud-edge,12px)!important;bottom:12px!important;top:auto!important;right:auto!important;width:clamp(150px,16vw,450px)!important;height:clamp(110px,22vh,440px);resize:none!important;}
+body[data-app-mode=game] #liveGameChat.live-chat-collapsed{height:auto!important;min-height:0!important;}
+body[data-app-mode=game] #liveGameChat .live-chat-head{cursor:default!important;}
+body[data-app-mode=game] .app .arena-card{background:transparent!important;}
+@media(max-width:1120px){body[data-app-mode=game] #gameBottomDock .dock-economy{padding:4px;gap:3px;}body[data-app-mode=game] #gameBottomDock .dock-economy .dock-actions{grid-template-columns:1fr;}body[data-app-mode=game] #liveGameChat{width:12vw!important;min-width:0!important;}}
+@media(max-width:760px){body[data-app-mode=game] #gameBottomDock .dock-economy{grid-column:1/-1;grid-row:2;display:flex;gap:5px;justify-content:center;padding:2px;}body[data-app-mode=game] #gameBottomDock .dock-economy :is(.dock-side,.dock-mastery){flex-direction:row;flex-wrap:wrap;}body[data-app-mode=game] #gameBottomDock .dock-center{grid-column:1/-1!important;}body[data-app-mode=game] #gameBottomDock .dock-economy .dock-actions{display:flex!important;}body[data-app-mode=game] #liveGameChat{bottom:33vh!important;width:130px!important;} }
+
+body[data-app-mode=game] #gameBottomDock:not(.collapsed) .dock-toggle{left:37%!important;}
+@media(max-width:760px){body[data-app-mode=game] #gameBottomDock:not(.collapsed) .dock-toggle{left:50%!important;}}
+
+/* M11-05R5 — round controller and visibility contract. */
+body[data-app-mode=game] #roundModePanel{position:fixed!important;left:50%!important;top:clamp(4px,.65vh,16px)!important;transform:translateX(-50%)!important;z-index:8300!important;width:clamp(310px,30vw,1100px)!important;max-width:calc(100vw - 20px)!important;display:grid!important;grid-template-columns:1fr!important;gap:3px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;backdrop-filter:none!important;pointer-events:none!important;overflow:visible!important;}
+#roundModePanel .m11-round-face{position:relative;display:grid;grid-template-columns:1fr 1.2fr 1fr;align-items:center;gap:6px;text-align:center;padding:clamp(5px,.75vh,16px) 8%;background:linear-gradient(180deg,#223b49e8,#132a37bc);clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);border-top:1px solid #84b1c2;pointer-events:none;}
+#roundModePanel .m11-round-core,#roundModePanel .m11-round-side{display:grid;gap:2px;min-width:0;}
+#roundModePanel .m11-round-core small{font-size:clamp(10px,.72vw,23px);color:#a6c7d2;letter-spacing:.14em;white-space:nowrap;}
+#roundModePanel .m11-round-time{font:600 clamp(24px,3.6vh,78px)/1.05 system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.06em;color:#effcff;}
+#roundModePanel .m11-round-side small{font-size:clamp(10px,.65vw,20px);color:#91b2bf;}
+#roundModePanel .m11-round-side b{font-size:clamp(11px,.9vw,28px);color:#dfedf2;}
+#roundModePanel [data-scout-slot]{pointer-events:auto;cursor:pointer;}
+#roundModePanel .m11-round-command{display:flex;justify-content:center;align-items:center;gap:6px;pointer-events:none;min-height:28px;}
+#roundModePanel .m11-round-controls{display:flex;gap:5px;align-items:center;pointer-events:auto;}
+#roundModePanel .round-actions{position:static!important;transform:none!important;display:flex!important;align-items:center;gap:4px;visibility:visible!important;pointer-events:auto!important;}
+#roundModePanel .round-actions:empty{display:none!important;}
+#roundModePanel button{pointer-events:auto!important;min-height:clamp(26px,3vh,60px)!important;border:0!important;border-radius:0!important;border-bottom:1px solid #88b9c6!important;background:#18313fe6!important;color:#cce4eb!important;box-shadow:none!important;padding:3px 12px!important;font-size:clamp(11px,.8vw,25px)!important;}
+body[data-app-mode=game] #roundModePanel .round-actions .m11-ready{background:#a2d6d9!important;background-image:none!important;border-image:none!important;color:#102c35!important;font-weight:800!important;}
+#roundModePanel.m11-round-collapsed .m11-round-face{display:none;}
+#roundModePanel.m11-round-collapsed{background:transparent!important;}
+#m11RoundEffects{position:fixed;z-index:8350;left:clamp(12px,2.4vw,90px);top:clamp(48px,7vh,150px);font-size:clamp(11px,.78vw,24px);color:#c3d7e0;max-width:min(320px,25vw);}
+#m11RoundEffects[hidden]{display:none!important;}
+#m11RoundEffects summary{cursor:pointer;background:#17313fe6;padding:5px 9px;border-bottom:1px solid #648f9f;}
+#m11RoundEffects details>div{position:absolute;top:100%;left:0;width:min(320px,40vw);background:#10232ff5;padding:9px;border:1px solid #648f9f;display:grid;gap:6px;}
+#m11RoundEffects :is(.m901-owned-augments,.m808-buff-hud){display:flex!important;flex-wrap:wrap;gap:4px;position:static!important;transform:none!important;margin:0!important;}
+#currentSynergyPanel .m910-focus{position:relative;margin:7px 0;}
+#currentSynergyPanel .m910-focus-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:24vh;overflow:auto;}
+#currentSynergyPanel .m910-focus button{font-size:inherit;padding:5px;white-space:normal;}
+#currentSynergyPanel .m910-focus>small{display:none;}
+body[data-app-mode=game] #gameBottomDock .m11-interest{font-size:clamp(11px,.8vw,26px);color:#b5d3c8;}
+body[data-app-mode=game] #gameBottomDock .dock-mastery{display:grid!important;gap:4px!important;align-content:start!important;}
+body[data-app-mode=game] #gameBottomDock .mastery-line{display:flex!important;justify-content:space-between;align-items:center;gap:4px;}
+body[data-app-mode=game] #gameBottomDock .shop-odds{font-size:clamp(11px,.8vw,26px)!important;white-space:normal!important;line-height:1.35;}
+body[data-app-mode=game] #gameBottomDock .mastery-track{height:6px!important;}
+/* Existing original environment art is an interim alternative to the wireframe. */
+/* Hide, not merely layer behind, during loading/exit. The authoritative phase is written before rendering. */
+body:not([data-app-mode=game]) :is(#roundModePanel,#m11RoundEffects,#m11Identity,#m11Wallet),
+body[data-app-mode=game]:not([data-live-hud-phase]):is(body) :is(#roundModePanel,#m11RoundEffects),
+body[data-app-mode=game]:is([data-live-hud-phase=idle],[data-live-hud-phase=intro],[data-live-hud-phase=augment-sync],[data-live-hud-phase=ended]) :is(#roundModePanel,#m11RoundEffects,#m11Identity,#m11Wallet,#gameBottomDock,#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#m809DamagePanel,#liveBattleDeck,#liveGameChat,#liveTeamChat,#m901Scouting,#m1017StageIntel),
+body:has(#liveRoundIntro,#liveArenaTransition.live-animating,#liveMatchEnd:not([hidden]),#liveGate:not([hidden]),#live-intro,.m807-loading:not([hidden])) :is(#roundModePanel,#m11RoundEffects,#m11Identity,#m11Wallet,#gameBottomDock,#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#m809DamagePanel,#liveBattleDeck,#liveGameChat,#liveTeamChat,#m901Scouting,#m1017StageIntel){display:none!important;visibility:hidden!important;pointer-events:none!important;}
+body[data-app-mode=game]:is([data-live-hud-phase=intro],[data-live-hud-phase=augment-sync]) #board,body:has(#liveRoundIntro,#liveArenaTransition.live-animating) #board{visibility:hidden!important;pointer-events:none!important;}
+@media(max-width:760px){#roundModePanel .m11-round-face{padding:4px 5%;}#m11RoundEffects{top:8vh;left:4px;max-width:29vw;}#gameBottomDock .dock-economy{align-items:center;}#gameBottomDock .dock-mastery{font-size:10px;}}
+
+body[data-app-mode=game] #roundModePanel .m11-round-command{min-height:0!important;}
+body[data-app-mode=game] #roundModePanel .m11-round-command .round-actions{order:0;}
+body[data-app-mode=game] #roundModePanel .m11-round-command .m11-round-controls{order:1;}
+body[data-app-mode=game] #gameBottomDock .shop-odds{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+#gameBottomDock .shop-odds span{display:grid;text-align:center;gap:1px;background:#0a1b2655;padding:3px 0;border-bottom:1px solid #527e8b;}
+#gameBottomDock .shop-odds span small{font-size:.8em;color:#9ab5be;}
+#gameBottomDock .shop-odds span b{font-variant-numeric:tabular-nums;color:#e1e8ef;font-size:1.15em;}
+#gameBottomDock .shop-odds span:nth-child(2) b{color:#a6d3b9;}#gameBottomDock .shop-odds span:nth-child(3) b{color:#a8c7ee;}
+#liveRegionBackdrop{background:#070d15;}
+#liveRegionBackdrop .lab-environment{position:absolute;inset:0;background:url(../assets/backgrounds/common-r6.webp) center/cover no-repeat;filter:brightness(.8);opacity:.7;}
+#m11RegionIntel{display:grid;gap:2px;text-align:center;padding:4px 10px;background:#102936ee;border-bottom:1px solid #709caa;color:#e0edf3;font-size:clamp(11px,.85vw,20px);line-height:1.3;}
+#m11RegionIntel strong{color:#a9dce2;}
+#m11RegionIntel[hidden]{display:none;}
+
+
+body[data-app-mode=game] #roundModePanel .m11-round-face{transform:perspective(1300px) rotateX(-9deg);transform-origin:center top;clip-path:none;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock{transform:translateX(-50%) perspective(1300px) rotateX(14deg)!important;transform-origin:center bottom!important;}
+body[data-app-mode=game] #gameBottomDock .dock-shop{transform:none!important;}
+body[data-app-mode=game] #liveBattleDeck{translate:none!important;}
+@media(max-width:760px),(max-height:480px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock{transform:translateX(-50%)!important;}#m11RegionIntel{font-size:11px;}}

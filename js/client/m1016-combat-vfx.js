@@ -11,7 +11,7 @@
  const groups=new Map(),skillLabels=new Map(),lastImpacts=new Map(),timers=new Set();
  let generation=0;
  const now=()=>performance.now();
- const motionOff=()=>window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches||false;
+ const motionOff=()=>document.body.dataset.liveMotion==='reduce';
  const active=()=>!document.hidden&&!board.classList.contains('formation-board')
   && ['game','test'].includes(document.body.dataset.appMode);
  function schedule(node,ms,done){
@@ -80,6 +80,7 @@
   for(const e of events.slice(-48)){
    if(e?.type==='vfx-skill')skill(e);
    else if(e?.type==='vfx-damage'||e?.type==='vfx-heal')damageOrHeal(e);
+   else if(e?.type==='vfx-block'){const pos=locationOf(e);if(pos){const node=makeNode('m1016-vfx-skill-label',pos);node.textContent=e.reason;schedule(node,650);}}
   }
   // Resource bound for long battles with many periodic hits.
   while(layer.childElementCount>72)layer.firstElementChild?.remove();

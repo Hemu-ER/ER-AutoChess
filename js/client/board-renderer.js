@@ -37,7 +37,7 @@ function render(model){
   }else{
    if(e.parentElement!==cell){
     const prev=e.getBoundingClientRect();e._liveMove?.cancel();cell.appendChild(e);
-    if(!(placementUid!=null&&placementOrigins?.has(String(placementUid)))&&!document.hidden&&typeof e.animate==='function'&&!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){
+    if(!(placementUid!=null&&placementOrigins?.has(String(placementUid)))&&!document.hidden&&typeof e.animate==='function'&&!(document.body.dataset.liveMotion?document.body.dataset.liveMotion==='reduce':window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)){
      const next=e.getBoundingClientRect(),dx=prev.left+prev.width/2-next.left-next.width/2,dy=prev.bottom-next.bottom,scale=next.height?prev.height/next.height:1;
      if(dx||dy||Math.abs(scale-1)>.01){e._liveMove=e.animate([{transform:`translate(${dx}px,${dy}px) scale(${scale})`},{transform:'translate(0,0) scale(1)'}],{duration:190,easing:'ease-out'});}
     }
@@ -51,11 +51,14 @@ function render(model){
   e._liveUnit=u;
   if(placementUid!=null)m1015AnimatePlacement(e,placementUid,'board');
   updateTooltip(u);
-  if(e.dataset.ownedDrag){const equipped=owned.find(o=>String(o.uid)===e.dataset.ownedDrag);if(equipped){const signature=JSON.stringify(equipped.equipment||[]);if(e._equipmentSignature!==signature){const previous=e.querySelector('.live-equip-slots');if(previous)previous.outerHTML=equippedSlots(equipped);else e.insertAdjacentHTML('beforeend',equippedSlots(equipped));bindItemTooltips(e);e._equipmentSignature=signature}}}
+  if(e.dataset.ownedDrag){const equipped=owned.find(o=>String(o.uid)===e.dataset.ownedDrag);if(equipped){const signature=JSON.stringify(equipped.equipment||[]);if(e._equipmentSignature!==signature){const changed=e._equipmentSignature!==undefined;const previous=e.querySelector('.live-equip-slots');if(previous)previous.outerHTML=equippedSlots(equipped);else e.insertAdjacentHTML('beforeend',equippedSlots(equipped));bindItemTooltips(e);e._equipmentSignature=signature;if(changed)root.LIVEHudMotion?.equip(e);}}}
   if((liveHitUntil.get(u.id)||0)>performance.now()){e.classList.add('live-hit-flash');if(!e.querySelector('.live-hit-spark')){const spark=document.createElement('span');spark.className='live-hit-spark';spark.textContent='✕';e.appendChild(spark)}}else{e.classList.remove('live-hit-flash');e.querySelector('.live-hit-spark')?.remove()}
   e.classList.toggle('live-attack-flash',(liveAttackUntil.get(u.id)||0)>performance.now());
  }
- for(const [id,e] of existing)if(!alive.has(id))e.remove();
+ for(const [id,e] of existing)if(!alive.has(id)){
+  if(appMode==='game'&&['combat','result'].includes(phase)&&hasBattle)root.LIVEBattleMotion?.depart(e);
+  e.remove();
+ }
 
 }
 

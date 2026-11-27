@@ -11,7 +11,8 @@
   const settings={
     volume:bounded(saved.volume,0,100,100),
     muted:!!saved.muted,
-    uiScale:bounded(saved.uiScale,80,120,100)
+    uiScale:bounded(saved.uiScale,80,120,100),
+    motion:['auto','on','reduce'].includes(saved.motion)?saved.motion:'on'
   };
   window.LIVEAudioSettings=settings;
   const persist=()=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings))}catch(_){}};
@@ -22,6 +23,7 @@
     if(mute)mute.checked=settings.muted;
     if(scale)scale.value=String(settings.uiScale);
     if(scaleValue)scaleValue.textContent=settings.uiScale+'%';
+    if(motion)motion.value=settings.motion;window.LIVEHudMotion?.setMode(settings.motion);
   }
   const overlay=document.createElement('section');
   overlay.id='liveSettingsOverlay';overlay.hidden=true;
@@ -35,7 +37,7 @@
     <section class="m1011-settings-section" aria-label="화면 설정">
       <div class="m1011-setting-row"><label for="m1011UiScale">인터페이스 크기</label><output id="m1011ScaleValue">100%</output></div>
       <input type="range" id="m1011UiScale" min="80" max="120" step="5" value="100">
-      <button type="button" class="m1011-screen-btn" id="m1011Fullscreen">전체 화면 전환</button>
+      <label class="m1011-setting-row">화면 움직임 <select id="m11MotionMode"><option value="auto">시스템 설정</option><option value="on">애니메이션 켜기</option><option value="reduce">움직임 줄이기</option></select></label><button type="button" class="m1011-screen-btn" id="m1011Fullscreen">전체 화면 전환</button>
     </section>
     <div class="m1011-settings-footer"><small>설정은 이 브라우저에 저장돼. ESC로 게임에 돌아갈 수 있어.</small><button type="button" id="m1011Back">게임으로 돌아가기</button></div>
     <section class="m1011-forfeit" id="m1011Forfeit" aria-label="게임 포기">
@@ -48,7 +50,7 @@
   document.body.appendChild(overlay);
   const get=id=>overlay.querySelector('#'+id);
   const volume=get('m1011Volume'),volumeValue=get('m1011VolumeValue'),mute=get('m1011Mute');
-  const scale=get('m1011UiScale'),scaleValue=get('m1011ScaleValue');
+  const scale=get('m1011UiScale'),scaleValue=get('m1011ScaleValue'),motion=get('m11MotionMode');
   const forfeitSection=get('m1011Forfeit'),confirmBox=get('m1011ForfeitConfirm');
   const forfeitStart=get('m1011ForfeitStart'),forfeitCancel=get('m1011ForfeitCancel');
   const forfeitCountdown=get('m1011ForfeitCountdown'),error=get('m1011SettingsError');
@@ -92,6 +94,7 @@
   volume.addEventListener('input',()=>{settings.volume=Number(volume.value);persist();applySettings()});
   mute.addEventListener('change',()=>{settings.muted=mute.checked;persist();applySettings()});
   scale.addEventListener('input',()=>{settings.uiScale=Number(scale.value);persist();applySettings()});
+  motion.addEventListener('change',()=>{settings.motion=motion.value;persist();applySettings()});
   get('m1011Fullscreen').addEventListener('click',async()=>{
     try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
     catch(e){error.hidden=false;error.textContent='전체 화면을 사용할 수 없어: '+(e?.message||'브라우저 제한');}

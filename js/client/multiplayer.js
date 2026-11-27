@@ -53,7 +53,7 @@
     for(const evt of ['pointerup','pointercancel','lostpointercapture'])head.addEventListener(evt,()=>drag=null);
     panel.querySelector('.live-chat-toggle').addEventListener('click',()=>{const collapsed=panel.classList.toggle('live-chat-collapsed');panel.querySelector('.live-chat-toggle').textContent=collapsed?'+':'−'});
   }
-  makeMovable(dock);makeMovable(teamDock);
+  dock.querySelector('.live-chat-head').removeAttribute('data-drag-handle');dock.querySelector('.live-chat-toggle').addEventListener('click',()=>{const collapsed=dock.classList.toggle('live-chat-collapsed');dock.querySelector('.live-chat-toggle').textContent=collapsed?'+':'−'});makeMovable(teamDock);
   function drawTeamChat(){const g=room?.game,active=g?.phase==='special'&&g.specialType==='experiment'&&g.experimentId==='bomb'&&!!g.bombTeamId;teamDock.hidden=!active;if(!active)return;$('#liveTeamMessages').innerHTML=(g.teamMessages||[]).map(m=>`<div><b>${safe(m.name)}</b>: ${safe(m.text)}</div>`).join('');$('#liveTeamMessages').scrollTop=$('#liveTeamMessages').scrollHeight}
 
   const notice=t=>{$('#liveNotice').textContent=t};

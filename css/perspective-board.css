@@ -2,15 +2,14 @@
 .board-shell{position:relative;isolation:isolate;min-width:0;overflow:visible;background:transparent;border:0;padding:0;}
 #board.live-perspective{display:block;position:relative;isolation:isolate;width:100%;height:clamp(300px,45vh,560px);min-width:0;margin:0;overflow:visible;background:transparent;}
 #board.live-perspective::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 60%,#273d4266,transparent 72%);}
-body[data-live-arena-visible="1"] #board.live-perspective.combat-board::before{background:linear-gradient(#09131b99,#09131bc9),var(--live-floor-url) center/cover no-repeat;filter:saturate(.55);opacity:.82;mask-image:radial-gradient(ellipse at center,#000 35%,transparent 76%);}
-#board .live-floor{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 15px 18px #000a);}
-.live-floor-left,.live-floor-right{fill:#14252e;stroke:#50666a;stroke-width:1;}
-.live-floor-front{fill:#25363c;stroke:#71817f;stroke-width:1;}
-.live-floor-top{fill:#24373b;stroke:#99b5ae;stroke-width:1.5;}
+#board .live-floor{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;filter:drop-shadow(0 18px 22px #0009);}
+.live-floor-left,.live-floor-right{fill:#122a37;stroke:#48778c;stroke-width:1;}
+.live-floor-front{fill:url(#liveFloorSide);stroke:#70a9b8;stroke-width:1;}
+.live-floor-top{fill:url(#liveFloorTexture);stroke:#9bdfef;stroke-width:1.25;}
 #board.live-perspective .cell{position:absolute;overflow:visible;pointer-events:none;background:none;min-width:0;border:0;}
 #board.live-perspective .cell[hidden]{display:none!important;}
 #board .live-tile{position:absolute;inset:0;clip-path:var(--tile-poly);background:#91b3a908;pointer-events:auto;cursor:crosshair;}
-.live-floor-grid{fill:none;stroke:#78968e;stroke-width:1;opacity:.58;}
+.live-floor-grid{fill:none;stroke:#a0d4e4;stroke-width:.8;opacity:.48;}
 .live-floor-divider{fill:none;stroke:#d9b08d;stroke-width:1.6;stroke-dasharray:5 4;}
 #board .cell.teamB .live-tile{background:#b0857817;}
 #board .cell .live-tile:hover,#board .cell.drag-target .live-tile,#board .cell.role-synergy-zone .live-tile{background:#8ed5ba65;}
@@ -22,8 +21,7 @@ body[data-live-arena-visible="1"] #board.live-perspective.combat-board::before{b
 #board.live-perspective .sd-image{display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 4px 4px #0009);}
 #board.live-perspective .ground-ring{left:calc(50% - var(--ring-w)/2);right:auto;bottom:calc(var(--ring-h)/-2);width:var(--ring-w);height:var(--ring-h);background:radial-gradient(ellipse,#0009,transparent 75%);border:1px solid currentColor;box-shadow:none;opacity:.6;}
 #board.live-perspective .unit-hud.compact-hud{left:calc(50% - var(--hud-w)/2);right:auto;width:var(--hud-w);top:var(--hud-top,-12px);bottom:auto;grid-template-columns:14px minmax(0,1fr);z-index:15;}
-#board.live-perspective .unit>.live-equip-slots{bottom:-16px!important;left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;}
-#board.live-perspective .unit:focus-visible{outline:1px solid #c5e9df;outline-offset:2px;}
+#board.live-perspective .unit>.live-equip-slots{left:50%;right:auto;transform:translateX(-50%);white-space:nowrap;}
 /* Do not let the rectangular cell outline or inset shadow leak outside its polygon. */
 #board.live-perspective .cell.drag-target{outline:none!important;box-shadow:none!important;}
 /* One central arena column; existing side HUDs are fixed, not grid children. */
@@ -32,3 +30,27 @@ body[data-app-mode="game"] .game-board-row>.board-shell{width:100%;height:100%;m
 body[data-app-mode="game"] #board.live-perspective{height:100%;width:100%;}
 @media(min-width:851px){body[data-app-mode="game"] .game-board-row{width:min(1120px,calc(100vw - 390px))!important;}}
 @media(max-width:850px){body[data-app-mode="game"] .game-board-row{width:100%!important;}}
+
+/* M11 focus, equipment and interaction */
+body[data-app-mode=game] #board.live-perspective .unit{border:0!important;box-shadow:none!important;outline:none!important;background:transparent!important;}
+body[data-app-mode=game] #board.live-perspective .unit:focus-visible .ground-ring{outline:2px solid #d9f0de;}
+body[data-app-mode=game] #board.live-perspective .unit>.live-equip-slots{display:none!important;}
+body[data-app-mode=game] #board.live-perspective .unit.m11-inspected>.live-equip-slots{display:flex!important;bottom:-38px!important;gap:3px!important;z-index:21;}
+body[data-app-mode=game] #board.live-perspective .unit.m11-inspected .live-equip-slot{width:32px!important;height:32px!important;background:#162d29!important;border:1px solid #9ac7b7!important;}
+body[data-app-mode=game] #board.live-perspective .unit.m11-inspected .live-equip-slot img{width:29px!important;height:29px!important;}
+body[data-app-mode=game] #board.live-perspective .unit.m11-inspected .live-equip-slot.empty{display:none!important;}
+body[data-app-mode=game] #board.live-perspective.m11-focus .unit:not(.m11-inspected){opacity:.21!important;}
+body[data-app-mode=game] #board.live-perspective .unit.m11-inspected .ground-ring{color:#f6d699;border:2px solid currentColor;opacity:1;box-shadow:0 0 12px #e6cc8988;}
+body[data-app-mode=game] #board.live-perspective .cell:has(.unit.m11-inspected){z-index:99!important;}
+#board.live-perspective .unit{transition:opacity 150ms ease-out;}
+#board.live-perspective .unit:hover .sd-image,#board.live-perspective .unit.m11-inspected .sd-image{filter:drop-shadow(0 0 3px #d8edc2aa) drop-shadow(0 4px 4px #0009);}
+#board.live-perspective .unit:hover .ground-ring{opacity:1;}
+#board.live-perspective .unit.m11-inspected .live-equip-slots{animation:liveHudIn 150ms ease-out;}
+#board.live-perspective .unit.m11-inspected .live-equip-slots:has(.live-equip-slot:not(.empty)){padding:3px;background:#10221ed9;border:1px solid #8fae9877;}
+body[data-live-motion=reduce] #board.live-perspective .unit{transition:none;}body[data-live-motion=reduce] #board.live-perspective .unit.m11-inspected .live-equip-slots{animation:none;}
+
+.live-floor-shade{fill:url(#liveFloorShade);stroke:none;}
+.live-floor-marks{fill:none;stroke:#d8c9a0;stroke-width:2;opacity:.65;}
+
+#board.live-perspective .unit .sd-image{animation:none!important;translate:none!important;}
+#board.live-perspective .unit .ground-ring{animation:none!important;scale:1!important;}

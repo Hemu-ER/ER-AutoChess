@@ -114,19 +114,4 @@
  const observer=new MutationObserver(()=>{if(!scanQueued){scanQueued=true;requestAnimationFrame(scan)}});
  function start(){observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['title','aria-label']});scan();setInterval(choiceUi,650)}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
- // Low-overhead effects fed by the deterministic engine; never infer execution from generic death.
- let layer=null,previousFx=0;
- function emit(event){
-  if(!event||!['attack','execute'].includes(event.type)||document.body.dataset.appMode!=='game')return;
-  const t=performance.now();if(event.type==='attack'&&t-previousFx<35)return;previousFx=t;
-  const a=boardView.center(event.x,event.y),b=boardView.center(event.toX,event.toY);const at=event.type==='execute'?a:b;
-  if(!at||!a)return;
-  if(!layer){layer=document.createElement('div');layer.id='m1007AttackLayer';document.body.appendChild(layer)}
-  const node=document.createElement('span');node.className=event.type==='execute'?'m1007-execute':'m1007-shot'+(event.kind==='skill'?' skill':'');
-  node.style.left=a.x+'px';node.style.top=a.y+'px';
-  if(event.type==='execute'){node.style.left=at.x+'px';node.style.top=at.y+'px'}
-  else{const angle=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI,length=Math.hypot(b.y-a.y,b.x-a.x);node.style.setProperty('--angle',angle+'deg');node.style.setProperty('--length',Math.max(.3,length/52).toFixed(2));}
-  layer.appendChild(node);node.addEventListener('animationend',()=>node.remove(),{once:true});setTimeout(()=>node.remove(),1000);
- }
- root.LIVEAttackFX={emit};
 })(globalThis);
