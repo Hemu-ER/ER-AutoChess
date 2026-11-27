@@ -8,42 +8,28 @@
   let session=sessionStorage.getItem('live_session')||'',username='',nickname='',token='',playerId='',room=null,events=null,poller=null,lastTeam='',openedGame=false,clock=null,lastGameVersion=0;
   const $=s=>document.querySelector(s), safe=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   document.body.classList.add('live-gated');
-  const gate=document.createElement('section');gate.id='liveGate';gate.innerHTML=`<div class="live-gate-card">
-   <div class="live-eyebrow">AGLAIA // L.I.V.E.</div><h1>LIVE</h1><p class="live-sub">Lumia Island Virtual Experiment</p>
-   <div id="liveAuth" class="m1009-panel" aria-label="계정 인증">
-    <div class="m1009-section-head"><span>ACCOUNT ACCESS</span><h2 id="authTitle">로그인</h2><p>계정으로 접속하면 현재 참가 중인 경기도 이어서 진행할 수 있습니다.</p></div>
-    <label class="m1009-field">아이디<input id="authId" autocomplete="username" placeholder="아이디 3자 이상" maxlength="20"></label>
-    <label class="m1009-field">비밀번호<input id="authPw" type="password" autocomplete="current-password" placeholder="비밀번호 8자 이상"></label>
-    <div id="registerFields" hidden><label class="m1009-field">닉네임<input id="authNickname" placeholder="사용할 닉네임 (2~16자)" maxlength="16"></label></div>
-    <div class="m1009-auth-actions"><button id="authLogin" class="live-primary">로그인</button><button id="authRegister" type="button">회원가입 화면</button><button id="authBack" type="button" hidden>로그인으로 돌아가기</button></div>
-    <small class="m1009-fineprint">계정 데이터는 현재 연결된 서버에 저장됩니다.</small>
-   </div>
-   <div id="liveRooms" class="m1009-panel" hidden>
-    <div class="m1009-account-row"><span><small>CONNECTED ACCOUNT</small><b id="liveAccount"></b></span><button id="liveLogout" type="button">로그아웃</button></div>
-    <div class="m1009-nickname-row"><input id="liveNickname" maxlength="16" placeholder="닉네임 변경 (2~16자)" aria-label="닉네임 변경"><button id="liveNicknameSave">변경</button></div>
-    <div class="m1009-section-head"><span>MATCH LOBBY / ONLINE</span><h2>멀티플레이 로비</h2><p>새로운 대기실을 만들거나 진행 전인 방을 찾아 입장할 수 있습니다.</p></div>
-    <div class="m1009-tabs" role="tablist" aria-label="로비 메뉴">
-      <button type="button" id="m1009TabCreate" role="tab" aria-selected="true" aria-controls="m1009CreatePanel">방 만들기</button>
-      <button type="button" id="m1009TabBrowse" role="tab" aria-selected="false" aria-controls="m1009BrowsePanel">방 찾기</button>
-    </div>
-    <section id="m1009CreatePanel" role="tabpanel" aria-labelledby="m1009TabCreate">
-      <div class="m1009-field-grid"><label class="m1009-field">방 제목<input id="liveRoomTitle" maxlength="32" placeholder="방 제목 (최대 32자)"></label>
-      <label class="m1009-field">최대 참가 인원<select id="liveMaxPlayers" aria-label="최대 경기 인원"><option value="2" selected>2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option value="8">8명</option></select></label></div>
-      <label class="m1009-field">방 공개 방식<select id="liveRoomAccess"><option value="public">공개 방 · 비밀번호 없이 입장</option><option value="private">비밀번호 방 · 비밀번호를 알아야 입장</option></select></label>
-      <label class="m1009-field" id="livePrivateCreateFields" hidden>방 비밀번호<input id="liveRoomPassword" type="password" autocomplete="new-password" minlength="4" maxlength="12" placeholder="비밀번호 4~12자"></label>
-      <p class="m1009-hint">비밀번호 방은 방 찾기에 잠금 표시로 나타나며, 입장하려면 비밀번호가 필요합니다.</p>
-      <button class="live-primary m1009-full-action" id="liveCreate">대기실 만들기</button>
-    </section>
-    <section id="m1009BrowsePanel" role="tabpanel" aria-labelledby="m1009TabBrowse" hidden>
-      <div class="m910-room-browser"><div class="m910-room-browser-head"><b>참가 가능한 대기실</b><button id="liveRoomRefresh" type="button">새로고침 ↻</button></div>
-      <div class="m1009-browse-filters" role="group" aria-label="방 필터"><button type="button" data-m1009-filter="all" aria-pressed="true">전체</button><button type="button" data-m1009-filter="public" aria-pressed="false">공개</button><button type="button" data-m1009-filter="private" aria-pressed="false">비밀번호</button></div>
-      <div id="livePublicRooms" class="m910-room-results" role="list" aria-live="polite">방 목록을 확인하는 중입니다.</div></div>
-    </section>
-   </div>
-   <div id="liveWaiting" class="m1009-panel" hidden><div class="live-line"><h2 id="liveRoomName"></h2><button id="liveLeave">퇴장</button></div><div class="m1009-room-state" id="m1009RoomAccessState"></div><div id="liveMemberList" class="m1019-slots" aria-label="대기실 참가 슬롯"></div><div id="m1019BotTools" class="m1019-bot-tools" hidden><button id="m1019AddBot" type="button">+ AI 봇 추가</button><small>빈 슬롯은 사람이 참가할 수 있습니다. 봇은 방장만 관리합니다.</small></div><div class="live-line"><button id="liveReady" class="live-primary">준비하기</button><button id="liveStart" hidden>게임 시작 (방장)</button></div><p class="live-help">전원 준비 후 방장이 시작하면 게임 화면으로 이동합니다.</p></div>
-   <div id="m1009PasswordDialog" class="m1009-password-mask" hidden><div class="m1009-password-card" role="dialog" aria-modal="true" aria-labelledby="m1009PasswordTitle"><span class="m1009-kicker">PRIVATE MATCH</span><h2 id="m1009PasswordTitle">비밀번호 방 입장</h2><p id="m1009PasswordRoomName"></p><label class="m1009-field">방 비밀번호<input id="m1009JoinPassword" type="password" autocomplete="off" minlength="4" maxlength="12" placeholder="비밀번호 4~12자"></label><p id="m1009PasswordError" class="m1009-dialog-error" role="alert" hidden></p><div class="live-line"><button id="m1009CancelPassword" type="button">취소</button><button id="m1009ConfirmPassword" type="button" class="live-primary">입장하기</button></div></div></div>
-   <div class="live-qa-link" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(151,183,177,.2)"><a href="/qa.html" style="display:block;text-align:center;color:#9fdfc9;text-decoration:none;font-weight:700;font-size:.85rem;letter-spacing:.05em">◇ 오프라인 QA LAB · 전투 / 미니게임 시험 →</a><small style="display:block;text-align:center;margin-top:7px;opacity:.55">로그인 없이 실행 · 실제 계정·게임 결과와 분리</small></div>
-   <p id="liveNotice" role="status"></p></div>`;document.body.appendChild(gate);
+  const gate=document.createElement('section');gate.id='liveGate';gate.innerHTML=`<div class="live-gate-card m11-gate"><header class="m11-top"><div class="m11-brand">L.I.V.E.<small>LUMIA ISLAND VIRTUAL EXPERIMENT</small></div><div class="m11-topright"><span class="m11-status">● SYSTEM ONLINE</span><button id="m11Settings">환경설정</button></div></header><div class="m11-auth-layout"><div class="m11-auth-art"><div class="m11-kicker">AGLAIA RESEARCH DIVISION</div><div class="m11-display">L.I.V.E<span>.</span></div><h1>루미아섬 가상실험</h1><p>새로운 실험을 시작하십시오.</p><div class="m11-auth-foot"><span>VIRTUAL EXPERIMENT SYSTEM</span><span>ACCESS / 01</span></div></div><div aria-label="계정 인증" class="m1009-panel" id="liveAuth"><div class="m11-index">01 / ACCESS TERMINAL</div>
+<div class="m1009-section-head"><span>ACCOUNT ACCESS</span><h2 id="authTitle">로그인</h2></div>
+<label class="m1009-field">아이디<input autocomplete="username" id="authId" maxlength="20" placeholder="아이디 3자 이상"/></label>
+<label class="m1009-field">비밀번호<input autocomplete="current-password" id="authPw" placeholder="비밀번호 8자 이상" type="password"/></label>
+<div hidden="" id="registerFields"><label class="m1009-field">닉네임<input id="authNickname" maxlength="16" placeholder="사용할 닉네임 (2~16자)"/></label></div>
+<div class="m1009-auth-actions"><button class="live-primary" id="authLogin">로그인</button><button id="authRegister" type="button">회원가입 화면</button><button hidden="" id="authBack" type="button">로그인으로 돌아가기</button></div>
+<small class="m1009-fineprint">계정 정보는 접속한 서버에 저장됩니다.</small>
+</div></div><div class="m1009-panel" hidden="" id="liveRooms"><div class="m11-shell"><nav class="m11-nav"><div class="m11-kicker">RESEARCH TERMINAL</div><button class="active" id="m11Home">개인 연구실</button><button id="m11Browse">실험실 목록</button><button data-future="실험체 분석">실험체 분석 <small>예정</small></button><button data-future="실험 기록">실험 기록 <small>예정</small></button><button data-future="업적 · 꾸미기">업적 · 꾸미기 <small>예정</small></button><div class="m11-nav-foot">AGLAIA / M11-06</div></nav><main class="m11-main"><div class="m11-heading"><div><div class="m11-kicker">RESEARCH DIVISION / PERSONAL</div><h1 id="m11PageTitle">개인 연구실</h1></div><span class="m11-status">● 연구원 접속 중</span></div><div class="m11-home-grid"><div class="m11-left"><section class="m11-hero"><div class="m11-kicker">LUMIA SIMULATION / STANDBY</div><h2>가상실험 개시</h2><p>새로운 전투 환경을 관측하고 실험체의 가능성을 탐구하십시오.</p><div class="m11-actions"><button class="live-primary" id="m11Create">실험실 개설 →</button><button id="m11Join">실험실 참가</button></div></section><section class="m11-panel m11-record"><div class="m11-kicker">EXPERIMENT LOG</div><h2>최근 실험 기록</h2><p>실험 기록 시스템은 후속 개발 예정입니다.</p></section></div><section class="m11-panel m11-profile"><div class="m11-kicker">RESEARCHER IDENTIFICATION</div><div class="m11-id-art"><svg aria-hidden="true" height="100" viewBox="0 0 120 120" width="100"><path d="M60 5 108 32 108 88 60 115 12 88 12 32Z" fill="#102a35" stroke="#7eaaa9"></path><circle cx="60" cy="42" fill="#8eb4b5" r="15"></circle><path d="M29 85Q30 59 60 59Q90 59 91 85Z" fill="#8eb4b5"></path></svg><span>RESEARCHER / ID</span></div><div id="m11LobbyIdentity"><div class="m1009-account-row"><span><small>CONNECTED ACCOUNT</small><b id="liveAccount"></b></span><button id="liveLogout" type="button">로그아웃</button></div></div><div id="m11Nick"><div class="m1009-nickname-row"><input aria-label="닉네임 변경" id="liveNickname" maxlength="16" placeholder="닉네임 변경 (2~16자)"/><button id="liveNicknameSave">변경</button></div></div><div class="m11-profile-note"><label for="m11CardFinish">인증체 재질</label><select id="m11CardFinish"><option value="cyan">청록 합금</option><option value="gold">샴페인 골드</option><option value="violet">자수정</option></select><small>이 기기에서 계정별 저장 · 성장 및 해금은 추후 지원</small></div></section></div><section class="m11-panel m11-work" id="m11Work"><div id="m11Tabs"><div aria-label="로비 메뉴" class="m1009-tabs" role="tablist">
+<button aria-controls="m1009CreatePanel" aria-selected="true" id="m1009TabCreate" role="tab" type="button">방 만들기</button>
+<button aria-controls="m1009BrowsePanel" aria-selected="false" id="m1009TabBrowse" role="tab" type="button">방 찾기</button>
+</div></div><div id="m11Forms"><section aria-labelledby="m1009TabCreate" id="m1009CreatePanel" role="tabpanel">
+<div class="m1009-field-grid"><label class="m1009-field">방 제목<input id="liveRoomTitle" maxlength="32" placeholder="방 제목 (최대 32자)"/></label>
+<label class="m1009-field">최대 참가 인원<select aria-label="최대 경기 인원" id="liveMaxPlayers"><option value="2">2명</option><option value="3">3명</option><option value="4">4명</option><option value="5">5명</option><option value="6">6명</option><option value="7">7명</option><option selected="" value="8">8명</option></select></label></div>
+<label class="m1009-field">방 공개 방식<select id="liveRoomAccess"><option value="public">공개 방 · 비밀번호 없이 입장</option><option value="private">비밀번호 방 · 비밀번호를 알아야 입장</option></select></label>
+<label class="m1009-field" hidden="" id="livePrivateCreateFields">방 비밀번호<input autocomplete="new-password" id="liveRoomPassword" maxlength="12" minlength="4" placeholder="비밀번호 4~12자" type="password"/></label>
+<p class="m1009-hint">비밀번호 방은 방 찾기에 잠금 표시로 나타나며, 입장하려면 비밀번호가 필요합니다.</p>
+<button class="live-primary m1009-full-action" id="liveCreate">실험실 개설</button>
+</section><section aria-labelledby="m1009TabBrowse" hidden="" id="m1009BrowsePanel" role="tabpanel">
+<div class="m910-room-browser"><div class="m910-room-browser-head"><b>참가 가능한 대기실</b><button id="liveRoomRefresh" type="button">새로고침 ↻</button></div>
+<div aria-label="방 필터" class="m1009-browse-filters" role="group"><button aria-pressed="true" data-m1009-filter="all" type="button">전체</button><button aria-pressed="false" data-m1009-filter="public" type="button">공개</button><button aria-pressed="false" data-m1009-filter="private" type="button">비밀번호</button></div>
+<div aria-live="polite" class="m910-room-results" id="livePublicRooms" role="list">방 목록을 확인하는 중입니다.</div></div>
+</section></div></section></main></div></div><div class="m1009-panel" hidden="" id="liveWaiting"><main class="m11-wait"><div class="m11-kicker">SIMULATION ROOM / STANDBY</div><div id="m11WaitTitle"><div class="live-line"><h2 id="liveRoomName"></h2><button id="liveLeave">퇴장</button></div></div><div class="m11-wait-grid"><section><div class="m11-roster-head"><h2>참가 연구원</h2><span id="m11ReadyCount"></span></div><div id="m11Slots"><div aria-label="대기실 참가 슬롯" class="m1019-slots" id="liveMemberList"></div></div></section><aside class="m11-wait-side"><section class="m11-panel"><div class="m11-kicker">EXPERIMENT SETTINGS</div><h2>실험 환경</h2><div id="m11Access"><div class="m1009-room-state" id="m1009RoomAccessState"></div></div><div id="m11Capacity"></div><div class="m11-setting-row">실험 유형 <b>표준 가상실험</b></div><div id="m11Bots"><div class="m1019-bot-tools" hidden="" id="m1019BotTools"><button id="m1019AddBot" type="button">+ AI 봇 추가</button><small>빈 슬롯은 사람이 참가할 수 있습니다. 봇은 방장만 관리합니다.</small></div></div></section><section class="m11-panel"><div class="m11-kicker">RESEARCH PROTOCOL</div><h2>나의 연구 설정</h2><p>연구원 특화 프로토콜은 후속 개발 예정입니다.</p></section></aside></div><div class="m11-wait-footer" id="m11WaitActions"><p class="live-help">전원 준비 후 방장이 시작하면 게임 화면으로 이동합니다.</p><div class="live-line"><button class="live-primary" id="liveReady">준비하기</button><button hidden="" id="liveStart">게임 시작 (방장)</button></div></div></main></div><div class="m1009-password-mask" hidden="" id="m1009PasswordDialog"><div aria-labelledby="m1009PasswordTitle" aria-modal="true" class="m1009-password-card" role="dialog"><span class="m1009-kicker">PRIVATE MATCH</span><h2 id="m1009PasswordTitle">비밀번호 방 입장</h2><p id="m1009PasswordRoomName"></p><label class="m1009-field">방 비밀번호<input autocomplete="off" id="m1009JoinPassword" maxlength="12" minlength="4" placeholder="비밀번호 4~12자" type="password"/></label><p class="m1009-dialog-error" hidden="" id="m1009PasswordError" role="alert"></p><div class="live-line"><button id="m1009CancelPassword" type="button">취소</button><button class="live-primary" id="m1009ConfirmPassword" type="button">입장하기</button></div></div></div><div class="m11-bottom"><span>AGLAIA / RESEARCH NETWORK</span><p id="liveNotice" role="status"></p><a id="m11QA" href="/qa.html">QA LAB ↗</a></div></div>`;document.body.appendChild(gate);
   const dock=document.createElement('aside');dock.id='liveGameChat';dock.hidden=true;dock.innerHTML=`<div class="live-chat-head" data-drag-handle><b>채팅</b><span id="liveGameMembers"></span><button type="button" class="live-chat-toggle" aria-label="채팅 접기">−</button></div><div class="live-chat-body"><div id="liveMessages" class="live-chat-log"></div><div class="live-chat-send"><input id="liveChatInput" maxlength="240" placeholder="채팅 입력"><button id="liveSend">전송</button></div></div>`;document.body.appendChild(dock);
   const teamDock=document.createElement('aside');teamDock.id='liveTeamChat';teamDock.hidden=true;teamDock.innerHTML=`<div class="live-chat-head" data-drag-handle><b>AGLAIA · 폭발물 해체 전용 채팅</b><button type="button" class="live-chat-toggle" aria-label="채팅 접기">−</button></div><div class="live-chat-body"><div id="liveTeamMessages" class="live-chat-log"></div><div class="live-chat-send"><input id="liveTeamChatInput" maxlength="240" placeholder="조원에게만 전송"><button id="liveTeamSend">전송</button></div></div>`;document.body.appendChild(teamDock);
   function makeMovable(panel){
@@ -80,10 +66,14 @@
   async function api(action,data={}){const res=await fetch('/api/'+action,{method:'POST',headers:{'content-type':'application/json','x-live-token':token,'x-live-session':session},body:JSON.stringify({...data,session})});const obj=await res.json();if(!res.ok)throw Error(obj.error||'요청 실패');return obj}
   const display=(part)=>{
    gate.dataset.screen=part;$('#liveAuth').hidden=part!=='auth';$('#liveRooms').hidden=part!=='rooms';$('#liveWaiting').hidden=part!=='waiting';
-   if(part==='rooms')showRoomTab(roomTab);else closePrivateJoin();
+   if(part==='rooms'){m11Page('home');showRoomTab(roomTab);}else closePrivateJoin();
   };
+  function m11Page(page){gate.dataset.page=page;$('#m11PageTitle').textContent=page==='home'?'개인 연구실':page==='create'?'실험실 개설':'실험실 목록';$('#m11Home').classList.toggle('active',page==='home'||page==='create');$('#m11Browse').classList.toggle('active',page==='browse');}
+  $('#m11Home').onclick=()=>m11Page('home');$('#m11Create').onclick=()=>{m11Page('create');showRoomTab('create')};$('#m11Browse').onclick=$('#m11Join').onclick=()=>{m11Page('browse');showRoomTab('browse')};
+  gate.querySelectorAll('[data-future]').forEach(b=>b.onclick=()=>notice(b.dataset.future+' 기능은 후속 개발 예정입니다.'));
+  $('#m11Settings').onclick=()=>{if(typeof window.LIVEOpenSettings==='function')window.LIVEOpenSettings();else notice('게임 환경설정은 실제 클라이언트에서 확인할 수 있습니다.');};
   function showRoomTab(tab){
-   roomTab=tab==='browse'?'browse':'create';
+   roomTab=tab==='browse'?'browse':'create';if(gate.dataset.page!=='home')m11Page(roomTab);
    for(const key of ['create','browse']){
     const active=roomTab===key,btn=$('#m1009Tab'+(key==='create'?'Create':'Browse'));
     btn.setAttribute('aria-selected',String(active));$('#m1009'+(key==='create'?'Create':'Browse')+'Panel').hidden=!active;
@@ -116,7 +106,8 @@
   setInterval(()=>{if(session&&!$('#liveRooms').hidden&&roomTab==='browse')refreshPublicRooms()},6000);
   $('#liveRoomRefresh').onclick=refreshPublicRooms;
   $('#livePublicRooms').addEventListener('click',e=>{const b=e.target.closest('[data-room-id]');if(!b)return;const roomEntry=roomDirectory.find(r=>r.roomId===b.dataset.roomId);if(!roomEntry)return;if(!roomEntry.isPublic)openPrivateJoin(roomEntry);else join('join',{roomId:roomEntry.roomId});});
-  function setIdentity(j){username=j.username;nickname=j.nickname||j.username;$('#liveAccount').textContent=nickname;$('#liveNickname').value=nickname;}
+  function setIdentity(j){username=j.username;nickname=j.nickname||j.username;$('#liveAccount').textContent=nickname;$('#liveNickname').value=nickname;let finish='cyan';try{finish=localStorage.getItem('live.profile.finish.'+username)||'cyan'}catch{}if(!['cyan','gold','violet'].includes(finish))finish='cyan';$('#m11CardFinish').value=finish;gate.dataset.finish=finish;}
+  $('#m11CardFinish').onchange=()=>{const finish=$('#m11CardFinish').value;gate.dataset.finish=finish;try{if(username)localStorage.setItem('live.profile.finish.'+username,finish)}catch{}};
   function showRoom(){
    if(!room)return;display('waiting');
    $('#liveRoomName').textContent=(room.displayName||'대기실')+' · '+room.players.length+'/'+room.maxPlayers+'명';
@@ -124,11 +115,13 @@
    const own=room.players.find(p=>p.id===playerId),host=own?.id===room.hostPlayerId;
    const slots=Array.from({length:room.maxPlayers},(_,i)=>room.players.find(p=>p.slot===i));
    $('#liveMemberList').innerHTML=slots.map((p,i)=>p?`<div class="m1019-slot ${p.isBot?'m1019-slot-bot':''}"><span class="m1019-slot-index">${String(i+1).padStart(2,'0')}</span><span class="m1019-slot-person"><b>${safe(p.name)}${p.id===room.hostPlayerId?' · 방장':''}</b><small>${p.isBot?'AI 봇':'사람'} · ${p.connected?'접속':'연결 중'} · ${p.ready?'준비 완료':'대기'}</small></span>${host&&p.isBot?`<button type="button" data-bot-remove="${safe(p.id)}" aria-label="${safe(p.name)} 제거">제거</button>`:''}</div>`:`<div class="m1019-slot m1019-slot-empty"><span class="m1019-slot-index">${String(i+1).padStart(2,'0')}</span><span class="m1019-slot-person"><b>빈 슬롯</b><small>사람 참가 또는 AI 봇 추가 가능</small></span></div>`).join('');
+   $('#m11ReadyCount').textContent='준비 '+room.players.filter(p=>p.ready&&p.connected).length+' / '+room.players.length;$('#m11Capacity').textContent='최대 참가 인원 · '+room.maxPlayers+'명';
+   $('#liveMemberList').querySelectorAll('.m1019-slot').forEach((el,i)=>{const p=slots[i];if(p){el.classList.toggle('m11-own',p.id===playerId);el.classList.toggle('m11-ready',p.ready&&p.connected);const v=document.createElement('div');v.className='m11-slot-art';v.innerHTML=p.isBot?'<span>AI</span>':'<svg viewBox="0 0 100 110" width="70" height="80"><path d="M50 5 92 30 92 80 50 105 8 80 8 30Z" fill="#16313a" stroke="#6e9ba0"/><circle cx="50" cy="39" r="13" fill="#82a7ac"/><path d="M24 80Q24 55 50 55Q76 55 76 80Z" fill="#82a7ac"/></svg>';el.prepend(v);}else{const v=document.createElement('div');v.className='m11-slot-art';v.textContent='+';el.prepend(v);}});
    $('#m1019BotTools').hidden=!host;
    $('#m1019AddBot').disabled=room.players.length>=room.maxPlayers;
-   $('#liveReady').textContent=own?.ready?'준비 취소':'준비하기';
+   $('#liveReady').textContent=own?.ready?'준비 취소':'준비 완료';
    const ready=room.players.length>=2&&room.players.every(p=>p.ready&&p.connected);
-   $('#liveStart').hidden=!host;$('#liveStart').disabled=!ready;
+   $('#liveStart').textContent='실험 개시';$('#liveStart').hidden=!host;$('#liveStart').disabled=!ready;
    notice(ready?'모두 준비 완료! 방장이 게임을 시작할 수 있습니다.':'참가자가 모두 준비하면 시작할 수 있습니다.');
    if(room.started)openGame();
   }

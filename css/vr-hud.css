@@ -121,8 +121,8 @@ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[
 body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #m809LiveHpStandings .m808-hp-player{border:0!important;border-bottom:1px solid #78b7cc29!important;background:none!important;box-shadow:none!important;padding:7px 0!important;border-radius:0!important;}
 body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel .live-item{border:0!important;border-bottom:1px solid #80b4c7!important;background:linear-gradient(180deg,transparent,#355c724f)!important;border-radius:0!important;}
 body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #liveItemsPanel header>small{display:none!important;}
-body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){border:0!important;background:none!important;padding:1px 0!important;color:#b4d4e4!important;}
-body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-synergies{column-gap:6px!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){border:1px solid #729ba366!important;background:#183743!important;color:#e6f4f5!important;border-radius:3px!important;max-width:100%!important;text-shadow:none!important;opacity:1!important;}
+body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-synergies{column-gap:3px!important;}
 body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card{clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%);}
 body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock .shop-card:not(:disabled):hover{background:linear-gradient(180deg,#315b70df,#152e40f5)!important;}
 /* Shared translation is sampled once per frame, never eased independently by legacy transitions. */
@@ -135,7 +135,7 @@ body[data-app-mode=game]:is([data-live-scene=duel],[data-live-scene=farm],[data-
 body[data-app-mode=game] .game-board-row .board-shell{pointer-events:none;overflow:visible!important;}
 body[data-app-mode=game] #board.live-perspective{pointer-events:none;overflow:visible!important;}
 body[data-app-mode=game] #board .live-tile,body[data-app-mode=game] #board .unit{pointer-events:auto;}
-body[data-app-mode=game] #currentSynergyPanel.current-synergy-panel{position:fixed!important;display:block!important;left:var(--hud-edge)!important;top:clamp(90px,14vh,300px)!important;bottom:auto!important;width:var(--hud-side)!important;max-height:44vh!important;overflow:auto!important;pointer-events:auto!important;transform:perspective(950px) rotateY(23deg)!important;z-index:8200!important;}
+body[data-app-mode=game] #currentSynergyPanel.current-synergy-panel{position:fixed!important;display:block!important;left:var(--hud-edge)!important;top:clamp(90px,14vh,300px)!important;bottom:auto!important;width:var(--hud-side)!important;max-height:60vh!important;overflow:auto!important;pointer-events:auto!important;transform:perspective(950px) rotateY(23deg)!important;z-index:8200!important;}
 body[data-app-mode=game] #currentSynergyPanel .synergy-strip{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important;}
 /* Fixed child panels must not inherit the stage transform. The controller reparents synergy to body. */
 body[data-app-mode=game] #liveBattleDeck{width:62vw!important;max-width:none!important;bottom:2vh!important;min-height:0!important;padding:clamp(8px,1.1vh,23px) clamp(12px,1.3vw,42px)!important;border:0!important;border-top:1px solid #79adbf!important;border-radius:0!important;box-shadow:none!important;background:linear-gradient(180deg,#142c3cba,#081722d9)!important;translate:0 var(--live-hud-y,0px)!important;}
@@ -147,7 +147,7 @@ body[data-app-mode=game] #gameBottomDock .m910-focus>small{display:none!importan
 body[data-app-mode=game] #gameBottomDock .dock-side{z-index:40;}
 body[data-app-mode=game] #gameBottomDock .dock-shop{gap:clamp(6px,.6vw,24px)!important;}
 body[data-app-mode=game] #gameBottomDock .shop-name{font-size:clamp(13px,1.02vw,31px)!important;}
-body[data-app-mode=game] #gameBottomDock .shop-meta-label>small,body[data-app-mode=game] #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){font-size:clamp(10px,.75vw,24px)!important;}
+body[data-app-mode=game] #gameBottomDock .shop-meta-label>small,body[data-app-mode=game] #gameBottomDock :is(.shop-aff-chip,.shop-synergy-chip){font-size:clamp(12px,.86vw,24px)!important;}
 body[data-app-mode=game] #gameBottomDock :is(.bench-unit,.bench-empty-slot){height:clamp(51px,8.6vh,184px)!important;}
 body[data-app-mode=game] #gameBottomDock .bench-row{min-height:clamp(51px,8.6vh,184px)!important;}
 body[data-app-mode=game] #liveItemsPanel .live-item img{width:clamp(23px,2.1vw,66px)!important;height:clamp(23px,2.1vw,66px)!important;}
@@ -190,7 +190,7 @@ body[data-app-mode=game] #roundModePanel{position:fixed!important;left:50%!impor
 #roundModePanel .m11-round-side small{font-size:clamp(10px,.65vw,20px);color:#91b2bf;}
 #roundModePanel .m11-round-side b{font-size:clamp(11px,.9vw,28px);color:#dfedf2;}
 #roundModePanel [data-scout-slot]{pointer-events:auto;cursor:pointer;}
-#roundModePanel .m11-round-command{display:flex;justify-content:center;align-items:center;gap:6px;pointer-events:none;min-height:28px;}
+#roundModePanel .m11-round-command{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px;pointer-events:none;min-height:28px;}
 #roundModePanel .m11-round-controls{display:flex;gap:5px;align-items:center;pointer-events:auto;}
 #roundModePanel .round-actions{position:static!important;transform:none!important;display:flex!important;align-items:center;gap:4px;visibility:visible!important;pointer-events:auto!important;}
 #roundModePanel .round-actions:empty{display:none!important;}
@@ -198,13 +198,13 @@ body[data-app-mode=game] #roundModePanel{position:fixed!important;left:50%!impor
 body[data-app-mode=game] #roundModePanel .round-actions .m11-ready{background:#a2d6d9!important;background-image:none!important;border-image:none!important;color:#102c35!important;font-weight:800!important;}
 #roundModePanel.m11-round-collapsed .m11-round-face{display:none;}
 #roundModePanel.m11-round-collapsed{background:transparent!important;}
-#m11RoundEffects{position:fixed;z-index:8350;left:clamp(12px,2.4vw,90px);top:clamp(48px,7vh,150px);font-size:clamp(11px,.78vw,24px);color:#c3d7e0;max-width:min(320px,25vw);}
+#m11RoundEffects{position:relative;z-index:8350;pointer-events:auto;font-size:clamp(12px,.82vw,24px);color:#d9f0f3;max-width:100%;flex:none;}
 #m11RoundEffects[hidden]{display:none!important;}
 #m11RoundEffects summary{cursor:pointer;background:#17313fe6;padding:5px 9px;border-bottom:1px solid #648f9f;}
-#m11RoundEffects details>div{position:absolute;top:100%;left:0;width:min(320px,40vw);background:#10232ff5;padding:9px;border:1px solid #648f9f;display:grid;gap:6px;}
+#m11RoundEffects details>div{position:absolute;top:100%;right:0;width:min(350px,85vw);background:#10232ff5;padding:9px;border:1px solid #648f9f;display:grid;gap:6px;}
 #m11RoundEffects :is(.m901-owned-augments,.m808-buff-hud){display:flex!important;flex-wrap:wrap;gap:4px;position:static!important;transform:none!important;margin:0!important;}
 #currentSynergyPanel .m910-focus{position:relative;margin:7px 0;}
-#currentSynergyPanel .m910-focus-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:24vh;overflow:auto;}
+#currentSynergyPanel .m910-focus-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;max-height:36vh;overflow:auto;}
 #currentSynergyPanel .m910-focus button{font-size:inherit;padding:5px;white-space:normal;}
 #currentSynergyPanel .m910-focus>small{display:none;}
 body[data-app-mode=game] #gameBottomDock .m11-interest{font-size:clamp(11px,.8vw,26px);color:#b5d3c8;}
@@ -219,7 +219,7 @@ body[data-app-mode=game]:not([data-live-hud-phase]):is(body) :is(#roundModePanel
 body[data-app-mode=game]:is([data-live-hud-phase=idle],[data-live-hud-phase=intro],[data-live-hud-phase=augment-sync],[data-live-hud-phase=ended]) :is(#roundModePanel,#m11RoundEffects,#m11Identity,#m11Wallet,#gameBottomDock,#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#m809DamagePanel,#liveBattleDeck,#liveGameChat,#liveTeamChat,#m901Scouting,#m1017StageIntel),
 body:has(#liveRoundIntro,#liveArenaTransition.live-animating,#liveMatchEnd:not([hidden]),#liveGate:not([hidden]),#live-intro,.m807-loading:not([hidden])) :is(#roundModePanel,#m11RoundEffects,#m11Identity,#m11Wallet,#gameBottomDock,#currentSynergyPanel,#liveItemsPanel,#m809LiveHpStandings,#m809DamagePanel,#liveBattleDeck,#liveGameChat,#liveTeamChat,#m901Scouting,#m1017StageIntel){display:none!important;visibility:hidden!important;pointer-events:none!important;}
 body[data-app-mode=game]:is([data-live-hud-phase=intro],[data-live-hud-phase=augment-sync]) #board,body:has(#liveRoundIntro,#liveArenaTransition.live-animating) #board{visibility:hidden!important;pointer-events:none!important;}
-@media(max-width:760px){#roundModePanel .m11-round-face{padding:4px 5%;}#m11RoundEffects{top:8vh;left:4px;max-width:29vw;}#gameBottomDock .dock-economy{align-items:center;}#gameBottomDock .dock-mastery{font-size:10px;}}
+@media(max-width:760px){#roundModePanel .m11-round-face{padding:4px 5%;} #m11RoundEffects{max-width:100%;}#gameBottomDock .dock-economy{align-items:center;}#gameBottomDock .dock-mastery{font-size:10px;}}
 
 body[data-app-mode=game] #roundModePanel .m11-round-command{min-height:0!important;}
 body[data-app-mode=game] #roundModePanel .m11-round-command .round-actions{order:0;}
@@ -241,3 +241,10 @@ body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[
 body[data-app-mode=game] #gameBottomDock .dock-shop{transform:none!important;}
 body[data-app-mode=game] #liveBattleDeck{translate:none!important;}
 @media(max-width:760px),(max-height:480px){body[data-app-mode=game]:is([data-live-scene=formation],[data-live-scene=duel],[data-live-scene=farm],[data-live-scene=boss],[data-live-scene=event]) #gameBottomDock{transform:translateX(-50%)!important;}#m11RegionIntel{font-size:11px;}}
+
+/* R7 information surfaces: local, not board geometry. */
+body[data-app-mode=game] #gameBottomDock .shop-meta-label>small{color:#eaf3f5;opacity:1;font-weight:700;}
+body[data-app-mode=game][data-live-scene] #gameBottomDock .shop-meta-label .m910-favorite{background:#664e28!important;color:#ffe4a0!important;border-color:#e4c375!important;}
+body[data-app-mode=game] #currentSynergyPanel:has(.m910-focus-options) .synergy-strip{max-height:21vh;overflow:auto;}
+body[data-app-mode=game] #currentSynergyPanel:has(.m910-focus-options){max-height:60vh!important;}
+@media(max-width:760px){body[data-app-mode=game] #currentSynergyPanel:has(.m910-focus-options){max-height:55dvh!important;}}

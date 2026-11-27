@@ -66,8 +66,8 @@
     clearGrace();overlay.hidden=true;document.body.classList.remove('live-settings-open');
     if(previousFocus?.isConnected)previousFocus.focus({preventScroll:true});
   }
-  function open(){
-    if(!gameOpen())return;
+  function open(fromLobby=false){
+    if(!gameOpen()&&!fromLobby)return;
     if(!overlay.hidden)return;
     previousFocus=document.activeElement;
     error.hidden=true;error.textContent='';
@@ -112,6 +112,7 @@
     e.preventDefault();e.stopPropagation();
     if(overlay.hidden)open();else close();
   },true);
+  window.LIVEOpenSettings=()=>open(true);
   window.addEventListener('pagehide',clearGrace);
   applySettings();
 })();
